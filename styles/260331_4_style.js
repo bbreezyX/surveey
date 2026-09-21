@@ -1,15 +1,17 @@
 var size = 0;
 var placement = 'point';
 
+// Six SVG units of transparent padding keep the stroke and shadow inside the
+// image. The silhouette still renders at 24 x 32px; its tip is at y=54 of 60.
 var pinSvg_260331_4 =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 36 48">' +
-        '<filter id="p"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-opacity="0.4"/></filter>' +
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="-6 -6 48 60">' +
+        '<filter id="p" filterUnits="userSpaceOnUse" x="-6" y="-6" width="48" height="60"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-opacity="0.4"/></filter>' +
         '<path filter="url(%23p)" d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23fee50f" stroke="%23293d50" stroke-width="2"/>' +
         '<circle cx="18" cy="18" r="6.5" fill="%23293d50"/>' +
     '</svg>';
 var pinIcon_260331_4 = new ol.style.Icon({
     src: 'data:image/svg+xml,' + pinSvg_260331_4,
-    anchor: [0.5, 1],
+    anchor: [0.5, 0.9],
     anchorXUnits: 'fraction',
     anchorYUnits: 'fraction',
     scale: 1

@@ -1,17 +1,17 @@
 # Basemaps
 
-The map carries two satellite basemaps, radio-switched under **Peta Dasar** in
-the layer panel (`layers/layers.js`). Google is on at load; Esri is the
-fallback.
+The atlas opens with a light street map and offers two satellite alternatives,
+radio-switched under **Peta Dasar** in the layer panel (`layers/layers.js`) or
+the top selector. See the atlas section below for the street source.
 
-| | Google Satelit (default) | Esri Satelit |
+| | Google Satelit | Esri Satelit |
 |---|---|---|
 | Endpoint | `mt1.google.com/vt?lyrs=s` | `services.arcgisonline.com/.../World_Imagery/MapServer/tile/{z}/{y}/{x}` |
 | Key / quota | none | none |
 | Usable zoom over Jambi | 21 | 18 |
 | Licence | outside Google Maps Platform terms | Esri terms; commercial use expects an ArcGIS licence |
 
-## Why Google still leads
+## Why Google is the first satellite option
 
 Zoom, and nothing else. Probed on 15 September 2026 at Jambi city
 (`103.6131, -1.6101`), Kerinci (`101.3870, -2.0600`) and open country between
@@ -48,11 +48,11 @@ and has not been made.
 
 ## Attribution
 
-Each source declares its own credit, so the strip at the bottom right swaps
-with the basemap. `custom.js` measures that block into `--map-meta-inset`, the
-right edge of the legend band; `.bottom-attribution ul` in `custom.css` caps
-the block at 240px and wraps, because the Esri credit is a full sentence and
-would otherwise push the legend across the map.
+Each source declares its own credit, so the footer attribution swaps with the
+basemap. `custom.js` places the legend, scale, and attribution in
+`.atlas-map-footer`; `atlas.css` reserves a separate 48px row below the desktop
+canvas. The attribution wraps within 260px, including the longer Esri credit.
+On mobile the footer stacks the legend and attribution above the list preview.
 
 Esri's string is the service's own `copyrightText`, verbatim:
 
@@ -75,3 +75,35 @@ years older. Field condition in 2026 is evidenced by the survey photographs in
 the popup, not by the basemap. To date the imagery itself, use Google Earth
 Pro's historical timeline or Esri's World Imagery Metadata layer, both outside
 this app.
+
+## Atlas layout (September 2026)
+
+The atlas opens with **Peta jalan**, using the standard OpenStreetMap raster
+endpoint `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (maximum source zoom 19).
+Google and Esri satellite imagery remain available in the layer panel.
+Boundary labels and the province mask change contrast with the
+selected basemap. The existing satellite zoom limits remain unchanged.
+
+OSM attribution remains visible as a small line on mobile, without restoring the
+old tile metadata card or scale ruler. Browser caching and the normal Referer are
+preserved; there is no tile prefetch or offline download. Usage policy:
+https://operations.osmfoundation.org/policies/tiles/.
+
+`atlas.css` owns the responsive application frame. The underlying list, status
+flags, source data, and photo paths remain in the existing atlas components.
+The interface uses white surfaces, ESDM blue (`#0072BC`) for actions, navy text,
+and pale blue selection states. Map colors remain independent: yellow PJUTS
+pins, orange verification outlines, slate placeholder/reserve symbols, and the
+existing boundary and province-mask colors.
+The map uses the full available height until a point is selected. Desktop
+details then open in the bottom dock; closing them restores the map area while
+preserving its center and zoom. Mobile uses the existing location card. Counts
+exclude reserve points, as in the original list.
+
+Search and the custom region dropdown occupy a separate toolbar above the
+map. Basemap selection is available only in the Layer panel. The original region
+select remains the source of truth; its custom combobox supports arrow keys,
+Home/End, type-ahead, Enter, and Escape. Its menu attaches to the document body
+to avoid clipping. The scrollable layer panel
+lives outside the map container and opens in place of the list panel. Zoom and
+fit controls share one rail on the right.

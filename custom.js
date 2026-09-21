@@ -286,7 +286,7 @@
   var SURVEY_NOTE = /\s*\((?=[^)]*(?:foto|dikirim))[\s\S]*$/i;
 
   // One Kerinci surveyor pasted their GPS app's log in wholesale — "Titik (1)
-  // — Survey Pemasangan PUTS; alamat GPS: Kemantan Darat; Jumat, 19 Juni 2026
+  // — Survey Pemasangan PJUTS; alamat GPS: Kemantan Darat; Jumat, 19 Juni 2026
   // 09:26; elevasi 812.1 m". Only the "alamat GPS" segment names a place; the
   // rest is a timestamp and an altimeter reading already covered by the
   // Dokumentasi and Koordinat rows. Logs without that segment name nothing at
@@ -557,7 +557,7 @@
   }
 
   function setDataControlsDisabled(isDisabled) {
-    ["list-search", "fit-map"].forEach(function (id) {
+    ["list-search", "fit-map", "atlas-region", "atlas-fit", "atlas-home"].forEach(function (id) {
       var node = document.getElementById(id);
       if (node) {
         node.disabled = isDisabled;
@@ -575,6 +575,10 @@
   // Counts are unknown until the data lands. "0" is a claim; this is not.
   function setCountsUnknown() {
     setTextContent("list-summary", "Data titik belum tersedia");
+    var overview = document.getElementById("atlas-overview");
+    if (overview) {
+      overview.innerHTML = '<div class="atlas-card-heading"><h2>Data belum tersedia</h2></div><p class="atlas-description">Buka daftar titik untuk memeriksa pemuatan data.</p>';
+    }
   }
 
   function showDataLoading() {
@@ -582,6 +586,7 @@
 
     setCountsUnknown();
     setDataControlsDisabled(true);
+    setTextContent("atlas-overview", "Memuat data sebaran PJUTS…");
 
     if (!listContainer) {
       return;
@@ -624,6 +629,12 @@
     setCountsUnknown();
     setDataControlsDisabled(true);
     hidePopup();
+    // A failed load must expose its retry action even before init() binds
+    // navigation, since the desktop atlas normally starts with the list closed.
+    document.body.classList.remove("is-sidebar-collapsed");
+    var failedSidebar = document.getElementById("sidebar");
+    if (failedSidebar) failedSidebar.inert = false;
+    if (isMobileViewport()) setPanelOpen(true);
 
     if (!listContainer) {
       return;
@@ -666,6 +677,7 @@
   }
 
   function setPanelOpen(isOpen) {
+    if (isOpen && window.layerSwitcher) window.layerSwitcher.hidePanel();
     if (isOpen && isMobileViewport()) {
       hidePopup();
     }
@@ -673,7 +685,11 @@
     var toggle = document.getElementById("panel-toggle");
     if (toggle) {
       toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      if (isMobileViewport()) toggle.setAttribute("aria-label", isOpen ? "Tutup daftar titik" : "Buka daftar titik");
     }
+    var listPane = document.querySelector(".sidebar-scroll");
+    if (listPane) listPane.inert = isMobileViewport() && !isOpen;
+    if (isMobileViewport()) document.getElementById("atlas-home").classList.toggle("is-active", !isOpen);
     var handle = document.getElementById("sheet-handle");
     if (handle) {
       handle.setAttribute("aria-expanded", isOpen ? "true" : "false");
@@ -786,14 +802,6 @@
 
   // ---------- Map control chrome ----------
 
-  var LAYER_ICON =
-    '<svg class="ctl-layers" xmlns="http://www.w3.org/2000/svg" ' +
-    'viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">' +
-    '<path class="ctl-layers__top" d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/>' +
-    '<path class="ctl-layers__mid" d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>' +
-    '<path class="ctl-layers__bottom" d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/>' +
-    "</svg>";
-
   // Native title tooltips are slow, unstyleable, and would sit next to ours.
   // The layer switcher re-adds its own on every panel toggle
   // (ol-layerswitcher.js:203,208), so strip on the way in, not once at setup.
@@ -882,9 +890,7 @@
   }
 
   // Material-style press ripple. `trigger` takes the pointerdown; `host` is
-  // where the clipped wave is drawn — usually the trigger itself, but the
-  // layer chip has to draw into its sibling overlay because the vendor wipes
-  // the button's children on every toggle (see LAYER_ICON note below).
+  // where the clipped wave is drawn.
   // Pointer only: a keyboard press has no point to ripple from, and :active
   // still gives it the sink-and-spring.
   function initPressRipple(trigger, host) {
@@ -948,8 +954,176 @@
     rail.addEventListener("pointerleave", release);
   }
 
+  // A custom select with a body-level menu: never clipped by the map canvas or
+  // the rounded application frame. Native selects retain the filter state.
+  var atlasSelects = [];
+
+  function closeAtlasSelects(except) {
+    atlasSelects.forEach(function (control) {
+      if (control !== except) control.close();
+    });
+  }
+
+  function syncAtlasSelect(select) {
+    if (select && select.atlasControl) select.atlasControl.sync();
+  }
+
+  function enhanceAtlasSelect(select) {
+    var host = select.parentElement;
+    var label = host.querySelector('span').textContent;
+    var trigger = document.createElement('button');
+    var menu = document.createElement('div');
+    var valueNode = document.createElement('span');
+    var caption = document.createElement('span');
+    trigger.type = 'button';
+    trigger.className = 'atlas-select__trigger';
+    trigger.id = select.id + '-trigger';
+    trigger.setAttribute('role', 'combobox');
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-controls', select.id + '-menu');
+    trigger.setAttribute('aria-label', select.getAttribute('aria-label'));
+    caption.className = 'atlas-select__caption';
+    caption.textContent = label;
+    valueNode.className = 'atlas-select__value';
+    trigger.append(caption, valueNode);
+    var chevron = document.createElement('span');
+    chevron.className = 'atlas-select__chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    trigger.appendChild(chevron);
+    menu.id = select.id + '-menu';
+    menu.className = 'atlas-select-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.setAttribute('aria-label', label);
+    menu.hidden = true;
+    document.body.appendChild(menu);
+    host.appendChild(trigger);
+    host.classList.add('is-enhanced');
+    select.hidden = true;
+    var active = 0;
+    var typed = '';
+    var lastTyped = 0;
+
+    function position() {
+      var rect = trigger.getBoundingClientRect();
+      var width = Math.min(Math.max(rect.width, 240), window.innerWidth - 24);
+      var below = window.innerHeight - rect.bottom - 20;
+      var above = rect.top - 20;
+      var upward = below < 180 && above > below;
+      menu.style.width = width + 'px';
+      menu.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)) + 'px';
+      menu.style.maxHeight = Math.max(60, Math.min(390, upward ? above : below)) + 'px';
+      menu.style.top = upward ? 'auto' : rect.bottom + 8 + 'px';
+      menu.style.bottom = upward ? window.innerHeight - rect.top + 8 + 'px' : 'auto';
+    }
+    function highlight(index) {
+      active = Math.max(0, Math.min(select.options.length - 1, index));
+      Array.from(menu.children).forEach(function (option, i) {
+        option.classList.toggle('is-focused', i === active);
+      });
+      var option = menu.children[active];
+      if (option) {
+        trigger.setAttribute('aria-activedescendant', option.id);
+        if (option.offsetTop < menu.scrollTop) menu.scrollTop = option.offsetTop;
+        else if (option.offsetTop + option.offsetHeight > menu.scrollTop + menu.clientHeight) {
+          menu.scrollTop = option.offsetTop + option.offsetHeight - menu.clientHeight;
+        }
+      }
+    }
+    function sync() {
+      trigger.disabled = select.disabled;
+      var selected = select.options[select.selectedIndex];
+      valueNode.textContent = selected ? selected.textContent : 'Memuat wilayah…';
+      menu.replaceChildren();
+      Array.from(select.options).forEach(function (option, index) {
+        var row = document.createElement('div');
+        row.className = 'atlas-select-option';
+        row.id = select.id + '-option-' + index;
+        row.setAttribute('role', 'option');
+        row.setAttribute('aria-selected', String(option.selected));
+        row.setAttribute('aria-label', option.textContent);
+        var copy = document.createElement('span');
+        var name = document.createElement('span');
+        name.textContent = option.textContent;
+        copy.appendChild(name);
+        row.appendChild(copy);
+        if (option.dataset.count) {
+          var count = document.createElement('small');
+          count.className = 'atlas-select-option__count';
+          count.textContent = option.dataset.count + ' titik';
+          row.appendChild(count);
+        }
+        var check = document.createElement('span');
+        check.className = 'atlas-select-option__check';
+        check.setAttribute('aria-hidden', 'true');
+        row.appendChild(check);
+        row.addEventListener('click', function () { choose(index); });
+        menu.appendChild(row);
+      });
+      if (!menu.hidden) highlight(Math.max(0, select.selectedIndex));
+    }
+    function close() {
+      menu.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.removeAttribute('aria-activedescendant');
+    }
+    function open() {
+      if (select.disabled) return;
+      closeAtlasSelects(control);
+      if (window.layerSwitcher) window.layerSwitcher.hidePanel();
+      sync();
+      position();
+      menu.hidden = false;
+      trigger.setAttribute('aria-expanded', 'true');
+      highlight(Math.max(0, select.selectedIndex));
+    }
+    function choose(index) {
+      if (!select.options[index] || select.options[index].disabled) return;
+      select.selectedIndex = index;
+      close();
+      select.dispatchEvent(new Event('change', {bubbles: true}));
+      sync();
+      trigger.focus({preventScroll: true});
+    }
+    var control = {close: close, sync: sync};
+    select.atlasControl = control;
+    atlasSelects.push(control);
+    trigger.addEventListener('click', function () { if (menu.hidden) open(); else close(); });
+    trigger.addEventListener('keydown', function (event) {
+      var key = event.key;
+      if (key === 'Tab') { close(); return; }
+      if (key === 'Escape' && !menu.hidden) {
+        event.preventDefault(); event.stopPropagation(); close(); return;
+      }
+      if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Home' || key === 'End') {
+        event.preventDefault();
+        if (menu.hidden) open();
+        else highlight(key === 'Home' ? 0 : key === 'End' ? select.options.length - 1 : active + (key === 'ArrowDown' ? 1 : -1));
+      } else if (key === 'Enter' || key === ' ') {
+        event.preventDefault();
+        if (menu.hidden) open(); else choose(active);
+      } else if (key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        typed = Date.now() - lastTyped > 700 ? key : typed + key;
+        lastTyped = Date.now();
+        if (menu.hidden) open();
+        var index = Array.from(select.options).findIndex(function (option) {
+          return option.textContent.replace(/^Kab\.\s*/, '').toLocaleLowerCase().startsWith(typed.toLocaleLowerCase());
+        });
+        if (index >= 0) highlight(index);
+      }
+    });
+    document.addEventListener('pointerdown', function (event) {
+      if (!host.contains(event.target) && !menu.contains(event.target)) close();
+    });
+    window.addEventListener('resize', close);
+    select.addEventListener('change', sync);
+    new MutationObserver(sync).observe(select, {childList: true, attributes: true, attributeFilter: ['disabled']});
+    sync();
+  }
+
   function enhanceMapControls() {
-    var shell = document.querySelector(".app-shell");
+    var shell = document.querySelector(".map-frame");
     var zoom = document.querySelector(".ol-zoom");
     var scale = document.querySelector(".ol-scale-line");
     var attribution = document.querySelector(".bottom-attribution");
@@ -959,12 +1133,17 @@
     // boxes held in line by hand-tuned offsets. Re-parent them under one
     // anchor: the rail keeps full chrome, the metadata drops to a flat strip.
     if (shell && (zoom || scale || attribution)) {
+      var footer = document.createElement("div");
+      footer.className = "atlas-map-footer";
+      // The fit button starts in its final rail in HTML, preventing a bare
+      // browser-default button from flashing in the toolbar before startup.
+      var navigation = shell.querySelector(".atlas-map-tools");
       var meta = document.createElement("div");
       meta.className = "map-meta";
       var info = document.createElement("div");
       info.className = "map-meta__info";
       if (zoom) {
-        meta.appendChild(zoom);
+        navigation.appendChild(zoom);
       }
       if (scale) {
         info.appendChild(scale);
@@ -975,7 +1154,8 @@
       if (info.childNodes.length) {
         meta.appendChild(info);
       }
-      shell.appendChild(meta);
+      footer.appendChild(meta);
+      shell.appendChild(footer);
       if (scale) {
         // Refresh the distance when attribution or font sizing changes the card.
         new ResizeObserver(function () { map.render(); }).observe(scale);
@@ -1010,25 +1190,58 @@
     }
 
     if (switcher) {
-      var watermark = document.createElement("img");
-      watermark.className = "layer-switcher__watermark";
-      watermark.src = "./assets/logo-esdm.png";
-      watermark.alt = "Logo ESDM";
-      watermark.draggable = false;
-      switcher.appendChild(watermark);
+      // The layer panel is a sibling of the canvas, so map clipping and
+      // OpenLayers overlay stacking cannot cover it.
+      document.querySelector(".app-shell").appendChild(switcher);
+      switcher.id = "atlas-layer-panel";
+      switcher.setAttribute("role", "region");
+      switcher.setAttribute("aria-label", "Pengaturan layer peta");
+      var heading = document.createElement("div");
+      heading.className = "atlas-layer-heading";
+      heading.innerHTML = '<h2>Layer peta</h2><p>Atur informasi yang ditampilkan.</p>';
+      switcher.insertBefore(heading, switcher.querySelector('.panel'));
       var switcherButton = switcher.querySelector(":scope > button");
       if (switcherButton) {
-        switcherButton.setAttribute("data-tooltip", "Layer peta");
-        // aria-label is left alone here — the vendor keeps it in sync with
-        // the open/closed state and its tipLabels are already Indonesian.
         stripNativeTitle(switcherButton);
-        var slot = document.createElement("span");
-        slot.className = "ctl-layers-slot";
-        slot.setAttribute("aria-hidden", "true");
-        slot.innerHTML = LAYER_ICON;
-        switcherButton.insertAdjacentElement("afterend", slot);
-        initPressRipple(switcherButton, slot);
+        switcherButton.addEventListener("click", function () {
+          document.getElementById("atlas-layers").focus({preventScroll: true});
+        });
       }
+      var layerNav = document.getElementById("atlas-layers");
+      layerNav.setAttribute("aria-controls", switcher.id);
+      layerNav.setAttribute("aria-expanded", "false");
+      window.layerSwitcher.on("show", function () {
+        document.body.classList.add("is-layer-open");
+        layerNav.setAttribute("aria-expanded", "true");
+        closeAtlasSelects();
+        if (isMobileViewport()) {
+          hidePopup();
+          setPanelOpen(false);
+        }
+        else {
+          document.body.classList.add("is-sidebar-collapsed");
+          document.getElementById("sidebar").inert = true;
+          var listToggle = document.getElementById("panel-toggle");
+          listToggle.setAttribute("aria-expanded", "false");
+          listToggle.setAttribute("aria-label", "Buka daftar titik");
+        }
+        document.getElementById("atlas-home").classList.remove("is-active");
+        if (switcherButton) switcherButton.focus({preventScroll: true});
+      });
+      window.layerSwitcher.on("hide", function () {
+        document.body.classList.remove("is-layer-open");
+        layerNav.setAttribute("aria-expanded", "false");
+        document.getElementById("atlas-home").classList.toggle("is-active", isMobileViewport()
+          ? !document.body.classList.contains("is-panel-open")
+          : document.body.classList.contains("is-sidebar-collapsed"));
+      });
+      switcher.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          window.layerSwitcher.hidePanel();
+          layerNav.focus({preventScroll: true});
+        }
+      });
     }
 
     var panelToggle = document.getElementById("panel-toggle");
@@ -1054,6 +1267,22 @@
     // Control chrome does not depend on the point data, so it runs here
     // rather than in init() — which only fires once the GeoJSON lands.
     enhanceMapControls();
+    document.querySelectorAll('.atlas-select select').forEach(enhanceAtlasSelect);
+    var basemaps = { street: window.lyr_AtlasStreet_9, google: window.lyr_GoogleSatellite_0, esri: window.lyr_EsriWorldImagery_8 };
+    Object.keys(basemaps).forEach(function (key) {
+      basemaps[key].on("change:visible", function () {
+        window.lyr_BatasKabupaten_1.changed();
+        window.lyr_FokusProvinsi_7.changed();
+      });
+    });
+    document.getElementById("atlas-layers").addEventListener("click", function () {
+      if (!window.layerSwitcher) return;
+      if (document.querySelector(".layer-switcher.shown")) window.layerSwitcher.hidePanel();
+      else window.layerSwitcher.showPanel();
+    });
+    document.getElementById("atlas-help").addEventListener("click", function () {
+      document.getElementById("atlas-guide").showModal();
+    });
 
     var pointSource = window.lyr_260331_4.getSource();
     // Reserve pins draw on their own layer (same source) so the layer switcher
@@ -1156,17 +1385,18 @@
 
     var activeItemId = null;
 
-    // Selected pin: enlarged with a white ring, drawn on the feature overlay
-    // above the layer's yellow pin.
+    // All pins share a padded viewport. The tip at SVG (18,48) maps to the
+    // 0.5/0.9 anchor, so padding never moves a marker off its coordinate.
+    // Selected pins retain the enlarged silhouette and white ring.
     var selectedPinSvg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="43" viewBox="-2 -4 40 52">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="45" viewBox="-6 -6 48 60">' +
         '<path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23fee50f" stroke="%23ffffff" stroke-width="3"/>' +
         '<circle cx="18" cy="18" r="6.5" fill="%23293d50"/>' +
       '</svg>';
     var pinStyle = new ol.style.Style({
       image: new ol.style.Icon({
         src: "data:image/svg+xml," + selectedPinSvg,
-        anchor: [0.5, 1],
+        anchor: [0.5, 0.9],
         anchorXUnits: "fraction",
         anchorYUnits: "fraction",
         scale: 1
@@ -1182,7 +1412,7 @@
         '<rect width="1.6" height="4" fill="%23293d50" fill-opacity="0.45"/>' +
       "</pattern></defs>";
     var cadanganPinSvg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 36 48">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="-6 -6 48 60">' +
         cadanganHatch +
         '<path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="url(%23h)" stroke="%23293d50" stroke-width="2"/>' +
         '<circle cx="18" cy="18" r="6.5" fill="%23ffffff" stroke="%23293d50" stroke-width="1.2"/>' +
@@ -1190,7 +1420,7 @@
     var cadanganPinStyle = [new ol.style.Style({
       image: new ol.style.Icon({
         src: "data:image/svg+xml," + cadanganPinSvg,
-        anchor: [0.5, 1],
+        anchor: [0.5, 0.9],
         anchorXUnits: "fraction",
         anchorYUnits: "fraction",
         scale: 0.86
@@ -1198,7 +1428,7 @@
       zIndex: 1
     })];
     var cadanganSelectedSvg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="43" viewBox="-2 -4 40 52">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="45" viewBox="-6 -6 48 60">' +
         cadanganHatch +
         '<path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="url(%23h)" stroke="%23ffffff" stroke-width="3"/>' +
         '<circle cx="18" cy="18" r="6.5" fill="%23293d50"/>' +
@@ -1206,7 +1436,7 @@
     var cadanganPinSelected = new ol.style.Style({
       image: new ol.style.Icon({
         src: "data:image/svg+xml," + cadanganSelectedSvg,
-        anchor: [0.5, 1],
+        anchor: [0.5, 0.9],
         anchorXUnits: "fraction",
         anchorYUnits: "fraction",
         scale: 1
@@ -1219,7 +1449,7 @@
     var duplikatRing =
       '<circle cx="18" cy="18" r="15" fill="none" stroke="%23e8731a" stroke-width="2.4" stroke-dasharray="4 3"/>';
     var duplikatPinSvg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="34" viewBox="-3 -3 42 51">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="-6 -6 48 60">' +
         '<path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23fee50f" stroke="%23293d50" stroke-width="2"/>' +
         '<circle cx="18" cy="18" r="6.5" fill="%23293d50"/>' +
         duplikatRing +
@@ -1227,7 +1457,7 @@
     var duplikatPinStyle = [new ol.style.Style({
       image: new ol.style.Icon({
         src: "data:image/svg+xml," + duplikatPinSvg,
-        anchor: [0.5, 1],
+        anchor: [0.5, 0.9],
         anchorXUnits: "fraction",
         anchorYUnits: "fraction",
         scale: 1
@@ -1235,7 +1465,7 @@
       zIndex: 2
     })];
     var duplikatSelectedSvg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="45" viewBox="-4 -6 44 56">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="45" viewBox="-6 -6 48 60">' +
         '<path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23fee50f" stroke="%23ffffff" stroke-width="3"/>' +
         '<circle cx="18" cy="18" r="6.5" fill="%23293d50"/>' +
         duplikatRing +
@@ -1243,7 +1473,7 @@
     var duplikatPinSelected = new ol.style.Style({
       image: new ol.style.Icon({
         src: "data:image/svg+xml," + duplikatSelectedSvg,
-        anchor: [0.5, 1],
+        anchor: [0.5, 0.9],
         anchorXUnits: "fraction",
         anchorYUnits: "fraction",
         scale: 1
@@ -1257,14 +1487,14 @@
     var belumGlyph =
       '<text x="18" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="19" fill="%23293d50">?</text>';
     var belumPinSvg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="35" viewBox="-2 -2 40 52">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="-6 -6 48 60">' +
         '<path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23f4f6f8" stroke="%236b7a8c" stroke-width="2.2" stroke-dasharray="4 3"/>' +
         belumGlyph +
       "</svg>";
     var belumPinStyle = [new ol.style.Style({
       image: new ol.style.Icon({
         src: "data:image/svg+xml," + belumPinSvg,
-        anchor: [0.5, 1],
+        anchor: [0.5, 0.9],
         anchorXUnits: "fraction",
         anchorYUnits: "fraction",
         scale: 1
@@ -1272,7 +1502,7 @@
       zIndex: 2
     })];
     var belumSelectedSvg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="44" viewBox="-3 -5 42 54">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="45" viewBox="-6 -6 48 60">' +
         '<path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23f4f6f8" stroke="%23ffffff" stroke-width="3"/>' +
         '<path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="none" stroke="%236b7a8c" stroke-width="1.6" stroke-dasharray="4 3"/>' +
         belumGlyph +
@@ -1280,7 +1510,7 @@
     var belumPinSelected = new ol.style.Style({
       image: new ol.style.Icon({
         src: "data:image/svg+xml," + belumSelectedSvg,
-        anchor: [0.5, 1],
+        anchor: [0.5, 0.9],
         anchorXUnits: "fraction",
         anchorYUnits: "fraction",
         scale: 1
@@ -1526,7 +1756,7 @@
     var groupedItems = buildGroupedItems(groupMode);
 
     function groupNoun() {
-      return groupMode === "kabupaten" ? "kabupaten" : "pengusul";
+      return groupMode === "kabupaten" ? "kabupaten / kota" : "pengusul";
     }
 
     // Every row on a pengusul's screen carries the kabupaten chip, even when
@@ -1819,6 +2049,12 @@
     // Returns the card's laid-out height, which the caller needs to work out
     // where to pan the pin to.
     function openPopupForItem(item, coordinate) {
+      renderAtlasDock();
+      if (!isMobileViewport()) {
+        hidePopup();
+        document.body.classList.add("is-popup-open");
+        return 0;
+      }
       if (!popup || !popupContent) {
         return 0;
       }
@@ -2025,6 +2261,7 @@
       }
 
       hidePopup();
+      renderAtlasDock();
     }
 
     var FOCUS_EASING = ol.easing.inAndOut;
@@ -2032,17 +2269,6 @@
 
     function markMapFocusAnimation(duration) {
       mapFocusAnimUntil = Date.now() + duration + 180;
-    }
-
-    function getMastheadBottomOffset() {
-      var masthead = document.querySelector(".masthead");
-      var mapEl = document.getElementById("map");
-      if (!masthead || !mapEl) {
-        return 80;
-      }
-      var mapRect = mapEl.getBoundingClientRect();
-      var mastheadRect = masthead.getBoundingClientRect();
-      return Math.max(0, Math.ceil(mastheadRect.bottom - mapRect.top));
     }
 
     function getFocusTargetCenter(view, featureCenter, targetZoom, popupHeight) {
@@ -2061,29 +2287,13 @@
         // at its tip and draws upward, so anything under ~40px tucks the pin's
         // head behind the card. Tall cards on short screens run out of room;
         // the floor keeps the pin on screen and lets the overlap happen there.
-        var cardTop = 70;
+        var cardTop = 0;
         var markerGap = 56;
         var pinFloor = size[1] - 40;
         pinTargetY = Math.min(cardTop + (popupHeight || 300) + markerGap, pinFloor);
       } else {
-        // Desktop: popup docks above the pin (bottom: 48px). Guarantee the
-        // card top clears the masthead at every desktop height.
-        var mastheadBottom = getMastheadBottomOffset();
-        var topPadding = 8;
-        var pinGap = 48;
-        var bottomMargin = 56;
-        var popupH = popupHeight || 300;
-        var minPinY = mastheadBottom + topPadding + pinGap + popupH;
-        var maxPinY = size[1] - bottomMargin;
-        var preferredPinY = minPinY + 16;
-
-        if (minPinY > maxPinY) {
-          // Cramped viewport: keep the popup top visible even if the pin
-          // sits lower than the ideal bottom margin.
-          pinTargetY = minPinY;
-        } else {
-          pinTargetY = Math.min(preferredPinY, maxPinY);
-        }
+        // Desktop details live below the map, so center the selected pin.
+        pinTargetY = size[1] / 2 + 20;
       }
 
       var offsetPxDown = pinTargetY - size[1] / 2;
@@ -2108,6 +2318,7 @@
         }
       }
 
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return 0;
       var base = isMobileViewport() ? 560 : 760;
       var zoomBoost = Math.min(zoomDelta * 42, 360);
       var panBoost = Math.min(panPixels * 0.22, 260);
@@ -2196,7 +2407,7 @@
       if (isMobileViewport()) {
         setPanelOpen(false);
       } else if (config.closePanel) {
-        setPanelOpen(false);
+        setSidebarCollapsed(true);
       }
 
       // Always use the feature's actual center for everything to avoid shifting
@@ -2232,8 +2443,116 @@
 
       listContainer.appendChild(fragment);
       renderSummary(visibleCount, Boolean(normalizedQuery));
+      if (activeItemId && !visibleIds.has(activeItemId)) clearSelection();
       redrawPoints();
       updateHighlight(activeItemId);
+      renderAtlasDock();
+    }
+
+    // The dock and region selector use the same item IDs as the map and list.
+    // Reserve rows never enter the allocation counts.
+    function renderAtlasDock() {
+      var overview = document.getElementById("atlas-overview");
+      if (!overview) return;
+      var current = mappedItems.find(function (item) { return item.id === activeItemId; });
+      var visible = items.filter(function (item) { return visibleIds.has(item.id); });
+      var dock = document.querySelector('.atlas-dock');
+      var hasDetail = Boolean(current);
+      var layoutChanged = document.body.classList.contains('is-detail-open') !== hasDetail;
+      dock.hidden = !hasDetail;
+      document.body.classList.toggle('is-detail-open', hasDetail);
+      // Focus animations must use the canvas size after the dock opens.
+      // Closing the dock preserves the user's current map center and zoom.
+      if (layoutChanged) window.map.updateSize();
+      setTextContent("atlas-map-region", activeGroup || "Provinsi Jambi");
+      var regionSelect = document.getElementById("atlas-region");
+      if (regionSelect) {
+        regionSelect.value = activeGroup || "";
+        syncAtlasSelect(regionSelect);
+      }
+      if (!current) {
+        overview.replaceChildren();
+        document.getElementById('atlas-photo').replaceChildren();
+        document.getElementById('atlas-region-bars').replaceChildren();
+        return;
+      }
+      overview.innerHTML =
+        '<div class="atlas-detail-heading"><span>Titik ' + escapeHtml(current.display.code) + ' · ' + escapeHtml(current.kabupaten) + '</span><button class="atlas-detail-close" type="button" aria-label="Tutup detail lokasi">×</button></div>' +
+        '<h2 class="atlas-location-title">' + escapeHtml(current.display.primary) + '</h2>' +
+        '<p class="atlas-description">' + escapeHtml(current.alamat || current.display.secondary) + '</p>' +
+        (statusNote(current) ? '<p class="atlas-status-note">' + escapeHtml(statusNote(current)) + '</p>' : '') +
+        '<dl class="atlas-detail-meta"><div><dt>' + (current.belum ? 'Koordinat perkiraan' : 'Koordinat') + '</dt><dd>' + escapeHtml(current.koordinat) + '</dd></div>' +
+        '<div><dt>Dokumentasi</dt><dd>' + escapeHtml(current.tanggal || 'Belum tersedia') + '</dd></div></dl>' +
+        (current.belum ? '' : buildRouteAction(current));
+      overview.querySelector('.atlas-detail-close').addEventListener('click', function () {
+        clearSelection();
+        document.getElementById('map').focus({preventScroll: true});
+      });
+      // Preserve the existing localhost-only editing controls.
+      if (isLocalEditor() && !current.belum) {
+        var localTools = document.createElement('div');
+        localTools.className = 'feature-popup__tools';
+        localTools.appendChild(buildFlagButton(current, 'cadangan', current.cadangan ? 'Batal arsir' : 'Arsir'));
+        localTools.appendChild(buildFlagButton(current, 'duplikat', current.duplikat ? 'Batal verifikasi' : 'Perlu verifikasi'));
+        overview.appendChild(localTools);
+      }
+      var photoItem = current;
+      var photoCard = document.getElementById('atlas-photo');
+      if (photoItem.photo && !photoItem.belum) {
+        var url = 'images/' + encodeURI(sanitizeMediaPath(photoItem.photo));
+        photoCard.innerHTML = '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" aria-label="Buka foto survei ' + escapeHtml(photoItem.nomor) + '"><img src="' + escapeHtml(url) + '" alt="Lokasi survei ' + escapeHtml(photoItem.display.primary) + '" decoding="async" /><span class="atlas-photo__arrow" aria-hidden="true">↗</span><div class="atlas-photo__caption"><span>Dokumentasi lokasi</span><strong>' + escapeHtml(photoItem.display.desa) + ', ' + escapeHtml(shortKabupatenInline(photoItem.kabupaten)) + '</strong></div></a>';
+        photoCard.querySelector('img').addEventListener('error', function () {
+          photoCard.innerHTML = '<div class="atlas-photo__empty">Foto lokasi belum dapat dimuat.</div>';
+        });
+      } else {
+        photoCard.innerHTML = '<div class="atlas-photo__empty">' + (current.belum ? 'Lokasi belum ditetapkan.<br>Dokumentasi belum tersedia.' : 'Foto survei belum tersedia.') + '</div>';
+      }
+      var bars = document.getElementById('atlas-region-bars');
+      bars.replaceChildren();
+      var counts = {};
+      visible.forEach(function (item) { counts[item.kabupaten] = (counts[item.kabupaten] || 0) + 1; });
+      var ranked = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || collator.compare(a, b); });
+      ranked.slice(0, 4).forEach(function (name) {
+        var row = document.createElement('button');
+        row.type = 'button'; row.className = 'atlas-region-row';
+        row.setAttribute('aria-label', name + ', ' + counts[name] + ' titik, lihat wilayah');
+        row.innerHTML = '<span>' + escapeHtml(shortKabupaten(name)) + '</span><strong>' + counts[name] + '</strong><span class="atlas-region-row__track" aria-hidden="true"><i style="width:' + (100 * counts[name] / counts[ranked[0]]) + '%"></i></span>';
+        row.addEventListener('click', function () { setActiveGroup(name); });
+        bars.appendChild(row);
+      });
+      if (!ranked.length) bars.innerHTML = '<p class="atlas-description">Tidak ada titik dalam hasil filter.</p>';
+    }
+
+    function initAtlasControls() {
+      var region = document.getElementById('atlas-region');
+      groupedItems.forEach(function (group) {
+        var option = document.createElement('option');
+        option.value = group.name; option.textContent = shortKabupaten(group.name);
+        option.dataset.count = String(group.items.length);
+        region.appendChild(option);
+      });
+      region.addEventListener('change', function () {
+        setActiveGroup(region.value || null);
+        if (isMobileViewport()) setPanelOpen(false);
+      });
+      document.getElementById('atlas-fit').addEventListener('click', function () { fitToVisible({ maxZoom: 16 }); });
+      document.getElementById('atlas-home').addEventListener('click', function () {
+        if (window.layerSwitcher) window.layerSwitcher.hidePanel();
+        clearTimeout(searchDebounce);
+        // Fit only after the list is closed, so its old footprint cannot
+        // shift the destination of the full-map view.
+        if (isMobileViewport()) setPanelOpen(false);
+        else setSidebarCollapsed(true);
+        setActiveGroup(null);
+      });
+      document.getElementById('atlas-all-regions').addEventListener('click', function () {
+        setActiveGroup(null);
+        setSidebarCollapsed(false);
+      });
+      // Reflow the canvas without resetting the current view when details close.
+      new ResizeObserver(function () {
+        window.map.updateSize();
+      }).observe(document.getElementById('map'));
     }
 
     // Screen 1. With no query: one row per group, no points. With a query:
@@ -2946,8 +3265,8 @@
     // orange rim; belum a pale disc with a heavy slate rim (still nothing yellow
     // — it must never read as one more surveyed unit); cadangan grey.
     var DOT_FILL = {
-      sk: "#fee50f",
-      duplikat: "#fee50f",
+      sk: "#efb32a",
+      duplikat: "#efb32a",
       belum: "#f4f6f8",
       cadangan: "#c5cdd6"
     };
@@ -3014,12 +3333,12 @@
       if (window.innerWidth < 960) {
         var peek =
           parseInt(
-            getComputedStyle(document.documentElement).getPropertyValue("--sheet-peek"),
+            getComputedStyle(document.body).getPropertyValue("--sheet-peek"),
             10
           ) || 240;
-        return [72, 24, peek + 24, 24];
+        return [52, 32, peek + 48, 32];
       }
-      return [56, 72, 72, panelInset() + 48];
+      return [55, 78, 55, panelInset() + 78];
     }
 
     // ---- Hover --------------------------------------------------------------
@@ -3227,32 +3546,10 @@
     legendPill.setAttribute("role", "list");
     legendPill.setAttribute("aria-label", "Legenda simbol peta");
     legendEl.appendChild(legendPill);
-    (document.querySelector(".app-shell") || document.body).appendChild(legendEl);
-
-    // The right bound: the viewport's right edge to the scale/attribution
-    // block's left edge (its width plus its 16px margin). Measured, because
-    // the attribution text is whatever the tile source declares, and
-    // re-measured whenever that block changes size.
-    var metaBlock = document.querySelector(".map-meta");
-    function syncLegendBounds() {
-      if (!metaBlock) {
-        return;
-      }
-      var width = metaBlock.getBoundingClientRect().width;
-      document.documentElement.style.setProperty(
-        "--map-meta-inset",
-        Math.round(width + 16) + "px"
-      );
-    }
-    if (metaBlock && window.ResizeObserver) {
-      new ResizeObserver(syncLegendBounds).observe(metaBlock);
-    } else {
-      window.addEventListener("resize", syncLegendBounds);
-    }
-    syncLegendBounds();
+    document.querySelector(".atlas-map-footer").prepend(legendEl);
 
     var LEGEND_LABEL = {
-      sk: "Titik PUTS",
+      sk: "Titik PJUTS",
       belum: STATUS_LABEL.belum.legend,
       duplikat: STATUS_LABEL.duplikat.legend,
       cadangan: STATUS_LABEL.cadangan.legend
@@ -3261,7 +3558,7 @@
     // mobile block of custom.css), so each entry carries a short label too
     // and CSS shows one or the other. Only the visible one is read aloud.
     var LEGEND_LABEL_SHORT = {
-      sk: "Titik PUTS",
+      sk: "Titik PJUTS",
       belum: STATUS_LABEL.belum.short,
       duplikat: STATUS_LABEL.duplikat.short,
       cadangan: STATUS_LABEL.cadangan.short
@@ -3366,12 +3663,17 @@
         return;
       }
 
-      window.map.getView().fit(extent, {
+      // Details may just have closed and a previous point-focus animation
+      // may still be running. Fit once against the current canvas geometry.
+      window.map.updateSize();
+      var view = window.map.getView();
+      if (view.getAnimating()) view.cancelAnimations();
+      view.fit(extent, {
         // Reserves the panel's real footprint (fitPadding), otherwise the
         // westernmost points land underneath it.
         padding: fitPadding(),
         maxZoom: config.maxZoom || 15,
-        duration: config.duration === undefined ? 700 : config.duration
+        duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : config.duration === undefined ? 700 : config.duration
       });
     }
 
@@ -3385,11 +3687,12 @@
         return 0;
       }
       var panel = document.getElementById("sidebar");
-      return panel ? Math.round(panel.getBoundingClientRect().right) : 0;
+      return panel ? Math.max(0, Math.round(panel.getBoundingClientRect().right - document.getElementById("map").getBoundingClientRect().left)) : 0;
     }
 
     function setActiveGroup(name, options) {
       var config = options || {};
+      clearTimeout(searchDebounce);
       // Remember the row we are leaving so Back can hand focus straight back
       // to it — innerHTML wiping destroys the node the user just activated.
       restoreFocusGroup = name ? null : activeGroup;
@@ -3407,7 +3710,7 @@
       if (scroller && activeGroup) {
         scroller.scrollTop = 0;
       }
-      moveFocusForScreen();
+      if (!document.body.classList.contains("is-sidebar-collapsed") && (!isMobileViewport() || document.body.classList.contains("is-panel-open"))) moveFocusForScreen();
       if (config.fit !== false) {
         fitToVisible({ maxZoom: activeGroup ? 14 : 15 });
       }
@@ -3514,7 +3817,9 @@
       var value = event.target.value;
       clearTimeout(searchDebounce);
       searchDebounce = setTimeout(function () {
+        clearSelection();
         renderList(value);
+        if (!isMobileViewport() && value) setSidebarCollapsed(false);
         // Search now narrows the map too, so bring the survivors into view
         // instead of leaving the user staring at an empty viewport.
         fitToVisible({ maxZoom: 16, duration: 500 });
@@ -3524,6 +3829,7 @@
     var searchClear = document.getElementById("list-search-clear");
     if (searchClear) {
       searchClear.addEventListener("click", function () {
+        clearSelection();
         // Kill the pending debounce first: without this a clear that lands
         // within 250ms of the last keystroke gets overwritten by the stale
         // term the timer is still holding.
@@ -3536,6 +3842,7 @@
     }
 
     fitButton.addEventListener("click", function () {
+      clearTimeout(searchDebounce);
       searchInput.value = "";
       setActiveGroup(null);
       if (window.innerWidth < 960) {
@@ -3590,9 +3897,14 @@
 
     // Desktop: collapse the sidebar to a full-width map (mobile keeps its modal).
     function setSidebarCollapsed(collapsed) {
+      if (!collapsed && window.layerSwitcher) window.layerSwitcher.hidePanel();
       document.body.classList.toggle("is-sidebar-collapsed", collapsed);
+      var sidebarNode = document.getElementById("sidebar");
+      if (sidebarNode) sidebarNode.inert = collapsed && !isMobileViewport();
+      document.getElementById("atlas-home").classList.toggle("is-active", collapsed);
       if (panelToggle) {
         panelToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        panelToggle.setAttribute("aria-label", collapsed ? "Buka daftar titik" : "Tutup daftar titik");
         panelToggle.setAttribute(
           "data-tooltip",
           collapsed ? "Tampilkan panel" : "Sembunyikan panel"
@@ -3612,15 +3924,14 @@
         }
       });
 
-      // On desktop the sidebar starts open, so reflect that on the toggle.
-      if (window.innerWidth >= 960) {
-        panelToggle.setAttribute("aria-expanded", "true");
-      }
+      if (window.innerWidth >= 960) setSidebarCollapsed(true);
     }
 
     if (panelClose) {
       panelClose.addEventListener("click", function () {
-        setPanelOpen(false);
+        if (isMobileViewport()) setPanelOpen(false);
+        else setSidebarCollapsed(true);
+        panelToggle.focus({ preventScroll: true });
       });
     }
 
@@ -3639,7 +3950,7 @@
       // Measured live: --sheet-peek drops to 122px in landscape.
       function sheetTravel() {
         var peek = parseFloat(
-          getComputedStyle(document.documentElement).getPropertyValue(
+          getComputedStyle(document.body).getPropertyValue(
             "--sheet-peek"
           )
         );
@@ -3769,11 +4080,20 @@
 
     window.addEventListener("resize", function () {
       configurePopupOverlayForViewport();
+      if (activeItemId) {
+        var resizedItem = mappedItems.find(function (item) { return item.id === activeItemId; });
+        if (resizedItem) openPopupForItem(resizedItem);
+      }
       if (window.innerWidth >= 960) {
         setPanelOpen(false);
+        setSidebarCollapsed(document.body.classList.contains("is-sidebar-collapsed"));
       } else {
         document.body.classList.remove("is-sidebar-collapsed");
+        document.getElementById("sidebar").inert = false;
+        setPanelOpen(document.body.classList.contains("is-panel-open"));
       }
+      window.map.updateSize();
+      if (!activeItemId) fitToVisible({ maxZoom: 15, duration: 0 });
     });
 
     configurePopupOverlayForViewport();
@@ -3836,6 +4156,11 @@
       }
     });
 
+    initAtlasControls();
+    if (isMobileViewport()) {
+      document.body.classList.remove("is-sidebar-collapsed");
+      setPanelOpen(false);
+    }
     renderList("");
     renderFooter();
 

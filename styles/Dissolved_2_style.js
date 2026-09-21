@@ -76,6 +76,7 @@ function fokusInvertedGeometry(feature) {
 }
 
 var fokusMaskFill = new ol.style.Fill({ color: 'rgba(10, 20, 32, 0.5)' });
+var fokusLightFill = new ol.style.Fill({ color: 'rgba(239, 244, 234, 0.72)' });
 
 var style_FokusProvinsi = function(feature, resolution){
     var inverted = fokusInvertedGeometry(feature);
@@ -84,6 +85,6 @@ var style_FokusProvinsi = function(feature, resolution){
     }
     return [ new ol.style.Style({
         geometry: inverted,
-        fill: fokusMaskFill
+        fill: window.lyr_AtlasStreet_9 && lyr_AtlasStreet_9.getVisible() ? fokusLightFill : fokusMaskFill
     })];
 };

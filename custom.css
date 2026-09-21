@@ -1066,10 +1066,10 @@ body.is-sidebar-collapsed #sidebar {
     box-shadow: inset 0 0 0 2px var(--blue);
 }
 
-/* Yellow means "this point on the map" — same as the marker and the legend. */
+/* Blue identifies the selected row; map symbols keep their status colors. */
 .item.is-active {
-    background: #fdf8de;
-    box-shadow: inset 3px 0 var(--yellow);
+    background: var(--blue-tint);
+    box-shadow: inset 3px 0 var(--blue);
 }
 
 /* Reserve rows stay in the list so the survey is complete, but they must

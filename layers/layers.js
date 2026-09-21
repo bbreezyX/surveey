@@ -1,8 +1,20 @@
 var wms_layers = [];
 
+// A light street map makes the province-wide distribution easier to read.
+// Satellite sources remain available for inspecting an individual location.
+var lyr_AtlasStreet_9 = new ol.layer.Tile({
+    title: 'Peta jalan',
+    type: 'base',
+    source: new ol.source.XYZ({
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attributions: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+        maxZoom: 19
+    })
+});
 
-// Two basemaps, radio-switched ('type': 'base'). Google stays the default and
-// Esri is the fallback, not the other way round, for one measured reason: over
+
+// Satellite alternatives, radio-switched ('type': 'base'). Google is listed
+// before Esri for closer field inspection: over
 // Jambi, Google carries imagery to z21 while Esri's World Imagery stops at z18.
 // Probed 2026-09-15 at Jambi city, Kerinci and open country between them —
 // every z19 tile came back as the same 2521-byte "Map data not yet available"
@@ -40,10 +52,9 @@ var lyr_EsriWorldImagery_8 = new ol.layer.Tile({
                 maxZoom: 18
             })
         });
-// The switcher lists a group top-down in reverse array order, so Google goes
-// last to sit first in the panel, matching which one is on at load.
+// The switcher reverses array order: street map first, then Google and Esri.
 var group_Basemap = new ol.layer.Group({
-                                layers: [lyr_EsriWorldImagery_8, lyr_GoogleSatellite_0],
+                                layers: [lyr_EsriWorldImagery_8, lyr_GoogleSatellite_0, lyr_AtlasStreet_9],
                                 fold: 'open',
                                 title: 'Peta Dasar'});
 // BIG national administrative boundaries, service edition June 2026.
@@ -115,9 +126,9 @@ var lyr_260331_4 = new ol.layer.Vector({
                 declutter: false,
                 source:jsonSource_260331_4,
                 style: style_260331_4,
-                popuplayertitle: 'Titik PUTS',
+                popuplayertitle: 'Titik PJUTS',
                 interactive: true,
-                title: '<img src=\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="18" viewBox="0 0 36 48"><path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23fee50f" stroke="%23293d50" stroke-width="2"/><circle cx="18" cy="18" r="6.5" fill="%23293d50"/></svg>\' /> Titik PUTS'
+                title: '<img src=\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="18" viewBox="0 0 36 48"><path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23fee50f" stroke="%23293d50" stroke-width="2"/><circle cx="18" cy="18" r="6.5" fill="%23293d50"/></svg>\' /> Titik PJUTS'
             });
 // Titik Cadangan: the surplus survey rows (Status "Cadangan") live in the same
 // geojson as the SK points, so this layer shares jsonSource_260331_4 — one
@@ -152,14 +163,14 @@ var lyr_BelumDitetapkan_6 = new ol.layer.Vector({
                 title: '<img src=\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="18" viewBox="0 0 36 48"><path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23f4f6f8" stroke="%236b7a8c" stroke-width="2.2" stroke-dasharray="4 3"/><text x="18" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="19" fill="%23293d50">?</text></svg>\' /> Lokasi Belum Ditetapkan'
             });
 // The switcher lists a group's layers top-down in reverse array order, so
-// Cadangan goes first to sit under Titik PUTS in the panel (and under the
+// Cadangan goes first to sit under Titik PJUTS in the panel (and under the
 // SK pins on the map); Belum Ditetapkan sits between them.
 var group_RAW = new ol.layer.Group({
                                 layers: [lyr_Cadangan_5, lyr_BelumDitetapkan_6, lyr_260331_4,],
                                 fold: 'open',
                                 title: 'Data Lapangan'});
 
-lyr_GoogleSatellite_0.setVisible(true);lyr_EsriWorldImagery_8.setVisible(false);lyr_FokusProvinsi_7.setVisible(true);lyr_BatasKabupaten_1.setVisible(true);lyr_Dissolved_2.setVisible(false);lyr_260331_4.setVisible(true);lyr_Cadangan_5.setVisible(false);lyr_BelumDitetapkan_6.setVisible(true);
+lyr_AtlasStreet_9.setVisible(true);lyr_GoogleSatellite_0.setVisible(false);lyr_EsriWorldImagery_8.setVisible(false);lyr_FokusProvinsi_7.setVisible(true);lyr_BatasKabupaten_1.setVisible(true);lyr_Dissolved_2.setVisible(false);lyr_260331_4.setVisible(true);lyr_Cadangan_5.setVisible(false);lyr_BelumDitetapkan_6.setVisible(true);
 // "Ruas Jalan" is intentionally not loaded; it duplicated the kabupaten
 // boundary, which is drawn (outline + label) by lyr_BatasKabupaten_1.
 // Area Cakupan (Dissolved) and the Fokus Provinsi mask both sit below the

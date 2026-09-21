@@ -11,13 +11,13 @@
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="id_ID" />
     <meta property="og:site_name" content="Dinas ESDM Provinsi Jambi" />
-    <meta property="og:title" content="Peta Sebaran PUTS 2026 — Provinsi Jambi" />
+    <meta property="og:title" content="Peta Sebaran PJUTS 2026 — Provinsi Jambi" />
     <meta
       property="og:description"
       content="Peta sebaran Penerangan Umum Tenaga Surya Provinsi Jambi Tahun 2026 hasil survey lapangan."
     />
     <meta name="twitter:card" content="summary" />
-    <meta name="theme-color" content="#293d50" />
+    <meta name="theme-color" content="#e6ede6" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <!-- Browser, iOS and Android icons share the PJUTS solar-location mark.
@@ -27,8 +27,8 @@
     <link rel="icon" href="./assets/pjuts-favicon-be521abcfb99.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="./assets/pjuts-apple-touch-icon-09766f8ae04c.png" sizes="180x180" />
     <link rel="manifest" href="./manifest.json?v=20260907pjuts" />
-    <meta name="apple-mobile-web-app-title" content="PUTS 2026" />
-    <meta name="application-name" content="PUTS 2026" />
+    <meta name="apple-mobile-web-app-title" content="PJUTS 2026" />
+    <meta name="application-name" content="PJUTS 2026" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://mt1.google.com" />
@@ -65,11 +65,12 @@
     />
     <link rel="stylesheet" href="./resources/ol-layerswitcher.css?v=202609041121" />
     <link rel="stylesheet" href="./resources/qgis2web.css?v=202609041121" />
-    <link rel="preload" href="./custom.css?v=20260915esri" as="style" />
-    <link rel="stylesheet" href="./custom.css?v=20260915esri" />
-    <title>Peta Sebaran PUTS 2026 · Penerangan Umum Tenaga Surya Provinsi Jambi</title>
+    <link rel="preload" href="./custom.css?v=20260921whiteblueui" as="style" />
+    <link rel="stylesheet" href="./custom.css?v=20260921whiteblueui" />
+    <link rel="stylesheet" href="./atlas.css?v=20260921scrollbars" />
+    <title>Peta Sebaran PJUTS 2026 · Penerangan Umum Tenaga Surya Provinsi Jambi</title>
   </head>
-  <body>
+  <body class="atlas-layout is-sidebar-collapsed">
     <noscript>
       <p class="noscript-note">
         Peta ini membutuhkan JavaScript. Aktifkan JavaScript di browser Anda,
@@ -77,22 +78,43 @@
       </p>
     </noscript>
     <div class="app-shell">
-      <header class="masthead">
-        <img
-          class="masthead-lambang"
-          src="./assets/lambang-jambi.png?v=202609062205"
-          alt="Lambang Provinsi Jambi"
-          width="34"
-          height="35"
-          decoding="async"
-        />
-        <div class="masthead-copy">
-          <p class="masthead-kicker">Pemprov Jambi &middot; Dinas ESDM</p>
-          <h1 class="masthead-title">Peta Sebaran PUTS 2026</h1>
+      <nav class="atlas-rail" aria-label="Navigasi atlas">
+        <a class="atlas-brand" href="./" aria-label="Atlas PJUTS, beranda"><img src="./assets/icon-192.png" width="46" height="46" alt="" /></a>
+        <div class="atlas-rail__main">
+          <button class="atlas-nav is-active" id="atlas-home" type="button" aria-label="Tampilkan seluruh sebaran" title="Seluruh sebaran"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Z"/><path d="M9 3v16M15 5v16"/></svg><span>Peta</span></button>
+          <button class="atlas-nav" id="panel-toggle" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Buka daftar titik" title="Daftar titik"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Daftar</span></button>
+          <button class="atlas-nav" id="atlas-layers" type="button" aria-label="Pilihan layer peta" title="Layer peta"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 6-10 6L2 9Z"/><path d="m3 13 9 5 9-5M3 17l9 5 9-5"/></svg><span>Layer</span></button>
         </div>
+        <button class="atlas-nav" id="atlas-help" type="button" aria-label="Panduan atlas" title="Panduan atlas"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 16v.2"/></svg><span>Panduan</span></button>
+        <img class="atlas-rail__seal" src="./assets/lambang-jambi.png" width="28" height="30" alt="Provinsi Jambi" />
+      </nav>
+      <header class="atlas-header">
+        <div class="atlas-heading"><h1>Atlas PJUTS <span>2026</span></h1><p>Dinas ESDM Provinsi Jambi</p></div>
+        <div class="atlas-header__note"><span class="atlas-live-dot" aria-hidden="true"></span>Data survei lapangan</div>
       </header>
+      <div class="atlas-toolbar" role="search" aria-label="Pencarian dan filter peta">
+          <label class="search-field" for="list-search">
+            <span class="visually-hidden">Cari titik PJUTS</span>
+            <span class="search-icon" aria-hidden="true"></span>
+            <input
+              id="list-search"
+              type="search"
+              placeholder="Cari lokasi atau kabupaten…"
+              title="Cari titik, lokasi, kabupaten, atau koordinat"
+              autocomplete="off"
+            />
+            <button
+              id="list-search-clear"
+              class="search-clear"
+              type="button"
+              aria-label="Hapus pencarian"
+            ></button>
+          </label>
 
-      <aside id="sidebar" aria-label="Daftar titik PUTS">
+
+        <div class="atlas-select"><span>Kabupaten / kota</span><select id="atlas-region" aria-label="Filter kabupaten atau kota" disabled><option value="">Semua wilayah</option></select></div>
+      </div>
+      <aside id="sidebar" aria-label="Daftar titik PJUTS">
         <!-- The visible text is the button's name: custom.js swaps it with the
              sheet state, so screen readers hear the same instruction the
              sighted reader sees. -->
@@ -121,24 +143,7 @@
           &times;
         </button>
 
-        <div class="panel-brand">
-          <span class="panel-brand__mark">
-            <img
-              class="panel-brand__lambang"
-              src="./assets/lambang-jambi.png?v=202609062205"
-              alt="Lambang Provinsi Jambi"
-              width="36"
-              height="37"
-              decoding="async"
-            />
-          </span>
-          <div class="panel-brand__copy">
-            <p class="panel-brand__kicker">Dinas ESDM Provinsi Jambi</p>
-            <h1 class="panel-brand__title">Sebaran PUTS 2026</h1>
-            <p class="panel-brand__description">Penerangan Umum Tenaga Surya</p>
-          </div>
-        </div>
-
+        <div class="panel-brand"><div class="panel-brand__copy"><h2 class="panel-brand__title">Jelajahi titik</h2><p class="panel-brand__description">Pilih wilayah, lalu pilih lokasi survei.</p></div></div>
         <div class="sidebar-header">
           <div class="summary-row">
             <p class="list-summary" id="list-summary" role="status">Memuat data titik…</p>
@@ -146,24 +151,6 @@
               Lihat semua
             </button>
           </div>
-
-          <label class="search-field" for="list-search">
-            <span class="visually-hidden">Cari titik PUTS</span>
-            <span class="search-icon" aria-hidden="true"></span>
-            <input
-              id="list-search"
-              type="search"
-              placeholder="Cari lokasi atau kabupaten…"
-              title="Cari titik, lokasi, kabupaten, atau koordinat"
-              autocomplete="off"
-            />
-            <button
-              id="list-search-clear"
-              class="search-clear"
-              type="button"
-              aria-label="Hapus pencarian"
-            ></button>
-          </label>
 
           <!-- Pengusul grouping removed: the list is per kabupaten only. The
                version that still offered the Pengusul tab lives on the
@@ -184,26 +171,35 @@
         </p>
       </aside>
 
-      <button
-        id="panel-toggle"
-        class="panel-toggle"
-        type="button"
-        aria-controls="sidebar"
-        aria-expanded="false"
-        aria-label="Tampilkan atau sembunyikan panel data"
-        data-tooltip="Sembunyikan panel"
-      >
-        <span class="panel-toggle__chevron" aria-hidden="true"></span>
-      </button>
-
       <main class="map-frame">
-        <div id="map" aria-label="Peta sebaran PUTS">
+        <div class="atlas-map-tools" role="group" aria-label="Navigasi peta">
+          <button class="atlas-fit" id="atlas-fit" type="button" title="Sesuaikan peta dengan hasil filter" aria-label="Sesuaikan tampilan peta"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/><path d="m3 3 5 5m13-5-5 5M3 21l5-5m13 5-5-5"/></svg></button>
+        </div>
+        <div class="atlas-map-heading"><span class="atlas-live-dot" aria-hidden="true"></span><span id="atlas-map-region">Provinsi Jambi</span><span class="atlas-map-heading__year">Sebaran 2026</span></div>
+        <div id="map" aria-label="Peta sebaran PJUTS" tabindex="0">
           <div id="popup" class="ol-popup">
             <a href="#" id="popup-closer" class="ol-popup-closer" aria-label="Tutup info titik"></a>
             <div id="popup-content"></div>
           </div>
         </div>
       </main>
+      <section class="atlas-dock" aria-label="Ringkasan sebaran dan lokasi" hidden>
+        <article class="atlas-overview" id="atlas-overview" aria-live="polite">
+          <div class="atlas-card-heading"><h2>Menyiapkan atlas…</h2><span class="atlas-sun" aria-hidden="true">☀</span></div>
+          <p class="atlas-description">Memuat data sebaran PJUTS Provinsi Jambi.</p>
+        </article>
+        <article class="atlas-photo" id="atlas-photo" aria-label="Dokumentasi survei"><div class="atlas-photo__empty">Dokumentasi survei lapangan</div></article>
+        <article class="atlas-regions"><div class="atlas-card-heading"><h2>Sebaran wilayah</h2><button id="atlas-all-regions" class="atlas-text-button" type="button">Lihat semua</button></div><p class="atlas-description">Jumlah titik per kabupaten / kota</p><div id="atlas-region-bars" class="atlas-region-bars"></div></article>
+      </section>
+      <footer class="atlas-footer"><span>Penerangan Jalan Umum Tenaga Surya</span><span>Provinsi Jambi · 2026</span></footer>
+      <dialog id="atlas-guide" class="atlas-guide" aria-labelledby="atlas-guide-title">
+        <form method="dialog"><button class="atlas-guide__close" aria-label="Tutup panduan">×</button></form>
+        <h2 id="atlas-guide-title">Jelajahi atlas PJUTS</h2>
+        <p>Cari nama lokasi atau tempel koordinat pada kolom pencarian. Pilih kabupaten atau kota untuk mempersempit sebaran.</p>
+        <p>Tekan titik pada peta atau buka <strong>Daftar</strong> untuk melihat lokasi, foto survei, dan petunjuk arah.</p>
+        <p>Gunakan <strong>Layer</strong> untuk mengatur batas wilayah dan menampilkan titik cadangan. Titik cadangan tidak termasuk jumlah alokasi.</p>
+        <p>Foto menunjukkan kondisi saat survei. Peta satelit dapat memiliki waktu perekaman yang berbeda.</p>
+      </dialog>
     </div>
 
     <script src="resources/qgis2web_expressions.js?v=202609041121"></script>
@@ -214,12 +210,12 @@
     <script src="./resources/ol-layerswitcher.js?v=202609041121"></script>
     <script src="resources/photon-geocoder-autocomplete.min.js?v=202609041121"></script>
     <script src="layers/BatasKabupaten_1.js?v=20260907big202606"></script>
-    <script src="styles/BatasKabupaten_1_style.js?v=20260907big202606"></script>
-    <script src="styles/Dissolved_2_style.js?v=202609041121"></script>
-    <script src="styles/260331_4_style.js?v=202609041121"></script>
-    <script src="./layers/layers.js?v=20260915esri" type="text/javascript"></script>
+    <script src="styles/BatasKabupaten_1_style.js?v=20260921whiteblueui"></script>
+    <script src="styles/Dissolved_2_style.js?v=20260921whiteblueui"></script>
+    <script src="styles/260331_4_style.js?v=20260921whiteblueui"></script>
+    <script src="./layers/layers.js?v=20260921whiteblueui" type="text/javascript"></script>
     <script src="./resources/Autolinker.min.js?v=202609041121"></script>
     <script src="./resources/qgis2web.js?v=20260907scale"></script>
-    <script src="./custom.js?v=20260908kab-only2"></script>
+    <script src="./custom.js?v=20260921initialcontrols"></script>
   </body>
 </html>

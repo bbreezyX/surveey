@@ -13,6 +13,10 @@ var placement = 'point';
 var kabBoundaryStyle = new ol.style.Style({
     stroke: new ol.style.Stroke({color: 'rgba(255, 255, 255, 0.8)', width: 1.25})
 });
+var kabBoundaryLightStyle = new ol.style.Style({
+    stroke: new ol.style.Stroke({color: 'rgba(66, 100, 83, 0.65)', width: 1.2}),
+    fill: new ol.style.Fill({color: 'rgba(245, 249, 240, 0.24)'})
+});
 
 // "KAB. TANJUNG JABUNG BARAT" -> "Kab. Tanjung Jabung Barat". The source field
 // is shouted uppercase; title case reads a step quieter at the same size.
@@ -72,22 +76,23 @@ function kabLabelPoint(feature) {
 
 var kabLabelTextStyleCache = {};
 function kabLabelTextStyle(text, alpha) {
-    var key = alpha + '|' + text;
+    var light = window.lyr_AtlasStreet_9 && lyr_AtlasStreet_9.getVisible();
+    var key = light + '|' + alpha + '|' + text;
     if (!kabLabelTextStyleCache[key]) {
         kabLabelTextStyleCache[key] = new ol.style.Text({
             text: text,
             font: '600 12.5px Manrope, "Source Sans 3", system-ui, sans-serif',
             textAlign: 'center',
             textBaseline: 'middle',
-            fill: new ol.style.Fill({ color: 'rgba(255, 255, 255, ' + (0.96 * alpha) + ')' }),
-            stroke: new ol.style.Stroke({ color: 'rgba(11, 41, 66, ' + (0.7 * alpha) + ')', width: 2.6 })
+            fill: new ol.style.Fill({ color: light ? 'rgba(40, 65, 53, ' + alpha + ')' : 'rgba(255, 255, 255, ' + (0.96 * alpha) + ')' }),
+            stroke: new ol.style.Stroke({ color: light ? 'rgba(255, 255, 255, ' + alpha + ')' : 'rgba(11, 41, 66, ' + (0.7 * alpha) + ')', width: 3 })
         });
     }
     return kabLabelTextStyleCache[key];
 }
 
 var style_BatasKabupaten_1 = function(feature, resolution){
-    var styles = [kabBoundaryStyle];
+    var styles = [window.lyr_AtlasStreet_9 && lyr_AtlasStreet_9.getVisible() ? kabBoundaryLightStyle : kabBoundaryStyle];
     var alpha = kabLabelAlpha(resolution);
     var raw = feature.get("KABUPATEN_");
     if (alpha > 0 && raw !== null && raw !== undefined && raw !== '') {
