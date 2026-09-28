@@ -80,7 +80,41 @@
     if (coordQuery && coordinatesMatch(item, coordQuery)) {
       return true;
     }
-    return item.searchText.indexOf(normalizedQuery) !== -1;
+    var queryWords = searchWords(normalizedQuery);
+    var hasRtNumber = queryWords.some(function (word) {
+      return RT_WORD.test(word);
+    });
+    // A plain substring would let "rt 3" through on "RT 34" and "RT 31".
+    if (!hasRtNumber && item.searchText.indexOf(normalizedQuery) !== -1) {
+      return true;
+    }
+    if (!queryWords.length) {
+      return false;
+    }
+    if (item.searchWordsFor !== item.searchText) {
+      item.searchWords = searchWords(item.searchText);
+      item.searchWordsFor = item.searchText;
+    }
+    return queryWords.every(function (word) {
+      return item.searchWords.some(function (candidate) {
+        return RT_WORD.test(word) ? candidate === word : candidate.indexOf(word) === 0;
+      });
+    });
+  }
+
+  // The fallback when the query is not one run of the row's text: word by
+  // word, in any order, so "kasang rt 3" finds the row titled "RT 03 Kasang".
+  // Punctuation splits words ("Rt.05", "Jl.Pondok"), RT/RW numbers lose their
+  // leading zeros, and a word only has to start a word of the row ("kasa"
+  // finds Kasang). An RT number must match whole, or "rt 1" would also list
+  // RT 10 to RT 19.
+  var RT_WORD = /^r[tw]\d+$/;
+
+  function searchWords(value) {
+    return String(value || "")
+      .replace(/\b(r[tw])[\s.]*0*(\d+)/g, "$1$2")
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean);
   }
 
   function escapeHtml(value) {
@@ -318,13 +352,17 @@
     return text.replace(/\s{2,}/g, " ").trim();
   }
 
-  // "RT 11" / "Rt.05" is an address detail, not a place: 54 rows carry one as
-  // their entire Keterangan and ten collide on "RT 12" alone. It stays in the
-  // Keterangan row — where it reads correctly — but the desa takes the title.
-  var BARE_RT = /^rt[\s.]*\d+$/i;
+  // "RT 11" / "Rt.05" / "RT 01 RW 03" is an address detail, not a place: 57
+  // rows carry one as their entire Keterangan and ten collide on "RT 12"
+  // alone. On its own it cannot be the title, so it is joined to the desa —
+  // "RT 11 Bedaro Rampak" — the same shape the surveyors themselves wrote as
+  // "RT 21 Rawasari", and the RT stays visible in the list.
+  var BARE_RT = /^rt[\s.]*\d+(?:[\s,]*rw[\s.]*\d+)?$/i;
 
-  function isUsableTitle(text) {
-    return Boolean(text) && !BARE_RT.test(text);
+  function formatRt(text) {
+    return text
+      .replace(/^rt[\s.]*(\d+)/i, "RT $1")
+      .replace(/[\s,]*rw[\s.]*(\d+)$/i, " RW $1");
   }
 
   // Nomor is "KABUPATEN-KECAMATAN-DESA-NNN". The desa repeats across most of a
@@ -353,7 +391,10 @@
     var primary;
     var secondary;
 
-    if (isUsableTitle(landmark)) {
+    if (landmark && BARE_RT.test(landmark)) {
+      primary = [formatRt(landmark), desa].filter(Boolean).join(" ");
+      secondary = kecamatan;
+    } else if (landmark) {
       primary = landmark;
       secondary = [desa, kecamatan].filter(Boolean).join(" · ");
     } else {
@@ -365,10 +406,25 @@
       code: code || "—",
       primary: primary,
       secondary: secondary || "Lokasi survey lapangan",
+      // True when the title already carries the whole Keterangan, so the
+      // popup does not repeat it as a meta row.
+      showsKeterangan: Boolean(landmark),
       // Kept separately so the list can section a long group by kecamatan.
       desa: desa,
       kecamatan: kecamatan,
     };
+  }
+
+  // What the row shows must be findable as it reads: "RT 11 Bedaro Rampak"
+  // is built from two fields that sit apart in the raw text. The desa is also
+  // indexed without its spaces, because the surveyors write "Rawasari" for
+  // Rawa Sari and "Kenali Asam" both ways.
+  function displaySearchText(display) {
+    return [
+      display.primary,
+      display.secondary,
+      String(display.desa || "").replace(/\s+/g, "")
+    ].join(" ");
   }
 
   // Google Maps Directions URL (Maps URLs API, /maps/dir/?api=1). No origin
@@ -456,7 +512,7 @@
     }
     // The landmark is now the popup's own title, so repeating it as a meta row
     // would just say the same thing twice.
-    if (item.keterangan && item.keterangan !== item.display.primary) {
+    if (item.keterangan && !item.display.showsKeterangan) {
       rows.push(metaRow(fieldIcons.keterangan, "Keterangan", item.keterangan));
     }
 
@@ -1398,6 +1454,7 @@
         var latNum = Number(lat);
         var lonNum = Number(lon);
         var koordinat = formatCoordPair(latNum, lonNum);
+        var display = buildDisplayParts(nomor, keterangan);
 
         return {
           id: String(index),
@@ -1421,9 +1478,10 @@
           koordinatSingkat: belum ? "" : koordinat,
           latNum: latNum,
           lonNum: lonNum,
-          display: buildDisplayParts(nomor, keterangan),
+          display: display,
           searchText: getNormalizedText(
             [
+              displaySearchText(display),
               nomor,
               alamat,
               keterangan,
@@ -1922,6 +1980,7 @@
     function rebuildSearchText(item) {
       return getNormalizedText(
         [
+          displaySearchText(item.display),
           item.nomor,
           item.alamat,
           item.keterangan,
