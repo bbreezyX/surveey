@@ -365,12 +365,26 @@
       .replace(/[\s,]*rw[\s.]*(\d+)$/i, " RW $1");
   }
 
+  // Loose "does a already say b": case and punctuation ignored, whole words.
+  function saysAlready(text, part) {
+    var key = function (value) {
+      return " " + String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() + " ";
+    };
+    return key(text).indexOf(key(part)) !== -1;
+  }
+
   // Nomor is "KABUPATEN-KECAMATAN-DESA-NNN". The desa repeats across most of a
   // group's points (223/230 rows would be identical on desa alone), so the
   // survey landmark in Keterangan is the primary label whenever it exists and
   // the desa drops to context. Every row also carries its coordinate so a
   // unique landmark does not hide the pin's position.
-  function buildDisplayParts(nomor, keterangan) {
+  //
+  // A point granted under a line of the allocation sheet (REKAPAN PJUTS 2026,
+  // written into the geojson by scripts/apply_rekapan.py) takes that line as
+  // its title instead, verbatim: it is what the field crew holds in hand and
+  // searches for. The survey's own landmark and whatever part of the desa and
+  // kecamatan the line does not already say drop to the second line.
+  function buildDisplayParts(nomor, keterangan, rekapan) {
     var parts = String(nomor || "")
       .split("-")
       .map(function (part) {
@@ -387,28 +401,45 @@
     var desa = parts.length ? toDisplayCase(parts[parts.length - 1]) : "";
     var kecamatan = parts.length > 1 ? toDisplayCase(parts[parts.length - 2]) : "";
     var landmark = cleanKeterangan(keterangan);
+    var sheetLine = String(rekapan || "").trim();
 
     var primary;
     var secondary;
 
-    if (landmark && BARE_RT.test(landmark)) {
+    if (sheetLine) {
+      var note = landmark && BARE_RT.test(landmark) ? formatRt(landmark) : landmark;
+      var said = [sheetLine];
+      primary = sheetLine;
+      secondary = [note, desa, kecamatan]
+        .filter(function (part) {
+          if (!part || said.some(function (text) { return saysAlready(text, part); })) {
+            return false;
+          }
+          said.push(part);
+          return true;
+        })
+        .join(" · ");
+    } else if (landmark && BARE_RT.test(landmark)) {
       primary = [formatRt(landmark), desa].filter(Boolean).join(" ");
-      secondary = kecamatan;
+      secondary = kecamatan || "Lokasi survey lapangan";
     } else if (landmark) {
       primary = landmark;
-      secondary = [desa, kecamatan].filter(Boolean).join(" · ");
+      secondary = [desa, kecamatan].filter(Boolean).join(" · ") || "Lokasi survey lapangan";
     } else {
       primary = desa || String(nomor || "Titik");
-      secondary = kecamatan;
+      secondary = kecamatan || "Lokasi survey lapangan";
     }
 
     return {
       code: code || "—",
       primary: primary,
-      secondary: secondary || "Lokasi survey lapangan",
-      // True when the title already carries the whole Keterangan, so the
-      // popup does not repeat it as a meta row.
-      showsKeterangan: Boolean(landmark),
+      secondary: secondary,
+      // True when the title already carries the Keterangan, so the popup
+      // (which has no second line) does not repeat it as a meta row.
+      showsKeterangan: Boolean(landmark) && saysAlready(
+        primary,
+        BARE_RT.test(landmark) ? formatRt(landmark) : landmark
+      ),
       // Kept separately so the list can section a long group by kecamatan.
       desa: desa,
       kecamatan: kecamatan,
@@ -1454,7 +1485,11 @@
         var latNum = Number(lat);
         var lonNum = Number(lon);
         var koordinat = formatCoordPair(latNum, lonNum);
-        var display = buildDisplayParts(nomor, keterangan);
+        var display = buildDisplayParts(
+          nomor,
+          keterangan,
+          feature.get("Lokasi Rekapan")
+        );
 
         return {
           id: String(index),
