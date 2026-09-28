@@ -38,9 +38,13 @@ desa, Alamat follows along; where Alamat already disagreed it is left alone,
 because then the two are telling different stories and that is a finding.
 
 Records whose corrected Nomor is already taken are skipped and reported rather
-than overwriting another survey point. Today that is the KENALI ASAM ATAS-002
-pair: two points 1.27 km apart share one id, and picking which gets renumbered
-is a survey decision, not a normalisation.
+than overwriting another survey point. The KENALI ASAM ATAS-002 pair was the
+case: two points 1.27 km apart shared one id. It was settled by hand on
+2026-09-28 from the Timemark stamps, which showed the pair had also swapped
+photos: "JAMBI-...ATAS-002" (Musholla De Permata, stamp 11:59) became ATAS-003
+and took the full-size photo, the RT 17 point kept ATAS-002 and the 12:30
+thumbnail. SKIP_RENAME still guards it should a raw re-export bring the old id
+back.
 
 Run after any QGIS re-export:
 
@@ -70,13 +74,13 @@ NOMOR_FIXES = {}
 # any Atas point, while -002 and -009..-011 sit 60-736 m from an Atas point and
 # 1.9-2.7 km from Bawah. A 4-10x gap in every case, no borderline ones.
 #
-# -002 is listed even though it cannot land yet: KENALI ASAM ATAS-002 is the
-# contested id above. It is here so the intent is recorded and the skip is
-# reported rather than silently forgotten.
+# -002 could not keep its number: KENALI ASAM ATAS-002 and -003 are taken by
+# the pair above, so it became ATAS-004 (stamp 12:24, 60 m from ATAS-002).
 for _n in ("003", "004", "005", "006", "007", "008"):
     NOMOR_FIXES[_KOTA_BARU + "KENALI ASAM-" + _n] = _KOTA_BARU + "KENALI ASAM BAWAH-" + _n
-for _n in ("002", "009", "010", "011"):
+for _n in ("009", "010", "011"):
     NOMOR_FIXES[_KOTA_BARU + "KENALI ASAM-" + _n] = _KOTA_BARU + "KENALI ASAM ATAS-" + _n
+NOMOR_FIXES[_KOTA_BARU + "KENALI ASAM-002"] = _KOTA_BARU + "KENALI ASAM ATAS-004"
 
 # "PEMENANG" is a typo for the kelurahan Pamenang. All seven records already
 # carry "Desa Pamenang" in Alamat, so the export contradicts itself and Alamat
