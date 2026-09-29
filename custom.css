@@ -2055,33 +2055,64 @@ body.is-sidebar-collapsed .panel-toggle:hover .panel-toggle__chevron {
     object-fit: cover;
 }
 
-/* Scrim so the caption holds up over a bright photo — which is what the old
-   dark pill was compensating for. With it, the caption can drop the pill. */
+/* A light, even veil so the centred pill holds up over a bright photo
+   without hiding what the photo shows. */
 .feature-popup__media::after {
     content: "";
     position: absolute;
-    inset: auto 0 0 0;
-    height: 68px;
-    background: linear-gradient(
-        to top,
-        rgba(20, 32, 44, 0.74),
-        rgba(20, 32, 44, 0)
-    );
+    inset: 0;
+    background: rgba(20, 32, 44, 0.16);
     pointer-events: none;
+    transition: background-color var(--dur) var(--ease-out);
 }
 
+/* "Lihat foto": a frosted pill dead centre on the photo, the one place a
+   reader looks first, with an expand icon for "open this bigger". */
 .feature-popup__media-badge {
     position: absolute;
-    left: 14px;
-    bottom: 10px;
+    top: 50%;
+    left: 50%;
     z-index: 1;
-    padding: 0;
-    background: none;
-    border-radius: 0;
-    color: rgba(255, 255, 255, 0.94);
-    font: 600 10px var(--font-ui);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 15px 9px 13px;
+    border-radius: 999px;
+    background: rgba(20, 32, 44, 0.62);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+        0 4px 14px rgba(0, 0, 0, 0.25);
+    color: #fff;
+    font: 600 13px/1 var(--font-ui);
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+    transition: transform 0.16s var(--ease-out),
+        background-color var(--dur) var(--ease-out);
+}
+
+.feature-popup__media-badge svg {
+    flex: 0 0 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+@media (hover: hover) {
+    .feature-popup__media:hover::after {
+        background: rgba(20, 32, 44, 0.28);
+    }
+
+    .feature-popup__media:hover .feature-popup__media-badge {
+        background: rgba(20, 32, 44, 0.78);
+        transform: translate(-50%, -50%) scale(1.04);
+    }
+}
+
+.feature-popup__media:active .feature-popup__media-badge {
+    transform: translate(-50%, -50%) scale(0.95);
 }
 
 .feature-popup__body {

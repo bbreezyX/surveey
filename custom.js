@@ -610,7 +610,14 @@
       (photoPath
         ? '<a class="feature-popup__media" href="' + photoUrl + '" target="_blank" rel="noopener" aria-label="Buka foto lokasi ' + escapeHtml(item.nomor) + ' di tab baru">' +
           '<img src="' + photoUrl + '" alt="Foto lokasi ' + escapeHtml(item.nomor) + '" decoding="async" />' +
-          '<span class="feature-popup__media-badge">Buka foto ↗</span>' +
+          // Centred on the photo, where the eye already is: the whole image
+          // is the link, and the pill says so in plain words.
+          '<span class="feature-popup__media-badge">' +
+            '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">' +
+              '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />' +
+            "</svg>" +
+            "<span>Lihat foto</span>" +
+          "</span>" +
           "</a>"
         : "") +
       note +
