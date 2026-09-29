@@ -479,6 +479,12 @@
       '<path d="M21.4 2.6a1 1 0 0 0-1.06-.23L3.3 8.87a1 1 0 0 0 .06 1.88l6.86 2.29 2.29 6.86a1 1 0 0 0 .93.68h.03a1 1 0 0 0 .92-.62l6.5-17.04a1 1 0 0 0-.49-1.32z" fill="currentColor"/>' +
     "</svg>";
 
+  // Trailing hint on the route button: says the tap leaves the page.
+  var EXTERNAL_ICON =
+    '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false">' +
+      '<path d="M7 17 17 7M8 7h9v9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' +
+    "</svg>";
+
   function buildRouteAction(item) {
     var url = buildDirectionsUrl(item);
     if (!url) {
@@ -488,8 +494,12 @@
       '<div class="feature-popup__actions">' +
         '<a class="feature-popup__route" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer"' +
           ' title="Buka Google Maps: rute dari posisi Anda ke titik ini">' +
-          ROUTE_ICON +
-          "<span>Rute ke titik ini</span>" +
+          '<span class="feature-popup__route-icon">' + ROUTE_ICON + "</span>" +
+          '<span class="feature-popup__route-text">' +
+            "<strong>Rute ke titik ini</strong>" +
+            "<small>Buka di Google Maps</small>" +
+          "</span>" +
+          '<span class="feature-popup__route-ext">' + EXTERNAL_ICON + "</span>" +
         "</a>" +
       "</div>"
     );
@@ -1978,26 +1988,53 @@
       if (!body) {
         return;
       }
+      // A labelled tray, so the editor-only controls read as a separate tool
+      // group rather than as more actions for the field crews.
       var tools = document.createElement("div");
+      var label = document.createElement("p");
+      var row = document.createElement("div");
       tools.className = "feature-popup__tools";
-      tools.appendChild(
-        buildFlagButton(item, "cadangan", item.cadangan ? "Batal arsir" : "Arsir")
+      label.className = "feature-popup__tools-label";
+      label.textContent = "Tandai titik";
+      row.className = "feature-popup__tools-row";
+      row.appendChild(
+        buildFlagButton(item, "cadangan", item.cadangan ? "Batal arsir" : "Arsir", item.cadangan)
       );
-      tools.appendChild(
+      row.appendChild(
         buildFlagButton(
           item,
           "duplikat",
-          item.duplikat ? "Batal verifikasi" : "Perlu verifikasi"
+          item.duplikat ? "Batal verifikasi" : "Perlu verifikasi",
+          item.duplikat
         )
       );
+      tools.appendChild(label);
+      tools.appendChild(row);
       body.appendChild(tools);
     }
 
-    function buildFlagButton(item, flag, label) {
+    var FLAG_ICONS = {
+      // Archive box: set aside, not counted.
+      cadangan:
+        '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">' +
+          '<rect x="3" y="4" width="18" height="5" rx="1.5"/>' +
+          '<path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/>' +
+        "</svg>",
+      // Warning triangle: the pin needs checking on site.
+      duplikat:
+        '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">' +
+          '<path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' +
+          '<path d="M12 9v4M12 17h.01"/>' +
+        "</svg>"
+    };
+
+    function buildFlagButton(item, flag, label, active) {
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "feature-popup__hatch feature-popup__hatch--" + flag;
-      btn.textContent = label;
+      btn.classList.toggle("is-active", Boolean(active));
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+      btn.innerHTML = FLAG_ICONS[flag] + "<span>" + escapeHtml(label) + "</span>";
       btn.addEventListener("mousedown", function (event) {
         event.preventDefault();
         event.stopPropagation();
