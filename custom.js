@@ -916,17 +916,18 @@
       "</g>" +
     "</svg>";
 
-  function startGestureHint() {
+  // Returns whether it showed; onDone runs once the hint has gone.
+  function startGestureHint(onDone) {
     if (!isMobileViewport() || readGestureHintCount() >= GESTURE_HINT_VISITS) {
-      return;
+      return false;
     }
     var body = document.body;
     if (body.classList.contains("is-panel-open") || body.classList.contains("is-popup-open")) {
-      return;
+      return false;
     }
     var mapEl = document.getElementById("map");
     if (!mapEl) {
-      return;
+      return false;
     }
     bumpGestureHintCount();
 
@@ -951,6 +952,9 @@
         if (hint.parentNode) {
           hint.parentNode.removeChild(hint);
         }
+        if (onDone) {
+          onDone();
+        }
       }, 400);
     }
 
@@ -960,6 +964,7 @@
     });
     mapEl.addEventListener("pointerdown", dismiss, true);
     setTimeout(dismiss, GESTURE_HINT_MS);
+    return true;
   }
 
   function configurePopupOverlayForViewport() {
@@ -4083,14 +4088,26 @@
       }
       hintsStarted = true;
       startSheetHints();
-      // After the sheet's lift has settled, so the two cues take turns
-      // instead of moving at once.
-      setTimeout(startGestureHint, 2000);
     }
-    window.map.once("rendercomplete", function () {
-      setTimeout(kickSheetHints, 600);
+
+    // The gesture hint goes first and at once: it does not wait for tiles
+    // (rendercomplete can take seconds on a phone connection) because its
+    // blur hides a half-drawn map anyway. The sheet's lift follows once the
+    // hint has gone, so the two cues take turns instead of moving together.
+    // One frame's grace lets the fitted view paint underneath first.
+    var gestureShown = false;
+    requestAnimationFrame(function () {
+      gestureShown = startGestureHint(function () {
+        setTimeout(kickSheetHints, 250);
+      });
+      if (gestureShown) {
+        return;
+      }
+      window.map.once("rendercomplete", function () {
+        setTimeout(kickSheetHints, 600);
+      });
+      setTimeout(kickSheetHints, 3000);
     });
-    setTimeout(kickSheetHints, 3000);
     }
 
     // Data titik dimuat async dari data/points.geojson — jalankan init
