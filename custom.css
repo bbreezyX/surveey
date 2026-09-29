@@ -3398,17 +3398,25 @@ body.is-sidebar-collapsed .map-legend {
         max-width: 100%;
         padding: 7px 14px 7px 10px;
         border-radius: 999px;
-        background: var(--blue-tint);
+        /* White on the near-white frame, so the edge and a soft shadow do
+           the lifting: the chip reads as a raised button, not a tint. */
+        background: var(--surface);
+        box-shadow: inset 0 0 0 1px var(--hairline-strong),
+            0 1px 2px rgba(20, 38, 53, 0.12),
+            0 4px 12px rgba(20, 38, 53, 0.12);
         color: var(--blue-deep);
         font: 600 14px/1.2 var(--font-ui);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        transition: background-color var(--dur) var(--ease-out);
+        transition: background-color var(--dur) var(--ease-out),
+            box-shadow var(--dur) var(--ease-out);
     }
 
     #sheet-handle:active .sheet-handle__hint {
-        background: #dcecfb;
+        background: var(--blue-tint);
+        box-shadow: inset 0 0 0 1px rgba(0, 114, 188, 0.35),
+            0 1px 2px rgba(20, 38, 53, 0.1);
     }
 
     /* A short, gentle wiggle followed by a long rest keeps the action
