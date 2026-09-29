@@ -2617,8 +2617,7 @@
       var jalur = groupMode === "kabupaten" ? "" : groupJalur(group);
       var meta = buildGroupMeta(group);
 
-      // The visible count is a bare number so the column lines up; the
-      // accessible name still spells out what it counts.
+      // The accessible name spells the whole row out in reading order.
       row.setAttribute(
         "aria-label",
         group.name +
@@ -2648,8 +2647,12 @@
         copy.appendChild(statuses);
       }
 
+      // Number over its unit, so "70" is never left to guess at.
       count.className = "group-row__count";
-      count.textContent = String(group.items.length);
+      count.setAttribute("aria-hidden", "true");
+      count.innerHTML =
+        "<strong>" + escapeHtml(formatCount(group.items.length)) + "</strong>" +
+        "<small>titik</small>";
 
       chevron.className = "group-row__chevron";
       chevron.setAttribute("aria-hidden", "true");
@@ -2826,7 +2829,8 @@
 
       back.type = "button";
       back.className = "panel-back";
-      back.textContent = "Semua " + groupNoun();
+      // A verb, not just a destination: the tap goes back, and says where.
+      back.textContent = "Kembali ke semua " + groupNoun();
       back.addEventListener("click", function () {
         setActiveGroup(null);
       });

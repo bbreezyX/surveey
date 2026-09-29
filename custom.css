@@ -330,18 +330,68 @@ body.is-sidebar-collapsed #sidebar {
     color: var(--muted-2);
 }
 
+/* "Show every point on the map": a tinted pill with a frame-the-map icon,
+   so it reads as a map action rather than a text link, and sits on the
+   summary's centre line opposite the count. */
 #fit-map {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     min-height: 34px;
-    padding: 0 10px;
-    border: 1px solid var(--hairline-strong);
-    border-radius: 7px;
-    background: var(--surface);
+    padding: 0 13px 0 11px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: var(--blue-tint);
+    color: var(--blue-deep);
+    font: 600 12.5px/1 var(--font-ui);
     text-decoration: none;
+    transition: background-color var(--dur) var(--ease-out),
+        border-color var(--dur) var(--ease-out),
+        color var(--dur) var(--ease-out),
+        transform 0.12s ease;
 }
 
-#fit-map:not(:disabled):hover {
-    background: var(--blue-tint);
-    border-color: var(--blue);
+#fit-map[hidden] {
+    display: none;
+}
+
+#fit-map svg {
+    flex: 0 0 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: scale var(--dur) var(--ease-spring);
+}
+
+@media (hover: hover) {
+    #fit-map:not(:disabled):hover {
+        background: #dcecfb;
+        border-color: rgba(0, 114, 188, 0.35);
+        color: var(--blue-deep);
+        text-decoration: none;
+    }
+
+    /* The corners open out, echoing the map zooming out to fit. */
+    #fit-map:not(:disabled):hover svg {
+        scale: 1.12;
+    }
+}
+
+#fit-map:not(:disabled):active {
+    transform: scale(0.96);
+    background: #cfe4f8;
+}
+
+#fit-map:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+#fit-map:disabled {
+    background: #f1f4f7;
+    color: var(--disabled-ink);
 }
 
 .link-action {
@@ -626,11 +676,11 @@ body.is-sidebar-collapsed #sidebar {
 .group-row {
     position: relative;
     width: 100%;
-    min-height: 72px;
+    min-height: 76px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 13px 20px;
+    gap: 12px;
+    padding: 14px 16px 14px 20px;
     border: none;
     border-radius: 0;
     background: none;
@@ -644,12 +694,24 @@ body.is-sidebar-collapsed #sidebar {
     box-shadow: inset 0 1px 0 var(--divider);
 }
 
-.group-row:hover {
-    background: #f0f6fb;
-}
+@media (hover: hover) {
+    .group-row:hover {
+        background: #f4f8fb;
+    }
 
-.group-row:hover .group-row__title {
-    color: var(--blue-deep);
+    .group-row:hover .group-row__title {
+        color: var(--blue-deep);
+    }
+
+    .group-row:hover .group-row__count {
+        background: var(--blue-tint);
+        box-shadow: inset 0 0 0 1px rgba(0, 114, 188, 0.25);
+    }
+
+    .group-row:hover .group-row__chevron {
+        border-color: var(--blue);
+        translate: 2px 0;
+    }
 }
 
 .group-row:focus-visible {
@@ -661,21 +723,24 @@ body.is-sidebar-collapsed #sidebar {
     background: #eaf2f7;
 }
 
+/* Three lines, each with one job: the name, where it spreads, and — only
+   when there is something to check — the status chips. */
 .group-row__copy {
     flex: 1;
     min-width: 0;
     display: grid;
-    gap: 5px;
+    gap: 4px;
 }
 
 .group-row__title {
     min-width: 0;
-    font: 700 14px var(--font-ui);
-    line-height: 1.45;
+    font: 700 15px var(--font-ui);
+    line-height: 1.35;
+    letter-spacing: -0.01em;
     color: var(--ink);
+    transition: color var(--dur) var(--ease-out);
 }
 
-/* Channel and location wrap together. Status counts get a separate line. */
 .group-row__meta {
     min-width: 0;
     display: flex;
@@ -683,27 +748,38 @@ body.is-sidebar-collapsed #sidebar {
     align-items: center;
     /* Spacing avoids separators stranded at the start of a wrapped line. */
     gap: 3px 10px;
-    font: 500 11.5px var(--font-ui);
+    font: 500 12px var(--font-ui);
     line-height: 1.35;
     font-variant-numeric: tabular-nums;
     color: var(--muted);
 }
 
-/* The status discs match the map legend; labels carry their meaning too. */
+/* Status counts are small tinted chips in the map legend's colours, so a
+   "check this" reads as a label, not as an error message in the text. */
+.group-row__statuses {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
 .group-row__flag {
     display: inline-flex;
     align-items: center;
-    color: var(--muted-2);
-}
-
-.group-row__statuses {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 10px;
-    font: 500 11px/1.4 var(--font-ui);
+    min-height: 22px;
+    padding: 0 8px 0 7px;
+    border-radius: 6px;
+    background: #f1f4f7;
+    box-shadow: inset 0 0 0 1px var(--divider);
+    font: 600 11px/1.2 var(--font-ui);
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    white-space: nowrap;
 }
 
 .group-row__flag--duplikat {
+    background: var(--orange-tint);
+    box-shadow: inset 0 0 0 1px rgba(232, 115, 26, 0.3);
     color: var(--orange-deep);
 }
 
@@ -735,29 +811,48 @@ body.is-sidebar-collapsed #sidebar {
     border: 1.5px dashed #6b7a8c;
 }
 
-/* Tabular counts occupy a consistent column, separate from the disclosure. */
+/* The count box: the number over its unit, one fixed-width column so every
+   row's total lines up for a quick scan down the list. */
 .group-row__count {
     flex-shrink: 0;
     display: grid;
-    place-items: center;
-    min-width: 32px;
-    height: 30px;
-    padding: 0 7px;
-    border-radius: 7px;
-    background: #f0f3f6;
-    font: 700 13px var(--font-ui);
+    justify-items: center;
+    align-content: center;
+    gap: 1px;
+    width: 52px;
+    min-height: 46px;
+    padding: 4px 0;
+    border-radius: 10px;
+    background: #f1f4f7;
+    color: var(--ink);
+    text-align: center;
+    transition: background-color var(--dur) var(--ease-out),
+        box-shadow var(--dur) var(--ease-out);
+}
+
+.group-row__count strong {
+    font: 700 16px/1.1 var(--font-ui);
     font-variant-numeric: tabular-nums;
-    color: var(--ink-soft);
+    letter-spacing: -0.02em;
+}
+
+.group-row__count small {
+    font: 600 9.5px/1.2 var(--font-ui);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-2);
 }
 
 .group-row__chevron {
     display: block;
-    flex: 0 0 6px;
-    width: 6px;
-    height: 6px;
-    border-top: 1.5px solid var(--muted-2);
-    border-right: 1.5px solid var(--muted-2);
+    flex: 0 0 7px;
+    width: 7px;
+    height: 7px;
+    border-top: 2px solid var(--muted-2);
+    border-right: 2px solid var(--muted-2);
     transform: rotate(45deg);
+    transition: border-color var(--dur) var(--ease-out),
+        translate var(--dur) var(--ease-out);
 }
 
 /* ---------- Screen 2: context header ---------- */
@@ -771,34 +866,62 @@ body.is-sidebar-collapsed #sidebar {
     border-bottom: 1px solid var(--divider);
 }
 
+/* Back to screen 1: an outlined pill with a leading chevron, so it reads as
+   a button a reader can press rather than a small blue caption above the
+   title. */
 .panel-back {
     justify-self: start;
-    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 11px 0 9px;
     appearance: none;
-    border: none;
-    background: none;
-    padding: 0 0 0 13px;
-    position: relative;
-    font: 600 11.5px var(--font-ui);
-    color: var(--blue);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.06);
+    font: 600 12px/1 var(--font-ui);
+    color: var(--blue-deep);
     cursor: pointer;
+    transition: background-color var(--dur) var(--ease-out),
+        border-color var(--dur) var(--ease-out),
+        transform 0.12s ease;
 }
 
 .panel-back::before {
     content: "";
-    position: absolute;
-    left: 1px;
-    top: 50%;
+    flex: 0 0 6px;
     width: 6px;
     height: 6px;
-    margin-top: -3px;
+    margin-left: 3px;
     border-left: 2px solid currentColor;
     border-bottom: 2px solid currentColor;
     transform: rotate(45deg);
+    transition: translate var(--dur) var(--ease-out);
 }
 
-.panel-back:hover {
-    color: var(--blue-deep);
+@media (hover: hover) {
+    .panel-back:hover {
+        background: var(--blue-tint);
+        border-color: var(--blue);
+        color: var(--blue-deep);
+    }
+
+    /* The chevron leans the way the tap goes. */
+    .panel-back:hover::before {
+        translate: -2px 0;
+    }
+}
+
+.panel-back:active {
+    transform: scale(0.97);
+    background: #dcecfb;
+}
+
+.panel-back:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
 }
 
 .panel-context__title {
@@ -901,14 +1024,13 @@ body.is-sidebar-collapsed #sidebar {
 /* On screen 1 the status counts are shortcuts into the filtered group. */
 .group-row__flag[data-filter] {
     cursor: pointer;
-    border-radius: 999px;
-    text-decoration: underline transparent;
-    text-underline-offset: 2px;
-    transition: text-decoration-color 0.15s ease;
+    transition: box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
-.group-row:hover .group-row__flag[data-filter] {
-    text-decoration-color: currentColor;
+@media (hover: hover) {
+    .group-row__flag[data-filter]:hover {
+        box-shadow: inset 0 0 0 1px currentColor;
+    }
 }
 
 /* ---------- Kabupaten chip ----------
@@ -957,10 +1079,6 @@ body.is-sidebar-collapsed #sidebar {
     color: var(--muted-2);
     white-space: nowrap;
     vertical-align: middle;
-}
-
-.group-row__count {
-    text-align: center;
 }
 
 /* In a subline the chip trails the desa/kecamatan text; when the text is
@@ -1494,12 +1612,16 @@ body.is-sidebar-collapsed .panel-toggle.is-near {
     box-shadow: var(--ctl-shadow-near);
 }
 
-.ol-zoom:hover,
-.layer-switcher > button:hover,
-body.is-sidebar-collapsed .panel-toggle:hover {
-    background-color: var(--ctl-surface-hover);
-    border-color: var(--ctl-border-hover);
-    box-shadow: var(--ctl-shadow-hover);
+/* Touch screens hold :hover after a tap, so hover styling is gated to
+   devices that really hover. */
+@media (hover: hover) {
+    .ol-zoom:hover,
+    .layer-switcher > button:hover,
+    body.is-sidebar-collapsed .panel-toggle:hover {
+        background-color: var(--ctl-surface-hover);
+        border-color: var(--ctl-border-hover);
+        box-shadow: var(--ctl-shadow-hover);
+    }
 }
 
 .layer-switcher > button:active,
@@ -1585,10 +1707,29 @@ body.is-sidebar-collapsed .panel-toggle:hover {
     color: var(--ink);
 }
 
+/* Touch screens keep :hover on the last-tapped element until the next tap
+   elsewhere, so the :not(:hover) escape above would hand the button straight
+   back to ol.css's blue focus fill. With no real hover to protect, reset
+   unconditionally. */
+@media (hover: none) {
+    .ol-zoom button:focus:not(:focus-visible),
+    .ol-zoom button:hover {
+        background-color: transparent;
+        color: var(--ink);
+    }
+}
+
 /* Excluded while the panel is open: the shown state owns the chip's surface
    there and must not be reset back to rest. */
 .layer-switcher:not(.shown) > button:focus:not(:focus-visible):not(:hover) {
     background-color: var(--ctl-surface);
+}
+
+@media (hover: none) {
+    .layer-switcher:not(.shown) > button:focus:not(:focus-visible),
+    .layer-switcher:not(.shown) > button:hover {
+        background-color: var(--ctl-surface);
+    }
 }
 
 /* ---------- Control tooltips ---------- */
@@ -2588,10 +2729,16 @@ body.is-sidebar-collapsed .map-legend {
     transition: background-color var(--dur) var(--ease-out);
 }
 
-.ol-zoom button:hover,
 .ol-zoom button:focus-visible {
     background: #f3f7fa;
     color: var(--blue);
+}
+
+@media (hover: hover) {
+    .ol-zoom button:hover {
+        background: #f3f7fa;
+        color: var(--blue);
+    }
 }
 
 /* Lighter than the old tint on purpose: the ripple now carries the press
@@ -2614,8 +2761,12 @@ body.is-sidebar-collapsed .map-legend {
     transition: scale var(--dur) var(--ease-spring);
 }
 
-.ol-zoom button:hover .ctl-glyph {
-    scale: 1.18;
+/* Touch screens hold :hover after a tap, so hover styling is gated to
+   devices that really hover. */
+@media (hover: hover) {
+    .ol-zoom button:hover .ctl-glyph {
+        scale: 1.18;
+    }
 }
 
 .ol-zoom button:active .ctl-glyph {
@@ -2813,26 +2964,42 @@ body.is-sidebar-collapsed .map-legend {
     transition: translate var(--dur-state) var(--ease-spring);
 }
 
-.layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers,
 .layer-switcher.shown > .ctl-layers-slot .ctl-layers {
     stroke: var(--blue);
 }
 
-.layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers__top,
 .layer-switcher.shown > .ctl-layers-slot .ctl-layers__top {
     translate: 0 -1.6px;
 }
 
-.layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers__mid,
 .layer-switcher.shown > .ctl-layers-slot .ctl-layers__mid {
     translate: 0 0.4px;
     transition-delay: 25ms;
 }
 
-.layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers__bottom,
 .layer-switcher.shown > .ctl-layers-slot .ctl-layers__bottom {
     translate: 0 1.6px;
     transition-delay: 50ms;
+}
+
+@media (hover: hover) {
+    .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers {
+        stroke: var(--blue);
+    }
+
+    .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers__top {
+        translate: 0 -1.6px;
+    }
+
+    .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers__mid {
+        translate: 0 0.4px;
+        transition-delay: 25ms;
+    }
+
+    .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers__bottom {
+        translate: 0 1.6px;
+        transition-delay: 50ms;
+    }
 }
 
 .layer-switcher > button:active ~ .ctl-layers-slot .ctl-layers path {
@@ -2867,9 +3034,13 @@ body.is-sidebar-collapsed .map-legend {
         0 6px 16px rgba(0, 114, 188, 0.32);
 }
 
-.layer-switcher.shown.layer-switcher-activation-mode-click > button:hover {
-    background-color: var(--blue-deep);
-    border-color: var(--blue-deep);
+/* Touch screens hold :hover after a tap, so hover styling is gated to
+   devices that really hover. */
+@media (hover: hover) {
+    .layer-switcher.shown.layer-switcher-activation-mode-click > button:hover {
+        background-color: var(--blue-deep);
+        border-color: var(--blue-deep);
+    }
 }
 
 /* White strokes on the blue fill. Outranks both the hover and shown stroke
@@ -3008,9 +3179,9 @@ body.is-sidebar-collapsed .map-legend {
     }
 
     .panel-back {
-        min-height: 44px;
-        display: flex;
-        align-items: center;
+        min-height: 34px;
+        padding: 0 13px 0 11px;
+        font-size: 12.5px;
     }
 
     .panel-context {
@@ -3026,8 +3197,11 @@ body.is-sidebar-collapsed .map-legend {
         font-size: 21px;
     }
 
+    /* 40px touch target; a touch more type to match. */
     #fit-map {
         min-height: 40px;
+        padding: 0 15px 0 12px;
+        font-size: 13.5px;
     }
 
     .search-clear {
