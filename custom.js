@@ -870,6 +870,98 @@
     document.body.classList.add("is-sheet-nudging");
   }
 
+  // First-visit map gesture hint (phones only). The sheet has its own cues;
+  // nothing told a first-time reader the map itself pinches and pans, and a
+  // still satellite image reads as a picture. The map blurs behind a clear
+  // layer while a hand shows two fingertips spreading apart, then the layer
+  // gets out of the way: it
+  // fades after two loops, or at once on the first touch of the map. It never
+  // takes the pointer, so it cannot block the very gesture it teaches.
+  var GESTURE_HINT_KEY = "puts.gestureHints";
+  var GESTURE_HINT_VISITS = 3;
+  // Two pinch loops (1.6s each), then gone.
+  var GESTURE_HINT_MS = 3300;
+
+  function readGestureHintCount() {
+    try {
+      return parseInt(window.localStorage.getItem(GESTURE_HINT_KEY), 10) || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function bumpGestureHintCount() {
+    try {
+      window.localStorage.setItem(GESTURE_HINT_KEY, String(readGestureHintCount() + 1));
+    } catch (e) {
+      // Storage disabled: the hint simply shows every visit.
+    }
+  }
+
+  var GESTURE_HINT_ICON =
+    '<svg class="gesture-hint__icon" viewBox="0 0 64 64" width="84" height="84" aria-hidden="true" focusable="false">' +
+      // Two fingertips moving apart along a diagonal: the pinch-open.
+      '<g class="gesture-hint__track">' +
+        '<path d="M19 27 45 9" />' +
+      "</g>" +
+      '<circle class="gesture-hint__tip gesture-hint__tip--a" cx="27" cy="21.5" r="4.5" />' +
+      '<circle class="gesture-hint__tip gesture-hint__tip--b" cx="37" cy="14.5" r="4.5" />' +
+      // Hand (Lucide "pointer", ISC), scaled under the fingertips.
+      '<g class="gesture-hint__hand" transform="translate(14 22) scale(1.55)">' +
+        '<path d="M22 14a8 8 0 0 1-8 8" />' +
+        '<path d="M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />' +
+        '<path d="M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1" />' +
+        '<path d="M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10" />' +
+        '<path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />' +
+      "</g>" +
+    "</svg>";
+
+  function startGestureHint() {
+    if (!isMobileViewport() || readGestureHintCount() >= GESTURE_HINT_VISITS) {
+      return;
+    }
+    var body = document.body;
+    if (body.classList.contains("is-panel-open") || body.classList.contains("is-popup-open")) {
+      return;
+    }
+    var mapEl = document.getElementById("map");
+    if (!mapEl) {
+      return;
+    }
+    bumpGestureHintCount();
+
+    var hint = document.createElement("div");
+    hint.className = "gesture-hint";
+    hint.setAttribute("aria-hidden", "true");
+    hint.innerHTML =
+      GESTURE_HINT_ICON +
+      '<p class="gesture-hint__title">Cubit untuk memperbesar</p>' +
+      '<p class="gesture-hint__text">Geser satu jari untuk menjelajah peta</p>';
+    document.body.appendChild(hint);
+
+    var gone = false;
+    function dismiss() {
+      if (gone) {
+        return;
+      }
+      gone = true;
+      mapEl.removeEventListener("pointerdown", dismiss, true);
+      hint.classList.remove("is-visible");
+      setTimeout(function () {
+        if (hint.parentNode) {
+          hint.parentNode.removeChild(hint);
+        }
+      }, 400);
+    }
+
+    // Next frame, so the fade-in has a starting state to run from.
+    requestAnimationFrame(function () {
+      hint.classList.add("is-visible");
+    });
+    mapEl.addEventListener("pointerdown", dismiss, true);
+    setTimeout(dismiss, GESTURE_HINT_MS);
+  }
+
   function configurePopupOverlayForViewport() {
     if (!window.overlayPopup) {
       return;
@@ -3991,6 +4083,9 @@
       }
       hintsStarted = true;
       startSheetHints();
+      // After the sheet's lift has settled, so the two cues take turns
+      // instead of moving at once.
+      setTimeout(startGestureHint, 2000);
     }
     window.map.once("rendercomplete", function () {
       setTimeout(kickSheetHints, 600);

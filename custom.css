@@ -2575,6 +2575,15 @@ body.is-sidebar-collapsed .panel-toggle:hover .panel-toggle__chevron {
     flex-direction: column;
     align-items: flex-end;
     gap: 12px;
+    /* The box itself is only a layout anchor. On phones it spans the full
+       width above the sheet (left: 12px; right: 12px), and as a hit target it
+       swallowed every drag in that band, so the map would not pan there.
+       Only the controls inside take the pointer. */
+    pointer-events: none;
+}
+
+.map-meta > * {
+    pointer-events: auto;
 }
 
 /* Scale + attribution are metadata, not controls. They deliberately carry
@@ -3662,6 +3671,128 @@ body.is-sidebar-collapsed .map-legend {
 
     .ol-zoom {
         order: 2;
+    }
+}
+
+/* ---------- First-visit map gesture hint (phones) ----------
+   The whole visible map goes soft behind a clear, blurred layer, and a hand
+   with a line of text floats in the middle of the area above the sheet peek
+   — no card. The sheet sits above the layer (z 22) and stays sharp. It is
+   never a hit target (pointer-events: none), so the pinch it teaches works
+   straight through it. Built and removed by startGestureHint(). */
+.gesture-hint {
+    position: fixed;
+    inset: 0;
+    z-index: 21;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 4px;
+    padding: 0 24px var(--sheet-peek, 266px);
+    background: rgba(12, 22, 32, 0.28);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s var(--ease-out);
+}
+
+.gesture-hint.is-visible {
+    opacity: 1;
+}
+
+.gesture-hint > * {
+    transform: scale(0.94);
+    transition: transform 0.35s var(--ease-out);
+}
+
+.gesture-hint.is-visible > * {
+    transform: scale(1);
+}
+
+.gesture-hint__icon {
+    overflow: visible;
+    filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.55))
+        drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+}
+
+.gesture-hint__hand path {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.gesture-hint__track path {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.55);
+    stroke-width: 1.5;
+    stroke-dasharray: 2 3;
+    stroke-linecap: round;
+}
+
+/* Fingertips: the brand yellow, so they read as touches, not as part of the
+   hand drawing. */
+.gesture-hint__tip {
+    fill: var(--yellow);
+    stroke: rgba(255, 255, 255, 0.9);
+    stroke-width: 1.5;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: gesture-pinch 1.6s var(--ease-out) infinite;
+}
+
+.gesture-hint__tip--a {
+    --pinch-x: -6px;
+    --pinch-y: 4.2px;
+}
+
+.gesture-hint__tip--b {
+    --pinch-x: 6px;
+    --pinch-y: -4.2px;
+}
+
+@keyframes gesture-pinch {
+    0%,
+    15% {
+        translate: 0 0;
+        opacity: 0.55;
+    }
+
+    55%,
+    75% {
+        translate: var(--pinch-x) var(--pinch-y);
+        opacity: 1;
+    }
+
+    100% {
+        translate: 0 0;
+        opacity: 0.55;
+    }
+}
+
+.gesture-hint__title,
+.gesture-hint__text {
+    margin: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.gesture-hint__title {
+    font: 700 15px/1.3 var(--font-ui);
+    letter-spacing: -0.005em;
+}
+
+.gesture-hint__text {
+    font: 600 12px/1.35 var(--font-ui);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+@media (min-width: 960px) {
+    .gesture-hint {
+        display: none;
     }
 }
 
