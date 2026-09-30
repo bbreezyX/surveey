@@ -784,11 +784,11 @@
       handle.title = isOpen
         ? "Ketuk atau geser ke bawah untuk lihat peta"
         : "Ketuk atau geser ke atas untuk lihat daftar";
+      var hintLabel = isOpen ? SHEET_HINT_CLOSE : SHEET_HINT_OPEN;
+      handle.setAttribute("aria-label", hintLabel);
       var hintText = handle.querySelector(".sheet-handle__text");
       if (hintText) {
-        hintText.textContent = isOpen
-          ? SHEET_HINT_CLOSE
-          : SHEET_HINT_OPEN;
+        hintText.textContent = hintLabel;
       }
     }
     if (isOpen) {
@@ -797,8 +797,8 @@
     }
   }
 
-  // Short action labels stay readable even on a 320px phone; the title
-  // keeps the alternative drag gesture available as a hint.
+  // Shown as the caption under the grabber and read out as its aria-label;
+  // the title keeps the drag gesture available as a hint.
   var SHEET_HINT_OPEN = "Lihat daftar titik";
   var SHEET_HINT_CLOSE = "Kembali ke peta";
 
@@ -831,7 +831,8 @@
   }
 
   // Two cues for readers who do not know a bottom sheet can be pulled up:
-  // the chevron on the handle bobs until the sheet is first touched (or 12s),
+  // the handle's grabber and caption call out until the sheet is first
+  // touched (or 12s), then hop now and then,
   // and on the first few visits the whole sheet lifts once and settles —
   // the gesture, demonstrated. Reduced-motion readers get the words only.
   function startSheetHints() {
@@ -3872,7 +3873,7 @@
         panelToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
         panelToggle.setAttribute(
           "data-tooltip",
-          collapsed ? "Tampilkan panel" : "Sembunyikan panel"
+          collapsed ? "Tampilkan daftar" : "Sembunyikan daftar"
         );
       }
       refreshMapSizeDuring(380);
