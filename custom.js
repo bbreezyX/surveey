@@ -2933,8 +2933,10 @@
 
       back.type = "button";
       back.className = "panel-back";
-      // A verb, not just a destination: the tap goes back, and says where.
-      back.textContent = "Kembali ke semua " + groupNoun();
+      // The chevron carries "back", so the visible label is just the
+      // destination; screen readers still get the verb.
+      back.textContent = "Semua " + groupNoun();
+      back.setAttribute("aria-label", "Kembali ke semua " + groupNoun());
       back.addEventListener("click", function () {
         setActiveGroup(null);
       });
