@@ -3889,3 +3889,21 @@ body.is-sidebar-collapsed .map-legend {
         animation: none !important;
     }
 }
+
+/* ---------- Quiet script focus ----------
+   custom.js tags nodes it focuses after a mouse or touch press (the back pill,
+   a status chip, a group row) with .is-quiet-focus, because browsers paint
+   that script focus as :focus-visible. Kept last so it outranks each
+   control's own ring; the rows keep their hairline divider. */
+.is-quiet-focus:focus-visible {
+    outline: none;
+}
+
+.status-chip.is-quiet-focus:focus-visible,
+.group-row.is-quiet-focus:focus-visible {
+    box-shadow: none;
+}
+
+.group-row + .group-row.is-quiet-focus:focus-visible {
+    box-shadow: inset 0 1px 0 var(--divider);
+}

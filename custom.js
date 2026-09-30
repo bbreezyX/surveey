@@ -3656,9 +3656,25 @@
     // control lives inside the bottom sheet; when a point is picked the sheet
     // translates fully off-screen, and a plain focus() makes the browser scroll
     // the document to chase it — dragging the hidden sheet back over the popup.
+    //
+    // Script focus after a click lands on a control the click just re-rendered
+    // away, and browsers then treat the new focus as :focus-visible — so the
+    // back pill, a chip or a row kept a keyboard ring after a plain mouse or
+    // touch press. Mark those nodes quiet; the first key press gives the ring
+    // back, so keyboard users still see where they are.
     function focusWithoutScroll(node) {
       if (!node) {
         return;
+      }
+      if (!lastInputWasKeyboard) {
+        node.classList.add("is-quiet-focus");
+        node.addEventListener(
+          "blur",
+          function () {
+            node.classList.remove("is-quiet-focus");
+          },
+          { once: true }
+        );
       }
       try {
         node.focus({ preventScroll: true });
@@ -3666,6 +3682,26 @@
         node.focus();
       }
     }
+
+    var lastInputWasKeyboard = false;
+    document.addEventListener(
+      "keydown",
+      function () {
+        lastInputWasKeyboard = true;
+        var active = document.activeElement;
+        if (active && active.classList) {
+          active.classList.remove("is-quiet-focus");
+        }
+      },
+      true
+    );
+    document.addEventListener(
+      "pointerdown",
+      function () {
+        lastInputWasKeyboard = false;
+      },
+      true
+    );
 
     function moveFocusForScreen() {
       if (activeGroup) {
