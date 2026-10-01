@@ -38,10 +38,10 @@
     /* The 52px panel tab, centred on the brand card (frame padding 8px,
        card ~96px tall). */
     --panel-toggle-top: calc(var(--panel-top) + 31px);
-    /* Manrope keeps the compact data rows open and legible while giving the
-       panel a less generic voice than the old all-Inter treatment. */
-    --font-display: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-ui: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    /* Figtree carries both titles and data rows: a friendly geometric voice
+       that stays legible at small sizes and keeps tabular numbers. */
+    --font-display: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
 
     /* Map control chrome: the sidebar's surface recipe at chip scale — a near
        solid white, a hairline, one contact shadow plus one soft ambient one.
