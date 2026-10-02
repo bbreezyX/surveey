@@ -27,6 +27,18 @@ PORT = 8123
 
 
 class Handler(SimpleHTTPRequestHandler):
+    # Keep-alive, not the stdlib's HTTP/1.0 default. HTTP/1.0 closes the
+    # socket after every response, and on this Windows box a close that races
+    # a large send loses the response's tail: resources/ol.js (869 KB) stalled
+    # or reset ~20 KB short in 9 of 40 runs against a reader that drains a bit
+    # slower than curl (0/40 with keep-alive). The Claude browser pane reads
+    # through such a proxy, so ol.js or dissolved.geojson died with
+    # ERR_CONNECTION_RESET, `ol` was undefined and the map sat on "Memuat data
+    # titik…". Every response here carries Content-Length, and send_error
+    # sends Connection: close, so an unread POST body never gets parsed as
+    # the next request.
+    protocol_version = "HTTP/1.1"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
