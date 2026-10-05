@@ -1,0 +1,495 @@
+/* Point card per mockup. mockup.js loads this into the real app's document
+   and sets html.mk-pop-a|b|c; with no class the card is the live one.
+   mockup.js also adds a few pieces to each card as it opens, tagged
+   mk-only-a|b|c so only the chosen variant shows them:
+     A  .mk-pop-rule, .mk-pop-nomor   kop rule under the title, registry number
+     B  .mk-pop-inset, .mk-pop-units  locator inset on the photo, sibling units
+     C  .mk-pop-figs                  navy band figures (koordinat, dokumentasi) */
+
+.mk-only-a,
+.mk-only-b,
+.mk-only-c {
+    display: none;
+}
+
+/* The registry row sits first in the register; when it is hidden the row
+   after it must not draw a top rule of its own. */
+html:not(.mk-pop-a) .mk-pop-nomor + .feature-popup__meta-row {
+    border-top: 0;
+}
+
+/* ========================================================================
+   A · KOP SURAT — a data sheet: the title closed by the letterhead's
+   thick-and-thin rule, a register that opens with the point's registry
+   number, and a plain navy button.
+   ======================================================================== */
+
+html.mk-pop-a .ol-popup {
+    border-color: #c9d5df;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.12), 0 16px 40px rgba(20, 38, 53, 0.22);
+}
+
+html.mk-pop-a .feature-popup {
+    border-radius: 13px;
+}
+
+html.mk-pop-a .ol-popup-closer {
+    border-radius: 6px;
+}
+
+html.mk-pop-a .feature-popup__body {
+    padding: 15px 18px 16px;
+}
+
+html.mk-pop-a .feature-popup__eyebrow {
+    color: var(--ink-soft);
+    font: 700 11.5px/1.3 var(--font-ui);
+    letter-spacing: 0.07em;
+}
+
+html.mk-pop-a .feature-popup__title {
+    margin-top: 6px;
+    font: 750 19px/1.25 var(--font-display);
+}
+
+html.mk-pop-a .mk-pop-rule {
+    display: block;
+    flex: none;
+    height: 6px;
+    margin: 12px 0 2px;
+    border-top: 3px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+}
+
+html.mk-pop-a .feature-popup__meta {
+    margin-top: 2px;
+    border-top: 0;
+    border-bottom: 1.5px solid var(--ink);
+}
+
+html.mk-pop-a .feature-popup__meta-row.mk-pop-nomor {
+    display: block;
+}
+
+html.mk-pop-a .feature-popup__meta-row {
+    padding: 8px 0;
+}
+
+html.mk-pop-a .feature-popup__meta-row > div {
+    grid-template-columns: 80px 1fr;
+    gap: 10px;
+}
+
+html.mk-pop-a .feature-popup__meta-row dt {
+    color: var(--muted);
+    font: 650 12.5px/1.5 var(--font-ui);
+}
+
+html.mk-pop-a .feature-popup__meta-row dd {
+    font-size: 13px;
+}
+
+html.mk-pop-a .mk-pop-nomor dd {
+    font-weight: 650;
+    letter-spacing: 0.01em;
+}
+
+html.mk-pop-a .feature-popup__note {
+    border-radius: 0;
+}
+
+html.mk-pop-a .feature-popup__route {
+    min-height: 50px;
+    border-color: var(--ink);
+    border-radius: 8px;
+    background: var(--ink);
+    box-shadow: none;
+}
+
+html.mk-pop-a .feature-popup__route:hover {
+    border-color: #1d2e3e;
+    background: #1d2e3e;
+    box-shadow: none;
+}
+
+html.mk-pop-a .feature-popup__route-icon {
+    border-radius: 6px;
+}
+
+html.mk-pop-a .feature-popup__tools,
+html.mk-pop-a .feature-popup__hatch {
+    border-radius: 8px;
+}
+
+/* ========================================================================
+   B · ATLAS WILAYAH — a map card: a locator inset on the photo shows where
+   in the kabupaten this pole stands, and the units at the same spot sit
+   under the title as the same numbered tiles the sidebar uses.
+   ======================================================================== */
+
+html.mk-pop-b .ol-popup {
+    border-color: transparent;
+    border-radius: 18px;
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.12), 0 18px 44px rgba(20, 38, 53, 0.26);
+}
+
+html.mk-pop-b .feature-popup {
+    border-radius: 18px;
+}
+
+html.mk-pop-b .ol-popup-closer {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    line-height: 28px;
+}
+
+html.mk-pop-b .feature-popup__body {
+    padding: 14px 16px 16px;
+}
+
+html.mk-pop-b .feature-popup__eyebrow {
+    color: var(--muted);
+    font: 600 13px/1.3 var(--font-ui);
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+html.mk-pop-b .feature-popup__title {
+    margin-top: 4px;
+    font: 750 19px/1.25 var(--font-display);
+}
+
+html.mk-pop-b .mk-pop-inset {
+    position: absolute;
+    z-index: 1;
+    left: 10px;
+    bottom: 10px;
+    display: block;
+    width: 80px;
+    height: 62px;
+    padding: 5px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+}
+
+/* No photo (lokasi belum ditetapkan): the inset leads the body instead. */
+html.mk-pop-b .mk-pop-inset--block {
+    position: static;
+    margin: 0 0 10px;
+    background: var(--frost, #f4f7fa);
+    box-shadow: none;
+}
+
+.mk-pop-inset svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.mk-pop-inset .mk-shape {
+    fill: #e5ecf2;
+    stroke: #8ea2b5;
+    stroke-width: 0.9;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.mk-pop-inset .mk-dot {
+    fill: #a9b8c6;
+}
+
+.mk-pop-inset .mk-here-ring {
+    fill: rgba(254, 229, 15, 0.35);
+    stroke: var(--ink);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+.mk-pop-inset .mk-here {
+    fill: var(--yellow);
+    stroke: var(--ink);
+    stroke-width: 1.4;
+    vector-effect: non-scaling-stroke;
+}
+
+html.mk-pop-b .mk-pop-units {
+    display: block;
+    margin-top: 12px;
+}
+
+.mk-pop-units__label {
+    margin: 0 0 7px;
+    color: var(--muted);
+    font: 600 12.5px/1.3 var(--font-ui);
+}
+
+.mk-pop-units__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.mk-pop-unit {
+    min-width: 40px;
+    height: 30px;
+    padding: 0 6px;
+    border: 1px solid #c6d3df;
+    border-radius: 7px;
+    background: #fff;
+    color: var(--ink);
+    font: 700 12.5px/1 var(--font-ui);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition:
+        background-color 0.16s ease,
+        border-color 0.16s ease;
+}
+
+.mk-pop-unit:hover {
+    border-color: var(--blue);
+    background: var(--blue-tint);
+}
+
+.mk-pop-unit:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.mk-pop-unit.is-duplikat {
+    border: 2px solid var(--orange);
+    background: var(--orange-tint);
+    color: var(--orange-deep);
+}
+
+.mk-pop-unit.is-belum {
+    border: 1.5px dashed var(--muted-2);
+    color: var(--muted);
+}
+
+.mk-pop-unit.is-cadangan {
+    background: repeating-linear-gradient(135deg, #e9eef3 0 4px, #fff 4px 8px);
+    color: var(--muted);
+}
+
+.mk-pop-unit[aria-current="true"] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--yellow);
+    cursor: default;
+}
+
+html.mk-pop-b .feature-popup__meta {
+    margin-top: 12px;
+}
+
+html.mk-pop-b .feature-popup__route {
+    min-height: 50px;
+    padding-left: 6px;
+    border-color: var(--blue);
+    border-radius: 999px;
+    background: var(--blue);
+    box-shadow: 0 6px 16px rgba(0, 114, 188, 0.26);
+}
+
+html.mk-pop-b .feature-popup__route:hover {
+    border-color: var(--blue-deep);
+    background: var(--blue-deep);
+}
+
+html.mk-pop-b .feature-popup__route-icon {
+    border-radius: 999px;
+}
+
+html.mk-pop-b .feature-popup__tools {
+    border-radius: 14px;
+}
+
+html.mk-pop-b .feature-popup__hatch {
+    border-radius: 999px;
+}
+
+/* ========================================================================
+   C · DASBOR NAVY — the sidebar's band again: title and figures on navy,
+   the yellow line under them, and the route as ESDM's yellow button with
+   navy text. The body's children are laid out as one column so the band can
+   sit between the photo and the status note.
+   ======================================================================== */
+
+html.mk-pop-c .ol-popup {
+    border-color: transparent;
+    border-radius: 18px;
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.14), 0 18px 44px rgba(20, 38, 53, 0.3);
+}
+
+html.mk-pop-c .feature-popup {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 16px;
+    border-radius: 18px;
+}
+
+html.mk-pop-c .feature-popup__body {
+    display: contents;
+}
+
+html.mk-pop-c .ol-popup-closer {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    line-height: 28px;
+}
+
+html.mk-pop-c .feature-popup__media {
+    order: 0;
+}
+
+html.mk-pop-c .feature-popup__eyebrow {
+    order: 1;
+    margin: 0;
+    padding: 15px 18px 0;
+    background: var(--ink);
+    color: rgba(255, 255, 255, 0.84);
+    font: 600 13px/1.3 var(--font-ui);
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+html.mk-pop-c .feature-popup__eyebrow::before {
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+}
+
+/* Without a photo the band is the card's top edge, under the close button. */
+html.mk-pop-c .feature-popup:not(:has(.feature-popup__media)) .feature-popup__eyebrow,
+html.mk-pop-c .feature-popup:not(:has(.feature-popup__media)) .feature-popup__title {
+    padding-right: 52px;
+}
+
+html.mk-pop-c .feature-popup__title {
+    order: 2;
+    margin: 0;
+    padding: 5px 18px 0;
+    background: var(--ink);
+    color: #fff;
+    font: 750 19px/1.25 var(--font-display);
+}
+
+html.mk-pop-c .mk-pop-figs {
+    order: 3;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    margin: 0;
+    padding: 14px 18px 15px;
+    border-bottom: 3px solid var(--yellow);
+    background: var(--ink);
+}
+
+.mk-pop-figs > div {
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: flex-end;
+    min-width: 0;
+    padding: 0 12px;
+    border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.mk-pop-figs > div:last-child {
+    padding-right: 0;
+}
+
+.mk-pop-figs > div:first-child {
+    padding-left: 0;
+    border-left: 0;
+}
+
+.mk-pop-figs dd {
+    margin: 0;
+    color: var(--yellow);
+    font: 800 15px/1.2 var(--font-ui);
+    font-variant-numeric: tabular-nums;
+}
+
+.mk-pop-figs dt {
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.8);
+    font: 600 12px/1.25 var(--font-ui);
+}
+
+html.mk-pop-c .feature-popup__note {
+    order: 4;
+    margin: 14px 16px 0;
+    padding-right: 14px;
+    border: 1px dashed #b7c1cc;
+    border-radius: 12px;
+}
+
+html.mk-pop-c .feature-popup__note--duplikat {
+    border-color: var(--orange);
+}
+
+html.mk-pop-c .feature-popup__meta {
+    order: 5;
+    margin: 8px 18px 0;
+    border-top: 0;
+}
+
+html.mk-pop-c .feature-popup__meta-row.mk-fig-src {
+    display: none;
+}
+
+html.mk-pop-c .feature-popup__rule {
+    order: 6;
+}
+
+html.mk-pop-c .feature-popup__actions {
+    order: 7;
+    margin: 12px 16px 0;
+}
+
+html.mk-pop-c .feature-popup__tools {
+    order: 8;
+    margin: 10px 16px 0;
+    border-radius: 14px;
+}
+
+html.mk-pop-c .feature-popup__route {
+    min-height: 50px;
+    padding-left: 6px;
+    border-color: var(--yellow);
+    border-radius: 999px;
+    background: var(--yellow);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(41, 61, 80, 0.2), 0 6px 16px rgba(41, 61, 80, 0.18);
+}
+
+html.mk-pop-c .feature-popup__route:hover {
+    border-color: #f2d600;
+    background: #f2d600;
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(41, 61, 80, 0.22), 0 10px 22px rgba(41, 61, 80, 0.22);
+}
+
+html.mk-pop-c .feature-popup__route:active {
+    background: #e8cd00;
+}
+
+html.mk-pop-c .feature-popup__route::after {
+    background: rgba(41, 61, 80, 0.25);
+}
+
+html.mk-pop-c .feature-popup__route-icon {
+    border-radius: 999px;
+    background: rgba(41, 61, 80, 0.12);
+}
+
+html.mk-pop-c .feature-popup__route-text small {
+    color: rgba(41, 61, 80, 0.78);
+}
+
+html.mk-pop-c .feature-popup__hatch {
+    border-radius: 999px;
+}

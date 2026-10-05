@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Mockup Sidebar · PUTS 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400..800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="mockup.css" />
+  </head>
+  <body data-variant="a">
+    <!-- The stage is always laid out at desktop width. In a narrower window
+         (the editor's browser pane, a laptop split screen) mockup.js scales
+         the whole stage down instead of letting the site fall back to its
+         phone layout, so every variant is judged as it will ship. -->
+    <div id="stage">
+      <!-- The real site, untouched. mockup.js hides its sidebar (it keeps its
+           box, so the map still pads around a left panel) and drives it: every
+           row, chip and search in the mockups clicks the real control, so the
+           map, filters and popups behave exactly as they do in production. -->
+      <iframe id="app" src="/index.html" title="Peta sebaran PUTS" tabindex="-1"></iframe>
+
+      <aside id="mk-panel" class="mk-panel" aria-label="Daftar titik PUTS">
+        <div class="mk-region mk-top" data-region="top"></div>
+        <label class="mk-search" data-region="search">
+          <span class="visually-hidden">Cari titik PUTS</span>
+          <svg class="mk-search__icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="m20 20-4.2-4.2" />
+          </svg>
+          <input id="mk-search-input" type="search" autocomplete="off" placeholder="Cari lokasi atau kabupaten…" />
+          <button class="mk-search__clear" type="button" aria-label="Hapus pencarian" hidden>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+              <path d="M17 7 7 17M7 7l10 10" />
+            </svg>
+          </button>
+        </label>
+        <div class="mk-region mk-meta" data-region="meta"></div>
+        <div class="mk-region mk-scroll" data-region="list"></div>
+        <div class="mk-region mk-foot" data-region="foot"></div>
+      </aside>
+
+      <button id="mk-expand" class="mk-expand" type="button" aria-label="Tampilkan daftar" title="Tampilkan daftar" hidden>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+          <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+          <path d="M9.5 4.5v15M14 10l2 2-2 2" />
+        </svg>
+      </button>
+
+      <nav id="mk-switcher" class="mk-switcher" aria-label="Pilih mockup">
+        <span class="mk-switcher__label">Mockup</span>
+        <button type="button" data-variant="a"><kbd>1</kbd> Kop Surat</button>
+        <button type="button" data-variant="b"><kbd>2</kbd> Atlas Wilayah</button>
+        <button type="button" data-variant="c"><kbd>3</kbd> Dasbor Navy</button>
+        <button type="button" data-variant="asli"><kbd>4</kbd> Saat ini</button>
+      </nav>
+    </div>
+
+    <p id="mk-narrow" class="mk-narrow" hidden>
+      Tampilan desktop diperkecil agar muat. Lebarkan jendela untuk ukuran sebenarnya.
+    </p>
+
+    <script src="mockup.js"></script>
+  </body>
+</html>
