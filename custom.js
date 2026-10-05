@@ -1863,15 +1863,10 @@
       if (!latest) {
         return;
       }
-      footer.textContent = "";
-      footer.appendChild(
-        document.createTextNode("Survey lapangan s.d. " + formatDateKey(latest) + " ")
-      );
-      var dot = document.createElement("span");
-      dot.setAttribute("aria-hidden", "true");
-      dot.textContent = "\u00b7";
-      footer.appendChild(dot);
-      footer.appendChild(document.createTextNode(" Dinas ESDM Jambi"));
+      var date = footer.querySelector(".sidebar-footer__date");
+      if (date) {
+        date.textContent = "s.d. " + formatDateKey(latest);
+      }
     }
 
     // One line that changes with the situation, instead of three numbers that
