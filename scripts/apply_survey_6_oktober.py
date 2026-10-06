@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Re-site three RT 04 Tanjung Raden points from the 6 Oktober 2026 survey.
+"""Re-site the RT 04 Tanjung Raden points from the 6 Oktober 2026 survey.
 
 Source: "LembarFoto_2026-09-30_to_2026-10-06.xlsx", a Timemark export whose
 "Foto" sheet holds the shots "RT 04 Tanjung Raden Kec Danau Teluk 01".."10".
@@ -20,6 +20,14 @@ takes shot 07 (crew marking beside the blue-tarp shed), 17 m away.
 That left 006 as the only point with no 6 Oktober shot and shot 06 (cassava
 garden by the fence) as the only unused shot. The user chose to relocate 006
 there, 73 m north -- a re-siting, not GPS noise.
+
+Finally the user asked for the remaining four, which already matched their
+shots by scene, to take the 6 Oktober stamp and photo too: 001 -> shot 01
+(same blue-railed house), 004 -> shot 05 (same grey-railed porch), 005 ->
+shot 03 (same plank house and tile pile), 010 -> shot 02. Rows 12-13 are
+unnamed duplicates of shot 01 (same stamp, 10:38) and row 14 is RT 09
+Pematang Sulur; none of them is used. Every RT 04 point now carries its
+6 Oktober shot.
 
 Entries already applied (same coordinate and photo) are skipped, so the
 script can be re-run after a new entry is added.
@@ -47,6 +55,10 @@ TR = "KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-"
 
 # "Foto" sheet row -> (Nomor, latitude, longitude) read off the photo stamp.
 UPDATES = {
+    11: (TR + "001", -1.585546, 103.586575),  # shot 01
+    10: (TR + "010", -1.585258, 103.586598),  # shot 02
+    9: (TR + "005", -1.585311, 103.586244),  # shot 03
+    7: (TR + "004", -1.585172, 103.586523),  # shot 05
     8: (TR + "002", -1.585429, 103.586436),  # shot 04
     5: (TR + "003", -1.584465, 103.586506),  # shot 07
     6: (TR + "006", -1.584913, 103.586530),  # shot 06
@@ -54,7 +66,7 @@ UPDATES = {
     3: (TR + "008", -1.584118, 103.585904),  # shot 09
     2: (TR + "009", -1.583805, 103.585995),  # shot 10
 }
-EXPECTED_LABEL = {8: "04", 5: "07", 6: "06", 4: "08", 3: "09", 2: "10"}
+EXPECTED_LABEL = {11: "01", 10: "02", 9: "03", 7: "05", 8: "04", 5: "07", 6: "06", 4: "08", 3: "09", 2: "10"}
 MAX_MOVE_M = 400
 
 
