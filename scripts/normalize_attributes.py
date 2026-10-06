@@ -101,45 +101,11 @@ for _n in ("001", "002"):
 NOMOR_FIXES["SAROLANGUN-SINGKUT-SUNGAI GEDANG-001"] = (
     "SAROLANGUN-SINGKUT-SILIWANGI-010")
 
-# Nama Anggota. The export writes academic titles four different ways -- "SE",
-# "SH", "S.Kom" with dots but "ME" without -- so they are spelled per PUEBI
-# here. Casing is left to toDisplayName in custom.js; these are stored values.
-NAMA_FIXES = {
-    "Arwiyanto, SE": "Arwiyanto, S.E.",
-    "Sapuan Anshori, SE": "Sapuan Anshori, S.E.",
-    "PUTRA ABSOR HASIBUAN, SH": "Putra Absor Hasibuan, S.H.",
-    "Mazlan, S.Kom, ME": "Mazlan, S.Kom., M.E.",
-    "Dr. FAIZAL RIZA, ST, MM": "Dr. Faizal Riza, S.T., M.M.",
-
-    # Offices, not people. All 30 "Bupati" records are in Kerinci, so the
-    # office is unambiguous today -- but the bare label would silently merge
-    # with any other regent's records in the sidebar, which groups by proposer.
-    # "Gubernur" spans four kabupaten, which is what one governor looks like.
-    "Gubernur": "Gubernur Jambi",
-    "Bupati": "Bupati Kerinci",
-
-    # The export shortened this proposer to "Ridwan". All 30 rows are the
-    # Singkut allocation -- Payo Lebar 20, Siliwangi 10 -- and the source
-    # sheet names him Samsul Riduan, S.T.
-    "Ridwan": "Samsul Riduan, S.T.",
-
-    "Ririn Novianty": "Ririn Novianty, S.E.",
-    "Muthsaharudin": "Muthsaharudin, S.E.",
-
-    # Export wrote "Yudhi Nasdem"; an earlier pass stored "Yudhi (NasDem)".
-    # The source sheet is Yudi Hariyanto, EY -- six Tanjab Timur rows.
-    "Yudhi Nasdem": "Yudi Hariyanto, EY",
-    "Yudhi (NasDem)": "Yudi Hariyanto, EY",
-    "Yudhi": "Yudi Hariyanto, EY",
-
-    "Yuli Yuliarti": "Hj. Yuli Yuliarti, S.E., M.M.",
-
-    "Fauzi Ansori": "Dr. Ir. H. Ahmad Fauzi Ansori, M.T.",
-
-    # Export spelled the surname Jahfar. The source sheet is Jafar, S.H.
-    "Ahmad Jahfar": "Ahmad Jafar, S.H.",
-    "Ahmad Jafar": "Ahmad Jafar, S.H.",
-}
+# Nama Anggota. master no longer stores proposers' names (data/points.geojson
+# has no Nama Anggota), so the spelling table that used to live here is empty.
+# The full table is in arsip-pengusul/scripts/normalize_attributes.py on the
+# backup/tampil-pengusul branch.
+NAMA_FIXES = {}
 
 PHOTO_DIR = "images"
 DATA_PATH = "data/points.geojson"

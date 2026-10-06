@@ -28,8 +28,8 @@ completeness (metadata, loading state, language).
 8. "tampil" stat hidden when it equals the total (only meaningful when filtering).
 9. Search placeholder shortened to fit 375px: "Cari nomor, nama, alamat...".
 10. Group/pengusul names normalized at render: title-case words, preserve degree
-    suffixes (SH, SE, ST, …) as uppercase. Fixes "PUTRA ABSOR HASIBUAN, SH" without
-    breaking "Sapuan Anshori, SE". Applied at item build so grouping keys merge too.
+    suffixes (SH, SE, ST, …) as uppercase. Fixes "NAMA DEPAN BELAKANG, SH" without
+    breaking "Nama Belakang, SE". Applied at item build so grouping keys merge too.
 
 ### Correctness
 11. Data-load watchdog: a load completing after the 20s timeout currently leaves a

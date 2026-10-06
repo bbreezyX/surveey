@@ -159,7 +159,7 @@
     mm: "MM", mh: "MH", me: "ME", mt: "MT", map: "MAP", ey: "EY",
     msi: "M.Si", mpd: "M.Pd", mkes: "M.Kes", mkom: "M.Kom", msos: "M.Sos",
     // Office abbreviations inside a pengusul label, e.g. "GM Geopark
-    // Merangin", "Ketua RT 21", "Amin ADC".
+    // Merangin", "Ketua RT 21", "<nama> ADC".
     gm: "GM", rt: "RT", adc: "ADC"
   };
 
@@ -309,10 +309,10 @@
   }
 
   // Keterangan doubles as the row's title, but some rows carry survey
-  // bookkeeping in brackets — "(Foto pertama yang dikirim pak agung)",
+  // bookkeeping in brackets — "(Foto pertama yang dikirim pak <nama>)",
   // "(Tanpa Foto (Tempat Pemandian 1,2,3))". That says nothing about the place
   // and wraps the label onto five lines, so it goes. Brackets that qualify the
-  // landmark itself are kept: "Depan Rumah Pak Hambali (Dewan)" survives.
+  // landmark itself are kept: "Depan Rumah Pak <nama> (Dewan)" survives.
   //
   // The lookahead only fires when the bracket's own text mentions the photo
   // workflow; everything from that bracket to the end is then dropped, which
@@ -380,7 +380,8 @@
   // unique landmark does not hide the pin's position.
   //
   // A point granted under a line of the allocation sheet (REKAPAN PJUTS 2026,
-  // written into the geojson by scripts/apply_rekapan.py) takes that line as
+  // written into the geojson by scripts/apply_rekapan.py, now archived on
+  // backup/tampil-pengusul because it names the proposers) takes that line as
   // its title instead, verbatim: it is what the field crew holds in hand and
   // searches for. The survey's own landmark and whatever part of the desa and
   // kecamatan the line does not already say drop to the second line.

@@ -12,8 +12,9 @@ kept so a rebuild matches it:
 * Distance: haversine, R = 6 371 000 m, rounded to 0.1 m for "Jarak (m)".
   "Pita" is decided on the unrounded distance (<5, 5-10, 10-20, 20-30,
   30-50 m), so 10.07 m prints as 10.0 in the 10-20 m band.
-* Point A is the one with the lower fid; Pengusul is A's Nama Anggota; the
-  Foto columns are the basename of each "Foto Survey Awal".
+* Point A is the one with the lower fid; the Foto columns are the basename
+  of each "Foto Survey Awal". (No Pengusul column: master carries no names;
+  the old version is in arsip-pengusul/ on backup/tampil-pengusul.)
 * Foto Identik: "ya" when both photo files have the same bytes.
 * Status Koordinat: "salah satu menunggu ukur ulang" when either point is
   listed in titik-tumpuk.csv with Tindakan "Ukur ulang" AND still sits on the
@@ -46,7 +47,7 @@ MAX_M = 50.0
 HEADER = [
     "No", "Jarak (m)", "Pita", "Nomor A", "Nomor B", "Kabupaten", "Kecamatan",
     "Desa/Kelurahan", "Lon A", "Lat A", "Lon B", "Lat B", "Tanggal A", "Tanggal B",
-    "Pengusul", "Foto A", "Foto B", "Foto Identik", "Status Koordinat", "Keputusan",
+    "Foto A", "Foto B", "Foto Identik", "Status Koordinat", "Keputusan",
     "Catatan Petugas",
 ]
 SAH = "kedua koordinat sah"
@@ -135,7 +136,7 @@ def main() -> int:
         rows.append([
             str(no), f"{d:.1f}", pita(d), a["Nomor"], b["Nomor"], kab, kec, desa,
             str(a["Longitude"]), str(a["Latitude"]), str(b["Longitude"]), str(b["Latitude"]),
-            a["Tanggal Dokumentasi"], b["Tanggal Dokumentasi"], a["Nama Anggota"],
+            a["Tanggal Dokumentasi"], b["Tanggal Dokumentasi"],
             a["Foto Survey Awal"].split("/")[-1], b["Foto Survey Awal"].split("/")[-1],
             "ya" if da is not None and da == db else "tidak",
             UKUR_ULANG if needs_remeasure(a) or needs_remeasure(b) else SAH,
