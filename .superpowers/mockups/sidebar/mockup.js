@@ -1090,9 +1090,16 @@
         return state;
       }
       if (m.screen === "overview" && !m.query) {
+        // Kota before the kabupaten, as asked in review (Oct 2026). The app
+        // sorts full names, and "Kab. …" files Kota Jambi after Tebo, last in
+        // the grid. Array sort is stable, so each side keeps the app's
+        // alphabetical order.
+        var kotaFirst = m.groups.slice().sort(function (a, b) {
+          return /^Kota\s/i.test(b.name) - /^Kota\s/i.test(a.name);
+        });
         return (
           '<div class="vb-grid">' +
-          m.groups
+          kotaFirst
             .map(function (g) {
               var key = normKey(g.name);
               return (
