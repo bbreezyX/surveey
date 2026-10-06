@@ -1344,7 +1344,17 @@ body[data-variant="c"] .mk-expand {
   font-variant-numeric: tabular-nums;
 }
 
-/* Units in two columns: the numbered tile with its coordinate beside it. */
+/* The landmark every unit of the group shares, once under the heading. */
+.vb-desa__note {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+/* Units in two columns: the numbered tile with its coordinate beside it,
+   under the survey landmark where there is one. */
 .vb-units {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1368,6 +1378,28 @@ body[data-variant="c"] .mk-expand {
 
 .vb-pt:hover {
   background: var(--row-hover);
+}
+
+.vb-pt__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+/* Two lines at most: "Depan Rumah Kepala Kampung Rt.02" is the long end. */
+.vb-pt__note {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+  /* No word left alone on the last line. */
+  text-wrap: pretty;
 }
 
 .vb-pt__coord {

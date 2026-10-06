@@ -865,6 +865,240 @@
     highlight(key || base);
   }
 
+  // ---------- B · the row's pin on the map ---------------------------------
+
+  // Hovering a unit row lights its pin the way custom.js lights a pin under
+  // the cursor: the symbol a step bigger and the same dark pill. Here the
+  // eye is on the list, not the map, so the pin also gets the ground halo of a
+  // selected point, and a dot (zoomed out past pins) grows by 40% rather than
+  // custom.js's 2px, which nobody would spot from the list. Pointer hover and
+  // keyboard focus only: a finger never hovers, and a tap selects the point.
+  var POINT_LAYERS = ["lyr_260331_4", "lyr_BelumDitetapkan_6", "lyr_Cadangan_5"];
+  var canHover = !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+  var pinHover = null;
+  var grown = new WeakMap();
+
+  // The style the live layers draw a feature with right now, or null when no
+  // layer draws it: the three layers share one source and each draws only its
+  // own subset, an open kabupaten hides the others' points, and the layer
+  // switcher can turn a layer off.
+  function liveStyle(feature, resolution) {
+    for (var i = 0; i < POINT_LAYERS.length; i++) {
+      var layer = appWin[POINT_LAYERS[i]];
+      if (!layer || !layer.getVisible()) {
+        continue;
+      }
+      var fn = layer.getStyleFunction ? layer.getStyleFunction() : null;
+      var styles = fn ? fn(feature, resolution) : null;
+      if (styles && !Array.isArray(styles)) {
+        styles = [styles];
+      }
+      if (styles && styles.length) {
+        return styles;
+      }
+    }
+    return null;
+  }
+
+  function grownStyle(feature, resolution) {
+    var base = liveStyle(feature, resolution);
+    if (!base) {
+      return null;
+    }
+    var hit = grown.get(base);
+    if (!hit) {
+      var ol = appWin.ol;
+      hit = [];
+      base.forEach(function (s) {
+        var image = s.getImage();
+        if (!image) {
+          return;
+        }
+        var clone = image.clone();
+        var scale = clone.getScale();
+        clone.setScale((typeof scale === "number" ? scale : 1) * (image instanceof ol.style.Icon ? 1.12 : 1.4));
+        hit.push(new ol.style.Style({ image: clone, zIndex: 5 }));
+      });
+      grown.set(base, hit);
+    }
+    return hit;
+  }
+
+  // Pill above the symbol: clear of a pin's head, or of a dot's edge.
+  function tipOffset(styles) {
+    var image = styles && styles[0] ? styles[0].getImage() : null;
+    if (!image) {
+      return -16;
+    }
+    var scale = image.getScale();
+    scale = typeof scale === "number" ? scale : 1;
+    if (image instanceof appWin.ol.style.Icon) {
+      var size = image.getSize();
+      return -((size ? size[1] : 32) * scale + 6);
+    }
+    return -(image.getRadius() * scale + 8);
+  }
+
+  function itemById(id) {
+    var sections = model ? model.sections : [];
+    for (var i = 0; i < sections.length; i++) {
+      for (var j = 0; j < sections[i].items.length; j++) {
+        if (sections[i].items[j].id === id) {
+          return sections[i].items[j];
+        }
+      }
+    }
+    return null;
+  }
+
+  function ensurePinHover() {
+    if (pinHover) {
+      return pinHover;
+    }
+    if (!appWin || !appWin.ol || !appWin.map) {
+      return null;
+    }
+    var ol = appWin.ol;
+    // custom.js's selection halo, yellow for counted units, slate otherwise.
+    var halo = function (color) {
+      return new ol.style.Style({
+        image: new ol.style.Circle({
+          radius: 15,
+          fill: new ol.style.Fill({ color: color }),
+          stroke: new ol.style.Stroke({ color: "rgba(255, 255, 255, 0.7)", width: 1.5 })
+        }),
+        zIndex: 4
+      });
+    };
+    var halos = { yellow: halo("rgba(254, 229, 15, 0.26)"), slate: halo("rgba(107, 122, 140, 0.24)") };
+    var source = new ol.source.Vector({ useSpatialIndex: false });
+    new ol.layer.Vector({
+      map: appWin.map,
+      source: source,
+      zIndex: 4,
+      style: function (ghost, resolution) {
+        var styles = grownStyle(ghost.get("live"), resolution);
+        return styles ? [halos[ghost.get("halo")]].concat(styles) : null;
+      }
+    });
+    var el = appDoc.createElement("div");
+    el.className = "pin-tip";
+    el.setAttribute("aria-hidden", "true");
+    var tip = new ol.Overlay({ element: el, positioning: "bottom-center", stopEvent: false, insertFirst: false });
+    appWin.map.addOverlay(tip);
+    pinHover = { source: source, el: el, tip: tip, id: null };
+    return pinHover;
+  }
+
+  function setPinHover(id) {
+    if (!(id || (pinHover && pinHover.id)) || !ensurePinHover() || pinHover.id === id) {
+      return;
+    }
+    pinHover.id = id;
+    pinHover.source.clear();
+    pinHover.el.classList.remove("is-visible");
+    pinHover.tip.setPosition(undefined);
+    var it = id && variant === "b" ? itemById(id) : null;
+    var f = it ? indexFeatures().byNomor[it.nomor] : null;
+    var resolution = appWin.map.getView().getResolution();
+    var styles = f ? grownStyle(f, resolution) : null;
+    // The selected point already has its card and its own enlarged pin, and a
+    // pin no layer draws (a reserve with its layer off) gets no pill either.
+    if (!styles || it.active) {
+      return;
+    }
+    pinHover.source.addFeature(new appWin.ol.Feature({
+      geometry: f.getGeometry(),
+      live: f,
+      halo: it.belum || it.cadangan ? "slate" : "yellow"
+    }));
+    // The row's own landmark, not custom.js's place line: the group heading
+    // already says the place, and the pill has to tell this pin from its
+    // neighbours.
+    var label = landmarkFor(it, it.label) || desaOf(it.nomor);
+    label = label.length > 34 ? label.slice(0, 33).trim() + "…" : label;
+    pinHover.el.textContent = "Titik " + it.code + (label ? " · " + label : "");
+    pinHover.tip.setOffset([0, tipOffset(styles)]);
+    pinHover.tip.setPosition(f.getGeometry().getCoordinates());
+    requestAnimationFrame(function () {
+      if (pinHover.id === id) {
+        pinHover.el.classList.add("is-visible");
+      }
+    });
+  }
+
+  // ---------- B · numbers on the pins --------------------------------------
+
+  // From about zoom 15 in, every pin carries its 3-digit number, so a row and
+  // its pin match without hovering, which a phone cannot do. Units on one
+  // coordinate share a label ("002–008") instead of stacking seven. A label
+  // names only the pins actually drawn (liveStyle), so a hidden kabupaten or a
+  // layer switched off leaves no orphan numbers. The labels declutter among
+  // themselves, so where two would overlap one waits for the next zoom step;
+  // the pins underneath never declutter (layers/layers.js).
+  var LABEL_MAX_RESOLUTION = 4.8;
+  var pinLabels = null;
+
+  function syncPinLabels() {
+    var on = variant === "b";
+    if (!pinLabels && on && appWin && appWin.ol && appWin.map) {
+      var ol = appWin.ol;
+      var idx = indexFeatures();
+      var spots = {};
+      Object.keys(idx.byNomor).forEach(function (nomor) {
+        var f = idx.byNomor[nomor];
+        var at = f.getGeometry().getCoordinates();
+        var key = Math.round(at[0] * 2) + "," + Math.round(at[1] * 2);
+        (spots[key] = spots[key] || { at: at, units: [] }).units.push(f);
+      });
+      var keys = Object.keys(spots);
+      if (!keys.length) {
+        return;
+      }
+      var cache = {};
+      pinLabels = new ol.layer.Vector({
+        source: new ol.source.Vector({
+          features: keys.map(function (k) {
+            return new ol.Feature({ geometry: new ol.geom.Point(spots[k].at), units: spots[k].units });
+          })
+        }),
+        declutter: true,
+        maxResolution: LABEL_MAX_RESOLUTION,
+        style: function (f, resolution) {
+          var codes = f.get("units")
+            .filter(function (u) { return liveStyle(u, resolution); })
+            .map(function (u) { return codeOf(String(u.get("Nomor")).trim()); });
+          if (!codes.length) {
+            return null;
+          }
+          var text = codeList(codes);
+          if (!cache[text]) {
+            // Beside the pin's head (20px above its tip), not over the pin.
+            cache[text] = new ol.style.Style({
+              text: new ol.style.Text({
+                text: text,
+                font: "700 11px Figtree, system-ui, sans-serif",
+                textAlign: "left",
+                textBaseline: "middle",
+                offsetX: 14,
+                offsetY: -20,
+                padding: [3, 5, 2, 5],
+                fill: new ol.style.Fill({ color: "#293d50" }),
+                backgroundFill: new ol.style.Fill({ color: "rgba(255, 255, 255, 0.92)" }),
+                backgroundStroke: new ol.style.Stroke({ color: "rgba(41, 61, 80, 0.28)", width: 1 })
+              })
+            });
+          }
+          return cache[text];
+        }
+      });
+      appWin.map.addLayer(pinLabels);
+    }
+    if (pinLabels) {
+      pinLabels.setVisible(on);
+    }
+  }
+
   // ---------- A · Kop Surat ------------------------------------------------
 
   var RENDER = {};
@@ -972,10 +1206,10 @@
 
   // ---------- B · Atlas Wilayah -------------------------------------------
 
-  // One group per place name and desa. The per-point note (it.sub) is left
-  // out: the point card shows it, and keying on it split a place in two
-  // whenever only some of its points had one (RT 04 Tanjung Raden). Each unit
-  // carries its coordinate instead. The desa from Nomor stays in the key
+  // One group per place name and desa. The per-point note (it.sub) is not part
+  // of the key: keying on it split a place in two whenever only some of its
+  // points had one (RT 04 Tanjung Raden). Each unit shows it above its
+  // coordinate instead (unitInfo). The desa from Nomor stays in the key
   // because the 3-digit code only runs within one desa: "Distrik Center HKBP
   // Jambi" covers Pelempang 001-003 and Tempino 001-002, and one group read
   // 001 002 003 001 002. Only a place name that spans two desa gets the desa
@@ -1006,16 +1240,146 @@
     return out;
   }
 
-  // "MUARO JAMBI-MESTONG-TEMPINO-001" -> "Tempino".
-  function desaOf(nomor) {
+  // "MUARO JAMBI-MESTONG-TEMPINO-001": back 1 -> "Tempino", back 2 -> "Mestong".
+  function nomorPart(nomor, back) {
     var parts = String(nomor || "").split("-");
     if (parts.length < 3 || !/^\d+$/.test(parts[parts.length - 1].trim())) {
       return "";
     }
-    return parts[parts.length - 2]
+    return parts[parts.length - 1 - back]
       .trim()
       .toLowerCase()
       .replace(/(^|\s)\S/g, function (c) { return c.toUpperCase(); });
+  }
+
+  function desaOf(nomor) {
+    return nomorPart(nomor, 1);
+  }
+
+  // ---------- B · where each unit is ---------------------------------------
+
+  // A row carries the unit's coordinate, lat over lon, and above it the survey
+  // landmark ("Depan Musholla RT 01", "Belakang SMP 7") when the unit has one
+  // of its own: 138 of the 500 units carry a Keterangan that says more than
+  // their desa. A landmark the whole group shares sits once under the group's
+  // heading instead, and one that only restates the heading is not shown
+  // (restates). The landmark is read off the live row's subline, so
+  // custom.js's cleaning of GPS-app logs and survey bookkeeping applies
+  // unchanged, and then tidied for the list (tidyLandmark).
+  //
+  // Tried and turned down in review (Oct 2026): the distance to the nearest
+  // unit ("30 m dari 005") in place of the coordinate. The coordinate stays.
+  // Measured and left out: a compass side within the group ("sisi utara") put
+  // 3 of Durian Luncuk's 5 units on the same side; the road name in the photo
+  // stamp is there in about 1 photo in 6 and OCRs badly; the photo shows
+  // people's faces and is already on the point card. The map says the rest:
+  // a hovered row lights its pin (setPinHover), and close in every pin
+  // carries its number (syncPinLabels).
+  var featIndex = null;
+
+  // Every unit by Nomor, reserves included (the list shows them).
+  function indexFeatures() {
+    var layer = appWin && appWin.lyr_260331_4;
+    var features = layer && layer.getSource ? layer.getSource().getFeatures() : [];
+    if (featIndex && featIndex.count === features.length) {
+      return featIndex;
+    }
+    featIndex = { count: features.length, byNomor: {} };
+    features.forEach(function (f) {
+      var nomor = String(f.get("Nomor") || "").trim();
+      if (nomor && f.getGeometry()) {
+        featIndex.byNomor[nomor] = f;
+      }
+    });
+    return featIndex;
+  }
+
+  function codeOf(nomor) {
+    return String(nomor).split("-").pop().trim();
+  }
+
+  // "002, 003" or, for three or more in a row, "002–008".
+  function codeList(codes) {
+    var sorted = codes.slice().sort();
+    var nums = sorted.map(Number);
+    var run = nums.every(function (n, i) { return i === 0 || n === nums[i - 1] + 1; });
+    return run && sorted.length >= 3 ? sorted[0] + "–" + sorted[sorted.length - 1] : sorted.join(", ");
+  }
+
+  // The landmark is whatever is left of the live subline once the desa, the
+  // kecamatan, the place name and (on search results) the kabupaten are taken
+  // out: "Kemantan Darat · Air Hangat Timur" keeps "Kemantan Darat". The
+  // kabupaten is the one custom.js resolved onto the feature, the same name
+  // it appends; matching names by shape would also drop "Kota Mebai", a
+  // landmark in Kerinci.
+  function landmarkOf(it) {
+    var place = plain(it.label);
+    var f = indexFeatures().byNomor[it.nomor];
+    var drop = [plain(desaOf(it.nomor)), plain(nomorPart(it.nomor, 2)), plain(f ? f.get("kabupaten") : "")];
+    var parts = String(it.sub || "").split(" · ");
+    for (var i = 0; i < parts.length; i++) {
+      var p = plain(parts[i]);
+      if (p && drop.indexOf(p) === -1 && place.indexOf(p) === -1) {
+        return parts[i].trim();
+      }
+    }
+    return "";
+  }
+
+  // The surveyors typed these by hand, and the 129 that B showed in Oct 2026
+  // read untidy side by side: "RT.12", "rt 12" and "Rt.01" in one desa,
+  // "Simpg.lapangan" and "H.Muzar" without a space, a GPS app's plus code
+  // "(Hv7c+2vm)", and one in capitals ("JL. PUSKESMAS PAMENANG PASAR ...").
+  // Display only: the point card keeps custom.js's text.
+  var ACRONYM = /\b(Rt|Rw|Pnpm|Sd|Sdn|Smp|Smpn|Sma|Smk|Tk|Kud)\b/g;
+
+  function tidyLandmark(text) {
+    var t = String(text || "").replace(/\s*\([a-z0-9]{4}\+[a-z0-9]{2,3}\)/gi, "");
+    if (!/[a-z]/.test(t) && /[A-Z]{4}/.test(t)) {
+      t = t
+        .toLowerCase()
+        .replace(/(^|[\s(,.\/-])([a-z])/g, function (m, before, c) { return before + c.toUpperCase(); })
+        .replace(ACRONYM, function (a) { return a.toUpperCase(); });
+    }
+    return t
+      .replace(/\b(rt|rw)\s*\.?\s*(\d+)/gi, function (m, key, n) { return key.toUpperCase() + " " + n; })
+      .replace(/\b([A-Za-z]{1,6}\.)(?=[A-Za-z])/g, "$1 ")
+      .replace(/\bNo\.(?=\d)/g, "No. ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  // Words of a phrase, numbers without leading zeros: "RT 001" and "RT 01"
+  // are one RT.
+  function words(text) {
+    return String(text || "")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean)
+      .map(function (w) { return /^\d+$/.test(w) ? String(Number(w)) : w; });
+  }
+
+  // "RT 01 Bakung Jaya 1" under "RT 001 Bakung Jaya", "RT 21 Rawasari" under
+  // "RT 21, Kel. Rawasari", "HKBP Desa Pelempang 4" under "Distrik Center
+  // HKBP Jambi, Desa Pelempang": every word is already in the heading but the
+  // surveyor's running number, so the landmark says nothing new (29 rows). A
+  // number after RT, RW or No. is part of an address, not a running number.
+  function restates(landmark, heading) {
+    var w = words(landmark);
+    if (w.length > 1 && /^\d+$/.test(w[w.length - 1]) && ["rt", "rw", "no"].indexOf(w[w.length - 2]) === -1) {
+      w.pop();
+    }
+    var seen = words(heading);
+    return w.every(function (x) { return seen.indexOf(x) !== -1; });
+  }
+
+  // The landmark a row shows: tidied, and none when it only restates the
+  // heading above it, the kabupaten included ("... Kota Jambi 1").
+  function landmarkFor(it, heading) {
+    var landmark = tidyLandmark(landmarkOf(it));
+    var f = indexFeatures().byNomor[it.nomor];
+    var kabupaten = f ? f.get("kabupaten") : "";
+    return landmark && !restates(landmark, heading + " " + kabupaten) ? landmark : "";
   }
 
   // The unit tile with its coordinate beside it, lat over lon.
@@ -1025,6 +1389,14 @@
       return '<span class="vb-pt__coord vb-pt__coord--none">Belum ada koordinat</span>';
     }
     return '<span class="vb-pt__coord">' + esc(c[0]) + "<br>" + esc(c[1]) + "</span>";
+  }
+
+  // The landmark over the coordinate, where the unit has one of its own.
+  function unitInfo(it, landmark) {
+    if (!landmark) {
+      return unitCoord(it);
+    }
+    return '<span class="vb-pt__info"><span class="vb-pt__note">' + esc(landmark) + "</span>" + unitCoord(it) + "</span>";
   }
 
   function plain(value) {
@@ -1123,16 +1495,25 @@
               : "") +
             desaGroups(s.items)
               .map(function (grp) {
+                var title = underSection(grp.label, s.title) + (grp.desa ? " · " + grp.desa : "");
+                var marks = grp.items.map(function (it) {
+                  return landmarkFor(it, title + " " + s.title);
+                });
+                // A landmark every unit shares goes under the heading once,
+                // not on each tile: "Dusun Teluk Bengkah" five times over, or
+                // a lone unit's landmark wrapped into half a row.
+                var shared = marks.every(function (mk) { return mk && mk === marks[0]; }) ? marks[0] : "";
                 return (
-                  '<div class="vb-desa"><div class="vb-desa__head"><span class="vb-desa__title">' + esc(underSection(grp.label, s.title) + (grp.desa ? " · " + grp.desa : "")) +
+                  '<div class="vb-desa"><div class="vb-desa__head"><span class="vb-desa__title">' + esc(title) +
                   '</span><span class="vb-desa__count">' + fmt(grp.items.length) + " titik</span></div>" +
+                  (shared ? '<p class="vb-desa__note">' + esc(shared) + "</p>" : "") +
                   '<div class="vb-units">' +
                   grp.items
-                    .map(function (it) {
+                    .map(function (it, i) {
                       return (
                         '<button class="vb-pt" type="button" data-action="point" data-id="' + esc(it.id) +
                         '" aria-label="' + esc(itemAria(it)) + '" title="' + esc(unitTitle(it)) + '"><span class="vb-unit' + itemClass(it) + '">' +
-                        esc(it.code) + "</span>" + unitCoord(it) + "</button>"
+                        esc(it.code) + "</span>" + unitInfo(it, shared ? "" : marks[i]) + "</button>"
                       );
                     })
                     .join("") +
@@ -1307,6 +1688,7 @@
         groupsCache = model.groups;
       }
       decorateControls();
+      syncPinLabels();
     } else {
       model = emptyModel();
     }
@@ -1358,6 +1740,15 @@
     }
     if (changed) {
       setHover(null);
+      setPinHover(null);
+    } else if (pinHover && pinHover.id) {
+      // Picking the hovered unit makes it the selected one, which has its own
+      // pin and card; a filter can take it off the list. Either way the hover
+      // pin goes rather than sit on top.
+      var hovered = itemById(pinHover.id);
+      if (!hovered || hovered.active) {
+        setPinHover(null);
+      }
     }
 
     var target = null;
@@ -1489,6 +1880,35 @@
   panel.addEventListener("focusin", function (event) {
     var el = event.target.closest("[data-key]");
     setHover(el ? el.getAttribute("data-key") : null);
+  });
+
+  function unitIdAt(target) {
+    var unit = target && target.closest ? target.closest(".vb-pt[data-id]") : null;
+    return unit && panel.contains(unit) ? unit.getAttribute("data-id") : null;
+  }
+
+  panel.addEventListener("mouseover", function (event) {
+    if (canHover) {
+      setPinHover(unitIdAt(event.target));
+    }
+  });
+
+  panel.addEventListener("mouseleave", function () {
+    setPinHover(null);
+  });
+
+  // Keyboard focus only: a mouse click focuses the row too, and the click
+  // itself selects the point.
+  panel.addEventListener("focusin", function (event) {
+    if (event.target.matches && event.target.matches(":focus-visible")) {
+      setPinHover(unitIdAt(event.target));
+    }
+  });
+
+  panel.addEventListener("focusout", function (event) {
+    if (!panel.contains(event.relatedTarget)) {
+      setPinHover(null);
+    }
   });
 
   searchInput.addEventListener("input", function () {
@@ -1678,6 +2098,8 @@
     }
     syncApp();
     syncPopupVariant(true);
+    syncPinLabels();
+    setPinHover(null);
     if (appDoc) {
       applyCollapsed(appDoc.body.classList.contains("is-sidebar-collapsed"));
     }
