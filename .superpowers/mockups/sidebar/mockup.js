@@ -1011,10 +1011,10 @@
 
   // ---------- B · Atlas Wilayah -------------------------------------------
 
-  // One group per place name. The per-point note (it.sub) used to be part of
-  // the key, so a place split in two whenever only some of its points had a
-  // note (RT 04 Tanjung Raden: 001-004 "Pesantren Seberang", 005-010 none).
-  // The notes now ride under the group, each with the codes it belongs to.
+  // One group per place name. The per-point note (it.sub) is left out: the
+  // point card shows it, and keying on it split a place in two whenever only
+  // some of its points had one (RT 04 Tanjung Raden). Each unit carries its
+  // coordinate instead.
   function desaGroups(items) {
     var out = [];
     var byKey = {};
@@ -1022,53 +1022,21 @@
       var key = plain(it.label);
       var group = byKey[key];
       if (!group) {
-        group = byKey[key] = { label: it.label, items: [], notes: [] };
+        group = byKey[key] = { label: it.label, items: [] };
         out.push(group);
       }
       group.items.push(it);
-      var sub = it.sub && plain(it.label).indexOf(plain(it.sub)) === -1 ? it.sub : "";
-      var note = null;
-      group.notes.some(function (n) {
-        if (n.text === sub) {
-          note = n;
-          return true;
-        }
-        return false;
-      });
-      if (!note) {
-        note = { text: sub, codes: [] };
-        group.notes.push(note);
-      }
-      note.codes.push(it.code);
     });
     return out;
   }
 
-  // "001–004" for a run of consecutive numbers, else "001, 003, 007".
-  function codeSpan(codes) {
-    var nums = codes.map(function (c) { return parseInt(c, 10); });
-    var run = nums.every(function (n, i) { return !isNaN(n) && (i === 0 || n === nums[i - 1] + 1); });
-    if (run && codes.length > 2) {
-      return codes[0] + "\u2013" + codes[codes.length - 1];
+  // The unit tile with its coordinate beside it, lat over lon.
+  function unitCoord(it) {
+    var c = String(it.coord || "").split(/,\s*/);
+    if (c.length !== 2 || !c[0]) {
+      return '<span class="vb-pt__coord vb-pt__coord--none">Belum ada koordinat</span>';
     }
-    return codes.join(", ");
-  }
-
-  // A note shared by every point shows as before; notes that cover only some
-  // of the points name the codes they belong to.
-  function desaNotes(grp) {
-    var named = grp.notes.filter(function (n) { return n.text; });
-    if (!named.length) {
-      return "";
-    }
-    if (grp.notes.length === 1) {
-      return '<p class="vb-desa__sub">' + esc(named[0].text) + "</p>";
-    }
-    return named
-      .map(function (n) {
-        return '<p class="vb-desa__sub">' + esc(n.text) + ' <span class="vb-desa__codes">\u00b7 ' + esc(codeSpan(n.codes)) + "</span></p>";
-      })
-      .join("");
+    return '<span class="vb-pt__coord">' + esc(c[0]) + "<br>" + esc(c[1]) + "</span>";
   }
 
   function plain(value) {
@@ -1177,13 +1145,13 @@
                 return (
                   '<div class="vb-desa"><div class="vb-desa__head"><span class="vb-desa__title">' + esc(underSection(grp.label, s.title)) +
                   '</span><span class="vb-desa__count">' + fmt(grp.items.length) + " titik</span></div>" +
-                  desaNotes(grp) +
                   '<div class="vb-units">' +
                   grp.items
                     .map(function (it) {
                       return (
-                        '<button class="vb-unit' + itemClass(it) + '" type="button" data-action="point" data-id="' + esc(it.id) +
-                        '" aria-label="' + esc(itemAria(it)) + '" title="' + esc(unitTitle(it)) + '">' + esc(it.code) + "</button>"
+                        '<button class="vb-pt" type="button" data-action="point" data-id="' + esc(it.id) +
+                        '" aria-label="' + esc(itemAria(it)) + '" title="' + esc(unitTitle(it)) + '"><span class="vb-unit' + itemClass(it) + '">' +
+                        esc(it.code) + "</span>" + unitCoord(it) + "</button>"
                       );
                     })
                     .join("") +
