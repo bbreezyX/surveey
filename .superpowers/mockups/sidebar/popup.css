@@ -493,3 +493,20 @@ html.mk-pop-c .feature-popup__route-text small {
 html.mk-pop-c .feature-popup__hatch {
     border-radius: 999px;
 }
+
+/* ========================================================================
+   All variants · no scrollbar gutter in the card. The live card keeps a 6px
+   bar that runs from the very top, past the rounded corner and beside the
+   photo, leaving a white strip next to it. Here the card scrolls without a
+   visible bar, edge to edge, clipped to its radius; the "more below" fade
+   (.popup-scroll-fade, custom.js) still says there is more until the end.
+   ======================================================================== */
+
+html[class*="mk-pop-"] #popup-content {
+    border-radius: inherit;
+    scrollbar-width: none;
+}
+
+html[class*="mk-pop-"] #popup-content::-webkit-scrollbar {
+    display: none;
+}

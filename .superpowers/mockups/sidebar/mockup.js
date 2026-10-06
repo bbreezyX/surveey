@@ -750,6 +750,87 @@
     }
   }
 
+  // ---------- map controls ------------------------------------------------
+  // controls.css reshapes the right-hand controls per variant. C needs two
+  // things CSS cannot draw: the navy rail behind the controls and a count
+  // beside each legend entry, both tagged mk-only-c. The scale/attribution
+  // block's size goes to CSS too, so A's Keterangan box can stack on it and
+  // C's status bar can keep its entries clear of it.
+
+  var LEGEND_KEYS = [
+    [/belum/i, "belum"],
+    [/verifikasi/i, "duplikat"],
+    [/titik puts/i, "plain"]
+  ];
+  var legendObserved = false;
+  var infoObserved = false;
+
+  function decorateControls() {
+    if (!appDoc || !appDoc.body) {
+      return;
+    }
+    // The rail goes inside the map, just under the controls' own layer
+    // (.ol-overlaycontainer-stopevent is a z-index:0 stacking context, so a
+    // rail anywhere above it in the page would cover the controls).
+    var stopEvent = appDoc.querySelector(".ol-overlaycontainer-stopevent");
+    if (stopEvent && !appDoc.querySelector(".mk-rail")) {
+      var rail = appDoc.createElement("div");
+      rail.className = "mk-rail mk-only-c";
+      rail.setAttribute("aria-hidden", "true");
+      stopEvent.parentNode.insertBefore(rail, stopEvent);
+    }
+
+    var info = appDoc.querySelector(".map-meta__info");
+    if (info && !infoObserved && appWin.ResizeObserver) {
+      infoObserved = true;
+      new appWin.ResizeObserver(function () {
+        var box = info.getBoundingClientRect();
+        var style = appDoc.documentElement.style;
+        style.setProperty("--mk-info-h", Math.round(box.height) + "px");
+        style.setProperty("--mk-info-w", Math.round(box.width) + "px");
+      }).observe(info);
+    }
+
+    var legend = appDoc.querySelector(".map-legend");
+    if (!legend) {
+      return;
+    }
+    if (!legendObserved) {
+      legendObserved = true;
+      var Observer = appWin.MutationObserver || window.MutationObserver;
+      new Observer(decorateControls).observe(legend, { childList: true, subtree: true });
+    }
+    var t = totals();
+    var counts = { belum: t.belum, duplikat: t.duplikat, plain: t.count - t.belum - t.duplikat };
+    Array.prototype.forEach.call(legend.querySelectorAll(".map-legend__item"), function (item) {
+      var label = txt(item.querySelector(".map-legend__label--long"));
+      var key = null;
+      LEGEND_KEYS.some(function (pair) {
+        if (pair[0].test(label)) {
+          key = pair[1];
+          return true;
+        }
+        return false;
+      });
+      var value = key && t.count ? fmt(counts[key]) : "";
+      var badge = item.querySelector(".mk-legend-n");
+      if (!value) {
+        if (badge) {
+          badge.remove();
+        }
+        return;
+      }
+      if (!badge) {
+        badge = appDoc.createElement("b");
+        badge.className = "mk-legend-n mk-only-c";
+        item.appendChild(badge);
+      }
+      if (badge.textContent !== value) {
+        badge.textContent = value;
+      }
+    });
+  }
+
   // ---------- region highlight on the real map ----------------------------
 
   function holds(layer, target) {
@@ -1228,6 +1309,10 @@
     if (appDoc) {
       buildGeo();
       model = readModel();
+      if (model.screen === "overview" && !model.query && model.groups.length) {
+        groupsCache = model.groups;
+      }
+      decorateControls();
     } else {
       model = emptyModel();
     }

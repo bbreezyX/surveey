@@ -1,13 +1,27 @@
 /* Map controls per mockup: the layer chip and its panel, the zoom rail, the
-   legend pill, scale and attribution. mockup.js loads this into the real app
-   next to popup.css; it keys off the same html.mk-pop-a|b|c class, so with
-   no class the controls are the live ones.
-     A  Kop Surat     — squared, ink-ruled, navy when open; the layer panel
-                        opens under the letterhead's thick-and-thin rule.
-     B  Atlas Wilayah — round and blue like its capsules; blue strokes, a
-                        blue-tinted panel with sentence-case section names.
-     C  Dasbor Navy   — the band's navy on every control, white glyphs, the
-                        yellow lamp line and yellow for "open". */
+   legend, scale and attribution. mockup.js loads this into the real app next
+   to popup.css and keys off the same html.mk-pop-a|b|c class; with no class
+   the controls are the live ones. Each variant changes the shape, not only
+   the colour:
+     A  Kop Surat     — an official map sheet. A labelled "Lapisan peta" tab,
+                        a ruled register for the layers, and a "Keterangan"
+                        box in the corner holding legend, scale and sources.
+     B  Atlas Wilayah — a touch tool in the atlas sheet's slate. A round
+                        layer chip, switches for the layers, a segmented capsule
+                        for the base map, a horizontal − | + capsule and the
+                        legend as loose chips; "on" is ink with yellow.
+     C  Dasbor Navy   — a dashboard frame. A navy rail down the right edge
+                        holding the controls, a navy status bar along the
+                        foot with counts per symbol, the layer drawer opening
+                        out of the rail. mockup.js adds the rail (.mk-rail)
+                        and the counts (.mk-legend-n).
+   Frames and positions are desktop only (960px and up in the app, which
+   includes the scaled stage); phones keep the site's placement and take the
+   variant's shapes and colours. */
+
+.mk-rail {
+    display: none;
+}
 
 /* ========================================================================
    A · KOP SURAT
@@ -20,22 +34,116 @@ html.mk-pop-a {
     --ctl-ripple: rgba(41, 61, 80, 0.16);
 }
 
-html.mk-pop-a .layer-switcher > button,
-html.mk-pop-a .layer-switcher.shown.layer-switcher-activation-mode-click > button,
-html.mk-pop-a .ctl-layers-slot {
-    border-radius: 9px;
+/* ---- layer tab: a labelled rectangle, navy when open ---- */
+
+html.mk-pop-a #top-right-container .layer-switcher > button,
+html.mk-pop-a #top-right-container .ctl-layers-slot {
+    border-radius: 6px;
 }
 
+html.mk-pop-a #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button {
+    border-radius: 6px;
+    background-color: var(--ink);
+    border-color: var(--ink);
+    /* Ink on a dark satellite sea vanishes; the white ring keeps the chip. */
+    box-shadow: 0 0 0 2px #fff, 0 1px 2px rgba(20, 38, 53, 0.25), 0 6px 16px rgba(20, 38, 53, 0.28);
+}
+
+@media (hover: hover) {
+    html.mk-pop-a #top-right-container .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers {
+        stroke: var(--ink);
+    }
+
+    html.mk-pop-a #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button:hover {
+        background-color: #1d2e3e;
+        border-color: #1d2e3e;
+    }
+}
+
+/* ---- layer panel: a register. Section rows, a rule under every entry,
+        the tick in the right-hand column ---- */
+
+html.mk-pop-a #top-right-container .layer-switcher .panel {
+    min-width: 268px;
+    padding: 6px 0 4px;
+    border-color: #c3d0db;
+    border-top: 3px solid var(--ink);
+    border-radius: 2px 2px 8px 8px;
+    /* The thin second line of the kop rule, 2px under the thick one. */
+    box-shadow: inset 0 2px 0 #fff, inset 0 3px 0 var(--ink),
+        0 1px 2px rgba(20, 38, 53, 0.1), 0 14px 36px rgba(20, 38, 53, 0.18);
+}
+
+html.mk-pop-a #top-right-container .layer-switcher .panel li.group {
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+
+html.mk-pop-a #top-right-container .layer-switcher .panel ul ul {
+    width: auto;
+    margin: 0;
+}
+
+/* Section header rows, and the same row made by CSS for the three loose
+   boundary layers so every block of the register has a heading. */
+html.mk-pop-a #top-right-container .layer-switcher .panel li.group > label,
+html.mk-pop-a #top-right-container .layer-switcher .panel li.group + li.layer::before {
+    display: block;
+    padding: 7px 16px 6px;
+    border-block: 1px solid #dfe6ec;
+    background: #f4f7fa;
+    color: var(--ink-soft);
+    font: 700 11px/1.2 var(--font-ui);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+html.mk-pop-a #top-right-container .layer-switcher .panel li.group + li.layer {
+    flex-wrap: wrap;
+    padding-top: 0;
+}
+
+html.mk-pop-a #top-right-container .layer-switcher .panel li.group + li.layer::before {
+    content: "Wilayah";
+    order: -1;
+    flex: 0 0 calc(100% + 32px);
+    margin: 0 -16px 9px;
+}
+
+html.mk-pop-a #top-right-container .layer-switcher .panel li.layer {
+    justify-content: space-between;
+    padding: 9px 16px;
+}
+
+html.mk-pop-a #top-right-container .layer-switcher .panel li.layer > input {
+    order: 2;
+}
+
+html.mk-pop-a #top-right-container .layer-switcher .panel li.layer + li.layer {
+    border-top: 1px solid #e9eef2;
+}
+
+html.mk-pop-a #top-right-container .layer-switcher .panel li label {
+    flex: 1;
+}
+
+html.mk-pop-a #top-right-container .layer-switcher .panel li input {
+    accent-color: var(--ink);
+}
+
+/* ---- zoom: a squared rail ---- */
+
 html.mk-pop-a .ol-zoom {
-    border-radius: 9px;
+    border-radius: 6px;
 }
 
 html.mk-pop-a .ol-zoom .ol-zoom-in {
-    border-radius: 8px 8px 0 0;
+    border-radius: 5px 5px 0 0;
 }
 
 html.mk-pop-a .ol-zoom .ol-zoom-out {
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 5px 5px;
 }
 
 html.mk-pop-a .ol-zoom .ol-zoom-out::before {
@@ -55,167 +163,419 @@ html.mk-pop-a .ol-zoom button:active {
         background: #eef2f6;
         color: var(--ink);
     }
-
-    html.mk-pop-a .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers {
-        stroke: var(--ink);
-    }
-
-    html.mk-pop-a .layer-switcher.shown.layer-switcher-activation-mode-click > button:hover {
-        background-color: #1d2e3e;
-        border-color: #1d2e3e;
-    }
 }
 
-/* Open = the navy of the route button, not the site's blue. */
-html.mk-pop-a .layer-switcher.shown.layer-switcher-activation-mode-click > button {
-    background-color: var(--ink);
-    border-color: var(--ink);
-    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.25), 0 6px 16px rgba(20, 38, 53, 0.28);
-}
+/* ---- legend: squared; on desktop it becomes the Keterangan box ---- */
 
-/* The letterhead rule closes the top of the panel, like the kop. */
-html.mk-pop-a .layer-switcher .panel {
-    padding-top: 14px;
-    border-color: #c3d0db;
-    border-top: 3px solid var(--ink);
-    border-radius: 2px 2px 10px 10px;
-    /* The thin second line of the kop rule, 2px under the thick one. */
-    box-shadow: inset 0 2px 0 #fff, inset 0 3px 0 var(--ink),
-        0 1px 2px rgba(20, 38, 53, 0.1), 0 14px 36px rgba(20, 38, 53, 0.18);
-}
-
-html.mk-pop-a .layer-switcher .panel li.group > label {
-    color: var(--ink-soft);
-    font-weight: 700;
-    letter-spacing: 0.07em;
-}
-
-html.mk-pop-a .layer-switcher .panel li.group {
-    border-bottom-color: #c3d0db;
-}
-
-html.mk-pop-a .layer-switcher .panel li input {
-    accent-color: var(--ink);
-}
-
-/* Register-footer legend: a squared strip, entries split by rules. */
 html.mk-pop-a .map-legend__pill {
-    gap: 0;
-    padding: 0;
     border-color: #c3d0db;
-    border-radius: 8px;
+    border-radius: 6px;
     background: #fff;
 }
 
-html.mk-pop-a .map-legend__item {
-    padding: 8px 12px;
-}
+@media (min-width: 960px) {
+    html.mk-pop-a #top-right-container .layer-switcher > button,
+    html.mk-pop-a #top-right-container .ctl-layers-slot {
+        width: 136px;
+        height: 40px;
+    }
 
-html.mk-pop-a .map-legend__item + .map-legend__item {
-    border-left: 1px solid #dfe6ec;
-}
+    html.mk-pop-a #top-right-container .ctl-layers-slot {
+        justify-content: flex-start;
+        gap: 9px;
+        padding-left: 13px;
+    }
 
-html.mk-pop-a .ol-scale-line,
-html.mk-pop-a .bottom-attribution {
-    background: #fff !important;
-    border-color: #c3d0db;
-}
+    html.mk-pop-a #top-right-container .ctl-layers-slot::after {
+        content: "Lapisan peta";
+        position: relative;
+        z-index: 1;
+        color: var(--ink);
+        font: 650 13.5px/1 var(--font-ui);
+    }
 
-html.mk-pop-a .ol-scale-line {
-    border-radius: 6px 6px 0 0;
-    border-top: 3px solid var(--ink);
-}
+    html.mk-pop-a #top-right-container .layer-switcher.shown > .ctl-layers-slot::after {
+        color: #fff;
+    }
 
-html.mk-pop-a .ol-scale-line-inner {
-    border-color: var(--ink);
-    color: var(--ink);
-    font-weight: 600;
+    /* The tab says what it is; the tooltip would repeat it. */
+    html.mk-pop-a #top-right-container .layer-switcher > button::after {
+        display: none;
+    }
+
+    html.mk-pop-a #top-right-container .layer-switcher > .layer-switcher__watermark {
+        right: 0;
+    }
+
+    /* Zoom beside the box, the box in the corner. */
+    html.mk-pop-a .map-meta {
+        flex-direction: row;
+        align-items: flex-end;
+        gap: 10px;
+    }
+
+    html.mk-pop-a .ol-zoom button {
+        width: 40px;
+        height: 40px;
+    }
+
+    html.mk-pop-a .map-meta__info {
+        width: 236px;
+        border: 1px solid #c3d0db;
+        border-top: 0;
+        border-radius: 0 0 6px 6px;
+        background: #fff;
+        box-shadow: 0 4px 12px rgba(20, 38, 53, 0.16);
+    }
+
+    html.mk-pop-a .ol-scale-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px 4px;
+        border: 0;
+        border-top: 1px solid #dfe6ec;
+        border-radius: 0;
+        background: #fff !important;
+    }
+
+    html.mk-pop-a .ol-scale-line::before {
+        content: "Skala";
+        color: var(--muted-2);
+        font: 600 11.5px/1 var(--font-ui);
+    }
+
+    html.mk-pop-a .ol-scale-line-inner {
+        width: auto !important;
+        flex: 1;
+        border-color: var(--ink);
+        color: var(--ink);
+        font-weight: 600;
+        text-align: center;
+    }
+
+    html.mk-pop-a .bottom-attribution {
+        padding: 2px 12px 8px;
+        border: 0;
+        border-radius: 0 0 6px 6px;
+        background: #fff;
+    }
+
+    html.mk-pop-a .bottom-attribution ul {
+        max-width: none;
+        font-size: 11.5px;
+    }
+
+    html.mk-pop-a .bottom-attribution ul::before {
+        content: "Sumber";
+        display: block;
+        margin-bottom: 2px;
+        color: var(--muted-2);
+        font-weight: 600;
+    }
+
+    /* The legend stacks on the info block (mockup.js measures it into
+       --mk-info-h) and shares its width, so the two read as one box. */
+    html.mk-pop-a .map-legend,
+    html.mk-pop-a body.is-sidebar-collapsed .map-legend {
+        left: auto;
+        right: 16px;
+        bottom: calc(16px + var(--mk-info-h, 64px));
+        width: 236px;
+        transition: none;
+    }
+
+    html.mk-pop-a .map-legend__pill {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        gap: 0;
+        width: 100%;
+        padding: 0 0 6px;
+        border-bottom: 0;
+        border-top: 3px solid var(--ink);
+        border-radius: 2px 2px 0 0;
+        box-shadow: inset 0 2px 0 #fff, inset 0 3px 0 var(--ink),
+            0 4px 12px rgba(20, 38, 53, 0.16);
+        font-size: 12.5px;
+    }
+
+    html.mk-pop-a .map-legend__pill::before {
+        content: "Keterangan";
+        padding: 10px 12px 6px;
+        color: var(--ink-soft);
+        font: 700 11px/1 var(--font-ui);
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+    }
+
+    html.mk-pop-a .map-legend__item {
+        gap: 9px;
+        padding: 4px 12px;
+    }
 }
 
 /* ========================================================================
    B · ATLAS WILAYAH
    ======================================================================== */
 
+/* B's colours are the atlas sheet's, not the site's blue: the pale slate of
+   the kabupaten silhouettes for surfaces, their #8ea2b5 outline for edges,
+   ink for type, and ink with yellow for "on" — the current unit tile. */
 html.mk-pop-b {
-    --ctl-border: #cfe1f0;
-    --ctl-border-hover: var(--blue);
-    --ctl-surface: rgba(255, 255, 255, 0.95);
+    --mk-b-paper: #eef3f7;
+    --mk-b-edge: #b6c4d1;
+    --ctl-border: var(--mk-b-edge);
+    --ctl-border-hover: var(--ink);
+    --ctl-surface: rgba(238, 243, 247, 0.96);
+    --ctl-surface-near: #f4f7fa;
+    --ctl-surface-hover: #ffffff;
+    --ctl-ripple: rgba(41, 61, 80, 0.18);
 }
 
 html.mk-pop-b .ctl-layers {
-    stroke: var(--blue);
+    stroke: var(--ink);
 }
 
-html.mk-pop-b .ol-zoom button {
-    color: var(--blue);
-    font-weight: 600;
+html.mk-pop-b #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button {
+    background-color: var(--ink);
+    border-color: var(--ink);
+    /* Ink on a dark satellite sea vanishes; the white ring keeps the chip. */
+    box-shadow: 0 0 0 2px #fff, 0 6px 16px rgba(20, 38, 53, 0.3);
 }
 
-html.mk-pop-b .ol-zoom button:focus-visible,
-html.mk-pop-b .ol-zoom button:active {
-    background: var(--blue-tint);
+html.mk-pop-b #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button ~ .ctl-layers-slot .ctl-layers {
+    stroke: var(--yellow);
 }
 
 @media (hover: hover) {
-    html.mk-pop-b .ol-zoom button:hover {
-        background: var(--blue-tint);
-        color: var(--blue-deep);
+    html.mk-pop-b #top-right-container .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers {
+        stroke: var(--ink);
+    }
+
+    html.mk-pop-b #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button:hover {
+        background-color: #1d2e3e;
+        border-color: #1d2e3e;
     }
 }
 
-html.mk-pop-b .layer-switcher.shown.layer-switcher-activation-mode-click > button {
-    box-shadow: 0 6px 16px rgba(0, 114, 188, 0.3);
+/* ---- layer panel: switches and a segmented base map ---- */
+
+html.mk-pop-b #top-right-container .layer-switcher .panel {
+    min-width: 268px;
+    padding: 14px 16px 16px;
+    border-color: var(--mk-b-edge);
+    border-radius: 22px;
+    background: linear-gradient(var(--mk-b-paper), #fff 84px);
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.1), 0 16px 36px rgba(20, 38, 53, 0.2);
 }
 
-/* A softer, rounder sheet, tinted like the atlas tiles. */
-html.mk-pop-b .layer-switcher .panel {
-    padding: 14px 16px 10px;
-    border-color: #cfe1f0;
-    border-radius: 20px;
-    background: linear-gradient(#f2f8fd, #fff 84px);
-    box-shadow: 0 1px 2px rgba(0, 69, 143, 0.1), 0 16px 36px rgba(0, 69, 143, 0.18);
+html.mk-pop-b #top-right-container .layer-switcher .panel li.group {
+    border-bottom-color: #dfe6ec;
 }
 
-html.mk-pop-b .layer-switcher .panel li.group {
-    border-bottom-color: #dbe9f4;
-}
-
-html.mk-pop-b .layer-switcher .panel li.group > label {
-    color: var(--blue-deep);
-    font: 700 12px var(--font-ui);
+html.mk-pop-b #top-right-container .layer-switcher .panel li.group > label {
+    color: var(--ink);
+    font: 700 13px var(--font-ui);
     letter-spacing: 0;
     text-transform: none;
 }
 
-/* "Peta dasar" heading sits outside the group markup; same treatment. */
-html.mk-pop-b .layer-switcher .panel li:not(.group) > label:only-child {
-    color: var(--blue-deep);
+html.mk-pop-b #top-right-container .layer-switcher .panel li.layer {
+    flex-direction: row-reverse;
+    justify-content: space-between;
 }
 
-html.mk-pop-b .map-legend__pill {
-    padding: 7px 14px 7px 10px;
-    border-color: #cfe1f0;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 4px 12px rgba(0, 69, 143, 0.14);
-    color: var(--blue-deep);
+html.mk-pop-b #top-right-container .layer-switcher .panel li label {
+    flex: 1;
+}
+
+/* A switch drawn on the checkbox itself: the knob is a radial gradient that
+   slides across the track. */
+html.mk-pop-b #top-right-container .layer-switcher .panel li input[type="checkbox"],
+html.mk-pop-c #top-right-container .layer-switcher .panel li input[type="checkbox"] {
+    appearance: none;
+    width: 36px;
+    height: 22px;
+    margin: 0;
+    border-radius: 999px;
+    background: radial-gradient(circle closest-side, #fff calc(100% - 1px), transparent) no-repeat 3px 50% / 16px 16px,
+        #c4d3df;
+    cursor: pointer;
+    transition: background-position var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel li input[type="checkbox"]:checked {
+    background-image: radial-gradient(circle closest-side, var(--yellow) calc(100% - 1px), transparent);
+    background-color: var(--ink);
+    background-position: calc(100% - 3px) 50%;
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel li input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Base map: two capsules in one track; the chosen one fills blue. */
+html.mk-pop-b #top-right-container .layer-switcher .panel .layer-switcher-base-group,
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group {
+    margin: 10px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px solid #dbe9f4;
+    border-bottom: 0;
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group {
+    border-top-color: rgba(255, 255, 255, 0.16);
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel .layer-switcher-base-group > ul,
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group > ul {
+    display: flex;
+    gap: 3px;
+    width: auto;
+    margin: 8px 0 0;
+    padding: 3px;
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel .layer-switcher-base-group > ul {
+    border: 1px solid var(--mk-b-edge);
+    border-radius: 999px;
+    background: var(--mk-b-paper);
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel .layer-switcher-base-group li,
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group li {
+    position: relative;
+    flex: 1;
+    padding: 0;
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel .layer-switcher-base-group input,
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel .layer-switcher-base-group li label,
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group li label {
+    justify-content: center;
+    padding: 8px 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel .layer-switcher-base-group li label {
+    border-radius: 999px;
+    color: var(--ink);
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel .layer-switcher-base-group li:has(input:checked) label {
+    background: var(--ink);
+    color: var(--yellow);
+    box-shadow: 0 2px 6px rgba(20, 38, 53, 0.3);
+}
+
+html.mk-pop-b #top-right-container .layer-switcher .panel .layer-switcher-base-group input:focus-visible + label {
+    outline: 2px solid var(--blue);
+    outline-offset: 1px;
+}
+
+/* ---- zoom: a horizontal − | + capsule ---- */
+
+html.mk-pop-b .ol-zoom {
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+html.mk-pop-b .ol-zoom button {
+    color: var(--ink);
     font-weight: 600;
 }
 
-html.mk-pop-b .map-meta__info {
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 69, 143, 0.12);
+html.mk-pop-b .ol-zoom .ol-zoom-in {
+    border-radius: 0 999px 999px 0;
 }
 
-html.mk-pop-b .ol-scale-line,
-html.mk-pop-b .bottom-attribution {
-    border-color: #cfe1f0;
-    border-radius: 0;
+html.mk-pop-b .ol-zoom .ol-zoom-out {
+    border-radius: 999px 0 0 999px;
 }
 
-html.mk-pop-b .ol-scale-line-inner {
-    border-color: var(--blue);
-    color: var(--blue-deep);
+html.mk-pop-b .ol-zoom .ol-zoom-out::before {
+    top: 11px;
+    bottom: 11px;
+    left: auto;
+    right: 0;
+    width: 1px;
+    height: auto;
+    background: var(--mk-b-edge);
+}
+
+html.mk-pop-b .ol-zoom button:focus-visible,
+html.mk-pop-b .ol-zoom button:active {
+    background: #fff;
+    color: var(--ink);
+}
+
+@media (hover: hover) {
+    html.mk-pop-b .ol-zoom button:hover {
+        background: #fff;
+        color: var(--ink);
+    }
+}
+
+/* ---- legend: loose chips, one per symbol ---- */
+
+html.mk-pop-b .map-legend__pill {
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    pointer-events: none;
+}
+
+html.mk-pop-b .map-legend__item {
+    padding: 7px 13px 7px 9px;
+    border: 1px solid var(--mk-b-edge);
+    border-radius: 999px;
+    background: rgba(238, 243, 247, 0.96);
+    box-shadow: 0 4px 12px rgba(20, 38, 53, 0.2);
+    color: var(--ink);
+    font-weight: 600;
+    pointer-events: auto;
+}
+
+@media (min-width: 960px) {
+    html.mk-pop-b .map-meta {
+        flex-direction: row;
+        align-items: flex-end;
+        gap: 10px;
+    }
+
+    html.mk-pop-b .ol-zoom button {
+        width: 50px;
+    }
+
+    html.mk-pop-b .map-meta__info {
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(20, 38, 53, 0.18);
+    }
+
+    html.mk-pop-b .ol-scale-line,
+    html.mk-pop-b .bottom-attribution {
+        border-color: var(--mk-b-edge);
+        border-radius: 0;
+        background: rgba(238, 243, 247, 0.96) !important;
+    }
+
+    html.mk-pop-b .ol-scale-line-inner {
+        border-color: var(--ink);
+        color: var(--ink);
+    }
 }
 
 /* ========================================================================
@@ -236,6 +596,133 @@ html.mk-pop-c .ctl-layers {
     stroke: #fff;
 }
 
+/* Open = the lamp: yellow chip, navy plates. */
+html.mk-pop-c #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button {
+    background-color: var(--yellow);
+    border-color: var(--yellow);
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.25), 0 6px 16px rgba(20, 38, 53, 0.3);
+}
+
+html.mk-pop-c #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button ~ .ctl-layers-slot .ctl-layers {
+    stroke: var(--ink);
+}
+
+html.mk-pop-c #top-right-container .layer-switcher.shown > .ctl-layers-slot .ctl-ripple__wave {
+    background: rgba(41, 61, 80, 0.25);
+}
+
+@media (hover: hover) {
+    html.mk-pop-c #top-right-container .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers {
+        stroke: var(--yellow);
+    }
+
+    html.mk-pop-c #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button:hover {
+        background-color: #f2d600;
+        border-color: #f2d600;
+    }
+}
+
+/* ---- layer drawer: a piece of the band ---- */
+
+html.mk-pop-c #top-right-container .layer-switcher .panel {
+    min-width: 268px;
+    border: 0;
+    border-top: 3px solid var(--yellow);
+    border-radius: 4px 4px 14px 14px;
+    background: var(--ink);
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(20, 38, 53, 0.2), 0 16px 36px rgba(20, 38, 53, 0.36);
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel li label {
+    color: #fff;
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel li.group {
+    border-bottom-color: rgba(255, 255, 255, 0.16);
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel li.group > label {
+    color: var(--yellow);
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel li.layer {
+    flex-direction: row-reverse;
+    justify-content: space-between;
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel li label {
+    flex: 1;
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel li input[type="checkbox"] {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel li input[type="checkbox"]:checked {
+    background-image: radial-gradient(circle closest-side, var(--ink) calc(100% - 1px), transparent);
+    background-color: var(--yellow);
+    background-position: calc(100% - 3px) 50%;
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel li input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--yellow);
+    outline-offset: 2px;
+}
+
+/* Base map: two squared tabs, the chosen one yellow. */
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group > ul {
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group li label {
+    border-radius: 6px;
+    color: #fff;
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group li:has(input:checked) label {
+    background: var(--yellow);
+    color: var(--ink);
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .panel .layer-switcher-base-group input:focus-visible + label {
+    outline: 2px solid var(--yellow);
+    outline-offset: 1px;
+}
+
+html.mk-pop-c #top-right-container .layer-switcher .layer-count,
+html.mk-pop-c #top-right-container .layer-switcher input:not(:checked) + label .layer-count {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* The marker icons are drawn for a light ground; give them a light disc. */
+html.mk-pop-c #top-right-container .layer-switcher .panel li label img {
+    padding: 2px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+}
+
+/* ---- zoom ---- */
+
+html.mk-pop-c .ol-zoom {
+    border-radius: 10px;
+}
+
+html.mk-pop-c .ol-zoom .ol-zoom-in {
+    border-radius: 9px 9px 0 0;
+}
+
+html.mk-pop-c .ol-zoom .ol-zoom-out {
+    border-radius: 0 0 9px 9px;
+}
+
+html.mk-pop-c #top-right-container .layer-switcher > button,
+html.mk-pop-c #top-right-container .ctl-layers-slot,
+html.mk-pop-c #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button {
+    border-radius: 10px;
+}
+
 html.mk-pop-c .ol-zoom button {
     color: #fff;
 }
@@ -246,110 +733,182 @@ html.mk-pop-c .ol-zoom .ol-zoom-out::before {
 
 html.mk-pop-c .ol-zoom button:focus-visible,
 html.mk-pop-c .ol-zoom button:active {
-    background: #1d2e3e;
+    background: rgba(255, 255, 255, 0.1);
     color: var(--yellow);
 }
 
 @media (hover: hover) {
     html.mk-pop-c .ol-zoom button:hover {
-        background: #1d2e3e;
+        background: rgba(255, 255, 255, 0.1);
         color: var(--yellow);
     }
-
-    html.mk-pop-c .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers {
-        stroke: var(--yellow);
-    }
-
-    html.mk-pop-c .layer-switcher.shown.layer-switcher-activation-mode-click > button:hover {
-        background-color: #f2d600;
-        border-color: #f2d600;
-    }
 }
 
-/* Open = the lamp: yellow chip, navy plates. */
-html.mk-pop-c .layer-switcher.shown.layer-switcher-activation-mode-click > button {
-    background-color: var(--yellow);
-    border-color: var(--yellow);
-    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.25), 0 6px 16px rgba(20, 38, 53, 0.3);
-}
-
-html.mk-pop-c .layer-switcher.shown.layer-switcher-activation-mode-click > button ~ .ctl-layers-slot .ctl-layers {
-    stroke: var(--ink);
-}
-
-html.mk-pop-c .layer-switcher.shown > .ctl-layers-slot .ctl-ripple__wave {
-    background: rgba(41, 61, 80, 0.25);
-}
-
-/* The panel is a piece of the band: navy, white type, the yellow line on top. */
-html.mk-pop-c .layer-switcher .panel {
-    border: 0;
-    border-top: 3px solid var(--yellow);
-    border-radius: 4px 4px 14px 14px;
-    background: var(--ink);
-    color: #fff;
-    box-shadow: 0 2px 4px rgba(20, 38, 53, 0.2), 0 16px 36px rgba(20, 38, 53, 0.36);
-}
-
-html.mk-pop-c .layer-switcher .panel li label {
-    color: #fff;
-}
-
-html.mk-pop-c .layer-switcher .panel li.group {
-    border-bottom-color: rgba(255, 255, 255, 0.16);
-}
-
-html.mk-pop-c .layer-switcher .panel li.group > label,
-html.mk-pop-c .layer-switcher .panel li.group label {
-    color: #fff;
-}
-
-html.mk-pop-c .layer-switcher .panel li.group > label {
-    color: var(--yellow);
-}
-
-html.mk-pop-c .layer-switcher .panel li input {
-    accent-color: var(--yellow);
-}
-
-html.mk-pop-c .layer-switcher .layer-count,
-html.mk-pop-c .layer-switcher input:not(:checked) + label .layer-count {
-    color: rgba(255, 255, 255, 0.7);
-}
-
-/* The marker icons are drawn for a light ground; give them a light disc. */
-html.mk-pop-c .layer-switcher .panel li label img {
-    padding: 2px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.92);
-}
+/* ---- legend: navy, with a count per symbol ---- */
 
 html.mk-pop-c .map-legend__pill {
     border-color: var(--ink);
     background: var(--ink);
     color: #fff;
-    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.25), 0 6px 16px rgba(20, 38, 53, 0.24);
 }
 
-html.mk-pop-c .ol-scale-line,
-html.mk-pop-c .bottom-attribution {
-    background: rgba(41, 61, 80, 0.92) !important;
-    border-color: var(--ink);
-}
-
-html.mk-pop-c .ol-scale-line {
-    border-top: 3px solid var(--yellow);
-}
-
-html.mk-pop-c .ol-scale-line-inner {
-    border-color: #fff;
-    color: #fff;
-}
-
-html.mk-pop-c .bottom-attribution ul {
-    color: rgba(255, 255, 255, 0.82);
-}
-
-html.mk-pop-c .bottom-attribution a {
+html.mk-pop-c .mk-legend-n {
+    display: inline;
+    margin-left: 2px;
     color: var(--yellow);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 960px) {
+    /* The rail: navy down the right edge, the yellow lamp line on its inner
+       side, meeting the status bar's line in the corner. */
+    html.mk-pop-c .mk-rail {
+        display: block;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 0;
+        width: 64px;
+        border-left: 3px solid var(--yellow);
+        background: var(--ink);
+        box-shadow: -6px 0 18px rgba(20, 38, 53, 0.25);
+        pointer-events: none;
+    }
+
+    html.mk-pop-c #top-right-container .layer-switcher,
+    html.mk-pop-c #top-right-container .layer-switcher.shown.ol-control:hover {
+        right: 8px;
+    }
+
+    /* Inside the rail the controls drop their own chips. */
+    html.mk-pop-c #top-right-container .layer-switcher:not(.shown) > button {
+        border-color: transparent;
+        background-color: transparent;
+        box-shadow: none;
+    }
+
+    @media (hover: hover) {
+        html.mk-pop-c #top-right-container .layer-switcher:not(.shown) > button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: transparent;
+        }
+    }
+
+    html.mk-pop-c #top-right-container .layer-switcher > .layer-switcher__watermark {
+        top: -66px;
+        right: 2px;
+        width: 40px;
+        height: 40px;
+        opacity: 1;
+    }
+
+    /* The drawer opens out of the rail, to its left. */
+    html.mk-pop-c #top-right-container .layer-switcher.shown {
+        flex-direction: row-reverse;
+        align-items: flex-start;
+    }
+
+    html.mk-pop-c #top-right-container .layer-switcher .panel {
+        margin: 0 20px 0 0 !important;
+    }
+
+    html.mk-pop-c .map-meta {
+        right: 8px;
+        bottom: 60px;
+    }
+
+    html.mk-pop-c .ol-zoom,
+    html.mk-pop-c .ol-zoom.is-near {
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    /* Scale and sources sit inside the status bar, at its right end. */
+    html.mk-pop-c .map-meta__info {
+        position: fixed;
+        right: 64px;
+        bottom: 0;
+        z-index: 21;
+        flex-direction: row;
+        align-items: center;
+        gap: 14px;
+        height: 40px;
+        padding: 0 16px;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    html.mk-pop-c .ol-scale-line,
+    html.mk-pop-c .bottom-attribution {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent !important;
+    }
+
+    html.mk-pop-c .ol-scale-line-inner {
+        border-color: rgba(255, 255, 255, 0.85);
+        color: #fff;
+        font-size: 11.5px;
+    }
+
+    html.mk-pop-c .bottom-attribution ul {
+        flex-direction: row;
+        gap: 10px;
+        max-width: none;
+        white-space: nowrap;
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 11.5px;
+    }
+
+    html.mk-pop-c .bottom-attribution li + li {
+        margin-top: 0;
+    }
+
+    html.mk-pop-c .bottom-attribution a {
+        color: var(--yellow);
+    }
+
+    /* The status bar: full width up to the rail. The panel floats over its
+       left end, so the entries centre in what stays visible. */
+    html.mk-pop-c .map-legend,
+    html.mk-pop-c body.is-sidebar-collapsed .map-legend {
+        left: 0;
+        right: 64px;
+        bottom: 0;
+        z-index: 20;
+        align-items: center;
+        height: 40px;
+        padding: 0 calc(var(--mk-info-w, 240px) + 16px) 0 calc(var(--panel-left) + var(--panel-width) + 16px);
+        border-top: 3px solid var(--yellow);
+        box-sizing: content-box;
+        background: var(--ink);
+        transition: none;
+    }
+
+    html.mk-pop-c body.is-sidebar-collapsed .map-legend {
+        padding-left: 16px;
+    }
+
+    html.mk-pop-c .map-legend__pill {
+        flex-wrap: nowrap;
+        gap: 22px;
+        padding: 0;
+        border: 0;
+        background: none;
+        box-shadow: none;
+        font-size: 12.5px;
+    }
+
+    /* The bar is one line: short names, the counts carry the detail. */
+    html.mk-pop-c .map-legend__label--long {
+        display: none;
+    }
+
+    html.mk-pop-c .map-legend__label--short {
+        display: inline;
+    }
 }
