@@ -1527,9 +1527,13 @@
           "</div>"
         );
       }
+      // Each kecamatan in its own .vb-group, so its sticky head is held to
+      // its own rows: the next kecamatan pushes it out of the top instead of
+      // stacking over it, where the old head's edge showed above the new one.
       return m.sections
         .map(function (s) {
           return (
+            '<div class="vb-group">' +
             (s.title
               ? '<div class="vb-section" role="heading" aria-level="3">' + esc(s.title) + "<span>" + fmt(s.count) + " titik</span></div>"
               : "") +
@@ -1562,7 +1566,8 @@
                   "</div></div>"
                 );
               })
-              .join("")
+              .join("") +
+            "</div>"
           );
         })
         .join("");
@@ -2022,42 +2027,40 @@
   // A list scrolled under its header gets a soft shadow at the cut, so a
   // partly hidden row reads as passing under the header, not as a gap.
   function syncScrolled() {
-    var list = regions.list;
-    panel.classList.toggle("is-scrolled", list.scrollTop > 2);
-    // More below: B's lower edge blurs (mockup.css, .has-more).
-    panel.classList.toggle("has-more", list.scrollTop + list.clientHeight < list.scrollHeight - 2);
+    panel.classList.toggle("is-scrolled", regions.list.scrollTop > 2);
     syncStuck();
   }
 
-  // B's kecamatan head, stuck at the top with its rows passing under it,
-  // gets a frosted lower edge (.is-stuck) instead of cutting a row in half,
-  // so the half-hidden row reads as still part of that kecamatan. Measured
-  // here because CSS only learns "stuck" from scroll-state container
-  // queries, which only Chromium has. A head that merely sits at the top
-  // with nothing under it yet stays plain, so its first row is never
-  // blurred at rest.
+  // B's kecamatan head in view turns navy (.is-stuck) so the kecamatan the
+  // rows belong to is spotted at a glance. Measured here because CSS only
+  // learns "stuck" from scroll-state container queries, which only Chromium
+  // has. One head at a time: the head stuck at the top with its rows passing
+  // under it, or the next head once it starts pushing that one out, so the
+  // colour moves to the incoming kecamatan as it takes the top instead of
+  // flipping when it lands. Nothing is navy at rest: a head that merely sits
+  // at the top with no rows under it yet stays plain.
   function syncStuck() {
     var heads = regions.list.querySelectorAll(".vb-section");
     if (!heads.length) {
       return;
     }
     var top = regions.list.getBoundingClientRect().top;
+    var current = null;
     Array.prototype.forEach.call(heads, function (head) {
       var box = head.getBoundingClientRect();
       var next = head.nextElementSibling;
-      head.classList.toggle(
-        "is-stuck",
-        box.top <= top + 1 && !!next && next.getBoundingClientRect().top < box.bottom - 1
-      );
+      var stuck = box.top <= top + 1 && !!next && next.getBoundingClientRect().top < box.bottom - 1;
+      var pushing = !!current && box.top > top + 1 && box.top < top + box.height - 1;
+      if (stuck || pushing) {
+        current = head;
+      }
+    });
+    Array.prototype.forEach.call(heads, function (head) {
+      head.classList.toggle("is-stuck", head === current);
     });
   }
 
   regions.list.addEventListener("scroll", syncScrolled, { passive: true });
-  // The phone sheet opening or closing changes how much of the list fits
-  // without a scroll, so "more below" is measured again then too.
-  if (window.ResizeObserver) {
-    new ResizeObserver(syncScrolled).observe(regions.list);
-  }
 
   function measurePeek() {
     if (!isMobile() || !appDoc) {

@@ -1280,39 +1280,44 @@ body[data-variant="c"] .mk-expand {
   background: var(--frost);
   font-size: 13.5px;
   font-weight: 750;
+  /* Slower than the panel's 180ms ease-out, and eased both ways: the head
+     changes colour mid-scroll, under the eye, and a quick flip read as a
+     flash. The border fades with it so no hard edge lands before the fill. */
+  transition:
+    background-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* A stuck kecamatan head with its rows passing under it (syncStuck): the
-   rows blur and fade into its lower edge instead of being cut by it, so a
-   half-hidden row reads as still part of that kecamatan. The head itself
-   stays opaque: a backdrop-filter on it would make it the backdrop root and
-   leave this edge nothing to blur. */
-.vb-section::after {
-  content: "";
-  position: absolute;
-  top: calc(100% + 1px);
-  right: 0;
-  left: 0;
-  height: 18px;
-  background: linear-gradient(rgba(244, 247, 250, 0.92), rgba(244, 247, 250, 0));
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  -webkit-mask-image: linear-gradient(#000 40%, transparent);
-  mask-image: linear-gradient(#000 40%, transparent);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur) var(--ease-out);
+/* A strip of frost between two kecamatan, so the break reads from the
+   whitespace alone, even at a quick scroll. On the group, outside the box
+   its sticky head is held to, so it scrolls away and never thickens a head
+   stuck at the top. */
+.vb-group + .vb-group {
+  border-top: 8px solid var(--frost);
 }
 
-.vb-section.is-stuck::after {
-  opacity: 1;
+/* The head of the kecamatan in view (syncStuck) turns to C's navy: it is the
+   only dark bar in the list, where seven navy heads gave every one the same
+   weight. */
+.vb-section.is-stuck {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
 }
 
+/* The count is read with the name, not after it: ink and as heavy as the
+   name, so "20 titik" lands at the same glance. */
 .vb-section span {
-  color: var(--muted);
-  font-size: 12.5px;
-  font-weight: 600;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 750;
   font-variant-numeric: tabular-nums;
+  transition: color 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vb-section.is-stuck span {
+  color: #fff;
 }
 
 .vb-desa {
@@ -2423,32 +2428,6 @@ body.is-mobile .mk-switcher button {
 
 .vb .mk-scroll:has(.vb-grid) {
   scroll-snap-type: y proximity;
-}
-
-/* B's lower edge, while more of the list lies below (.has-more): the last
-   visible rows blur and fade into the footer instead of being cut by it,
-   the same edge a stuck kecamatan head gives the top. Gone at the end of the
-   list, where nothing more is coming. */
-.vb .mk-scroll::after {
-  content: "";
-  position: sticky;
-  z-index: 2;
-  bottom: 0;
-  display: block;
-  height: 18px;
-  margin-top: -18px;
-  background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.92));
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  -webkit-mask-image: linear-gradient(transparent, #000 60%);
-  mask-image: linear-gradient(transparent, #000 60%);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur) var(--ease-out);
-}
-
-.vb.has-more .mk-scroll::after {
-  opacity: 1;
 }
 
 .vb-grid .vb-cell {
