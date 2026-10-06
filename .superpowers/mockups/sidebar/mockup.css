@@ -1376,9 +1376,11 @@ body[data-variant="c"] .mk-expand {
     border-color var(--dur);
 }
 
+/* Colour only: the background shorthand also wiped the cadangan hatch, so a
+   reserve tile went plain blue under the pointer. */
 .vb-pt:hover .vb-unit:not(.is-active) {
   border-color: var(--blue);
-  background: var(--blue-tint);
+  background-color: var(--blue-tint);
 }
 
 .vb-unit.is-duplikat {
