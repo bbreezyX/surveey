@@ -23,6 +23,7 @@
   var searchInput = document.getElementById("mk-search-input");
   var searchClear = panel.querySelector(".mk-search__clear");
   var expandBtn = document.getElementById("mk-expand");
+  var grabber = panel.querySelector(".mk-grabber");
   var switcher = document.getElementById("mk-switcher");
   var narrowNote = document.getElementById("mk-narrow");
 
@@ -1262,6 +1263,7 @@
       searchInput.value = model.query;
     }
     searchClear.hidden = !searchInput.value;
+    measurePeek();
 
     if (dir) {
       panel.removeAttribute("data-enter");
@@ -1292,6 +1294,10 @@
     if (boot && appDoc && model.screen === "overview" && model.groups.length) {
       var start = boot;
       boot = null;
+      // ?sheet=1 opens the phone sheet, for links and screenshots.
+      if (params.get("sheet")) {
+        setSheetOpen(true);
+      }
       if (start.open) {
         openGroup(start.open, start.filter);
       }
@@ -1408,6 +1414,72 @@
     pushQuery(searchInput.value);
   });
 
+  // ---------- phone sheet ------------------------------------------------
+
+  function isMobile() {
+    return body.classList.contains("is-mobile");
+  }
+
+  function setSheetOpen(next) {
+    if (!appDoc || !isMobile()) {
+      return;
+    }
+    if (appDoc.body.classList.contains("is-panel-open") !== next) {
+      appClick(appDoc.getElementById("sheet-handle"));
+    }
+  }
+
+  // Tap toggles; a drag of 40px or more decides by its direction.
+  var dragStart = null;
+  var dragged = false;
+
+  grabber.addEventListener("pointerdown", function (event) {
+    dragStart = event.clientY;
+    dragged = false;
+    grabber.setPointerCapture(event.pointerId);
+  });
+
+  grabber.addEventListener("pointermove", function (event) {
+    if (dragStart !== null && Math.abs(event.clientY - dragStart) > 6) {
+      dragged = true;
+    }
+  });
+
+  grabber.addEventListener("pointerup", function (event) {
+    if (dragStart === null) {
+      return;
+    }
+    var dy = event.clientY - dragStart;
+    dragStart = null;
+    if (dragged && Math.abs(dy) >= 40) {
+      setSheetOpen(dy < 0);
+    }
+  });
+
+  grabber.addEventListener("click", function () {
+    if (dragged) {
+      dragged = false;
+      return;
+    }
+    setSheetOpen(!body.classList.contains("is-sheet-open"));
+  });
+
+  // Typing needs the list in view.
+  searchInput.addEventListener("focus", function () {
+    setSheetOpen(true);
+  });
+
+  // The peek shows the sheet down to its search field; the site's map
+  // controls sit on the same line, so it learns the height too.
+  function measurePeek() {
+    if (!isMobile() || !appDoc) {
+      return;
+    }
+    var peek = Math.round(regions.search.offsetTop + regions.search.offsetHeight + 14);
+    body.style.setProperty("--peek", peek + "px");
+    appDoc.documentElement.style.setProperty("--sheet-peek", peek + "px");
+  }
+
   searchInput.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && searchInput.value) {
       event.preventDefault();
@@ -1498,14 +1570,24 @@
   var STAGE_W = 1280;
   var noteTimer = null;
 
+  // Under 760px the stage stops scaling: the site inside switches to its own
+  // phone layout and every mockup becomes a bottom sheet over it.
+  var MOBILE_MAX = 760;
+
   function layoutStage() {
     var vw = window.innerWidth;
     var vh = window.innerHeight;
-    var scale = vw < STAGE_MIN ? vw / STAGE_W : 1;
+    var mobile = vw < MOBILE_MAX;
+    var scale = !mobile && vw < STAGE_MIN ? vw / STAGE_W : 1;
     var root = document.documentElement.style;
     root.setProperty("--stage-scale", String(scale));
     root.setProperty("--stage-w", (scale === 1 ? vw : STAGE_W) + "px");
     root.setProperty("--stage-h", (scale === 1 ? vh : vh / scale) + "px");
+    if (mobile !== body.classList.contains("is-mobile")) {
+      body.classList.toggle("is-mobile", mobile);
+      rendered = {};
+      schedule();
+    }
     var scaled = scale < 1;
     if (scaled === narrow) {
       return;
@@ -1556,7 +1638,11 @@
     }
     var style = appDoc.createElement("style");
     style.textContent =
-      "body.mk-hide-sidebar #sidebar, body.mk-hide-sidebar #panel-toggle { visibility: hidden !important; }";
+      // The phone masthead goes too: each mockup's sheet carries the
+      // identity in its peek. Visibility only, so the popup still docks
+      // where the site measures it.
+      "body.mk-hide-sidebar #sidebar, body.mk-hide-sidebar #panel-toggle," +
+      " body.mk-hide-sidebar .masthead { visibility: hidden !important; }";
     appDoc.head.appendChild(style);
     var popupStyle = appDoc.createElement("link");
     popupStyle.rel = "stylesheet";
@@ -1587,6 +1673,12 @@
       // The switcher steps aside while a point card is open: the card is
       // often placed right where the switcher sits.
       body.classList.toggle("has-popup", appDoc.body.classList.contains("is-popup-open"));
+      // On phones the sheet follows the site's own open state, so picking a
+      // point (which closes it) and the map's gestures behave as they do live.
+      var open = appDoc.body.classList.contains("is-panel-open");
+      body.classList.toggle("is-sheet-open", open);
+      grabber.setAttribute("aria-expanded", String(open));
+      grabber.setAttribute("aria-label", open ? "Kembali ke peta" : "Lihat daftar titik");
     }).observe(appDoc.body, { attributes: true, attributeFilter: ["class"] });
 
     appDoc.addEventListener("keydown", onKey);

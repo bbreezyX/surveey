@@ -13,10 +13,10 @@
     <link rel="stylesheet" href="mockup.css" />
   </head>
   <body data-variant="a">
-    <!-- The stage is always laid out at desktop width. In a narrower window
-         (the editor's browser pane, a laptop split screen) mockup.js scales
-         the whole stage down instead of letting the site fall back to its
-         phone layout, so every variant is judged as it will ship. -->
+    <!-- Phones (under 760px) get the mockups as bottom sheets over the site's
+         own phone layout. Between that and 1200px the stage keeps a 1280px
+         desktop layout and mockup.js scales it down to fit, so a split screen
+         or the editor's browser pane still shows the desktop design. -->
     <div id="stage">
       <!-- The real site, untouched. mockup.js hides its sidebar (it keeps its
            box, so the map still pads around a left panel) and drives it: every
@@ -25,6 +25,10 @@
       <iframe id="app" src="/index.html" title="Peta sebaran PUTS" tabindex="-1"></iframe>
 
       <aside id="mk-panel" class="mk-panel" aria-label="Daftar titik PUTS">
+        <!-- Phones only: the sheet's grabber. Tap or drag to open the list. -->
+        <button class="mk-grabber" type="button" aria-expanded="false" aria-label="Lihat daftar titik">
+          <span aria-hidden="true"></span>
+        </button>
         <div class="mk-region mk-top" data-region="top"></div>
         <label class="mk-search" data-region="search">
           <span class="visually-hidden">Cari titik PUTS</span>
