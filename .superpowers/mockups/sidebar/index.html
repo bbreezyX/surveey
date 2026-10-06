@@ -25,9 +25,12 @@
       <iframe id="app" src="/index.html" title="Peta sebaran PUTS" tabindex="-1"></iframe>
 
       <aside id="mk-panel" class="mk-panel" aria-label="Daftar titik PUTS">
-        <!-- Phones only: the sheet's grabber. Tap or drag to open the list. -->
-        <button class="mk-grabber" type="button" aria-expanded="false" aria-label="Lihat daftar titik">
-          <span aria-hidden="true"></span>
+        <!-- Phones only: the sheet's handle, as on the live site — a grabber
+             bar with a caption under it. Tap or drag to open the list. -->
+        <button class="mk-grabber" type="button" aria-expanded="false" aria-label="Lihat daftar titik"
+          title="Ketuk atau geser ke atas untuk lihat daftar">
+          <span class="mk-grabber__bar" aria-hidden="true"></span>
+          <span class="mk-grabber__text" aria-hidden="true">Lihat daftar titik</span>
         </button>
         <div class="mk-region mk-top" data-region="top"></div>
         <label class="mk-search" data-region="search">

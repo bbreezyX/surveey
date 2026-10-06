@@ -1858,35 +1858,175 @@ body.is-mobile .mk-expand {
   display: none !important;
 }
 
+/* The live site's handle: a grabber bar with a plain caption under it, the
+   whole strip the tap and drag target. Same sizes, same slate. */
 body.is-mobile .mk-grabber {
   position: absolute;
   z-index: 3;
   top: 0;
   right: 0;
   left: 0;
-  display: grid;
-  place-items: center;
-  height: 26px;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 7px 12px 8px;
   border: 0;
   background: transparent;
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.mk-grabber span {
+.mk-grabber__bar {
+  display: block;
   width: 40px;
   height: 5px;
   border-radius: 3px;
-  background: #c3cfda;
+  background: #aab6c1;
+  transition: background-color var(--dur) var(--ease-out), width var(--dur) var(--ease-out);
 }
 
-body.is-mobile .vc .mk-grabber span {
-  background: rgba(255, 255, 255, 0.45);
+.mk-grabber__text {
+  color: var(--muted);
+  font: 600 12px/1.2 var(--font);
+  white-space: nowrap;
+}
+
+body.is-mobile .mk-grabber:active .mk-grabber__bar {
+  width: 48px;
+  background: var(--muted-2);
 }
 
 body.is-mobile .mk-grabber:focus-visible {
   outline-offset: -4px;
+}
+
+/* C's handle sits on the navy band. */
+body.is-mobile .vc .mk-grabber__bar {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+body.is-mobile .vc .mk-grabber__text {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+body.is-mobile .vc .mk-grabber:active .mk-grabber__bar {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* Until the reader touches the sheet (or 12s pass) the handle calls out, as
+   live: the bar darkens, stretches and lifts in a beat and a light sweeps
+   across the caption. Then every few seconds it hops twice and rests. */
+body.is-mobile.is-sheet-hinting:not(.is-sheet-open) .mk-grabber__bar {
+  background: var(--muted);
+  animation: mk-grabber-call 1.4s var(--ease-out) infinite;
+}
+
+body.is-mobile.is-sheet-hinting:not(.is-sheet-open) .mk-grabber__text {
+  background: linear-gradient(100deg, var(--ink) 0 38%, #b3bfca 50%, var(--ink) 62% 100%) 0 0 / 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: mk-caption-call 1.4s var(--ease-out) infinite, mk-caption-shine 2.4s linear infinite;
+}
+
+body.is-mobile.is-sheet-hinting:not(.is-sheet-open) .vc .mk-grabber__bar {
+  background: #fff;
+}
+
+body.is-mobile.is-sheet-hinting:not(.is-sheet-open) .vc .mk-grabber__text {
+  background-image: linear-gradient(100deg, #fff 0 38%, var(--yellow) 50%, #fff 62% 100%);
+}
+
+body.is-mobile:not(.is-sheet-open):not(.has-popup):not(.is-sheet-hinting) .mk-grabber:not(:active) > span {
+  animation: mk-handle-hop 6s var(--ease-out) 1s infinite;
+}
+
+/* First visits: the whole sheet lifts a little and settles, then a smaller
+   echo — the gesture, demonstrated. Mirrors the site's is-sheet-nudging. */
+body.is-mobile.is-sheet-nudging:not(.is-sheet-open):not(.has-popup) .mk-panel {
+  animation: mk-sheet-nudge 1.6s var(--ease-out) 1;
+}
+
+@keyframes mk-grabber-call {
+  0%,
+  100% {
+    translate: 0 0;
+    width: 40px;
+  }
+
+  40% {
+    translate: 0 -4px;
+    width: 54px;
+  }
+}
+
+@keyframes mk-caption-call {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  40% {
+    translate: 0 -3px;
+  }
+}
+
+@keyframes mk-caption-shine {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: 0 0;
+  }
+}
+
+@keyframes mk-handle-hop {
+  0%,
+  16%,
+  100% {
+    translate: 0 0;
+  }
+
+  4% {
+    translate: 0 -5px;
+  }
+
+  8% {
+    translate: 0 0;
+  }
+
+  12% {
+    translate: 0 -2px;
+  }
+}
+
+@keyframes mk-sheet-nudge {
+  0%,
+  50%,
+  100% {
+    transform: translateY(calc(100% - var(--peek, 200px)));
+  }
+
+  22% {
+    transform: translateY(calc(100% - var(--peek, 200px) - 28px));
+  }
+
+  68% {
+    transform: translateY(calc(100% - var(--peek, 200px) - 12px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.is-mobile .mk-grabber > span,
+  body.is-mobile .mk-panel {
+    animation: none !important;
+  }
 }
 
 /* Thumbs, not pointers: 16px stops iOS zooming into the field. */
@@ -1897,7 +2037,7 @@ body.is-mobile .mk-search input {
 /* A — the letterhead tightens but keeps its centred lines and its rule. */
 body.is-mobile .va-kop {
   grid-template-columns: 36px minmax(0, 1fr) 36px;
-  padding: 26px 16px 10px;
+  padding: 46px 16px 10px;
 }
 
 body.is-mobile .va-kop img {
@@ -1931,11 +2071,11 @@ body.is-mobile :is(.va-thead, .va-row, .va-total, .va-section, .va-point, .va-fi
 
 /* B — header and grid already fit a phone; they only need the grabber's room. */
 body.is-mobile .vb-head {
-  padding-top: 26px;
+  padding-top: 44px;
 }
 
 body.is-mobile .vb-detail {
-  padding-top: 26px;
+  padding-top: 44px;
 }
 
 body.is-mobile .vb-locator {
@@ -1948,7 +2088,7 @@ body.is-mobile .vb-detail__main {
 
 /* C — a shorter band, so the peek is not all navy. */
 body.is-mobile .vc-band {
-  padding: 26px 12px 36px 16px;
+  padding: 44px 12px 36px 16px;
 }
 
 body.is-mobile .vc-title {

@@ -24,6 +24,7 @@
   var searchClear = panel.querySelector(".mk-search__clear");
   var expandBtn = document.getElementById("mk-expand");
   var grabber = panel.querySelector(".mk-grabber");
+  var grabberText = grabber.querySelector(".mk-grabber__text");
   var switcher = document.getElementById("mk-switcher");
   var narrowNote = document.getElementById("mk-narrow");
 
@@ -1521,6 +1522,10 @@
   var dragged = false;
 
   grabber.addEventListener("pointerdown", function (event) {
+    // A finger on the handle ends the site's call-outs at once, as live.
+    if (appDoc) {
+      appDoc.body.classList.remove("is-sheet-hinting", "is-sheet-nudging");
+    }
     dragStart = event.clientY;
     dragged = false;
     grabber.setPointerCapture(event.pointerId);
@@ -1768,13 +1773,46 @@
       // point (which closes it) and the map's gestures behave as they do live.
       var open = appDoc.body.classList.contains("is-panel-open");
       body.classList.toggle("is-sheet-open", open);
+      var hint = open ? "Kembali ke peta" : "Lihat daftar titik";
       grabber.setAttribute("aria-expanded", String(open));
-      grabber.setAttribute("aria-label", open ? "Kembali ke peta" : "Lihat daftar titik");
+      grabber.setAttribute("aria-label", hint);
+      grabber.title = open
+        ? "Ketuk atau geser ke bawah untuk lihat peta"
+        : "Ketuk atau geser ke atas untuk lihat daftar";
+      if (grabberText.textContent !== hint) {
+        grabberText.textContent = hint;
+      }
+      // The site's own sheet cues (custom.js startSheetHints) run in the
+      // frame on phones; the mockup sheet plays them on its own handle.
+      body.classList.toggle("is-sheet-hinting", appDoc.body.classList.contains("is-sheet-hinting"));
+      body.classList.toggle("is-sheet-nudging", appDoc.body.classList.contains("is-sheet-nudging"));
     }).observe(appDoc.body, { attributes: true, attributeFilter: ["class"] });
 
     appDoc.addEventListener("keydown", onKey);
     setVariant(variant);
+    var early = appDoc.getElementById("mk-early");
+    if (early) {
+      early.remove();
+    }
   }
+
+  // The frame's load event waits for every map tile, which left the site's
+  // own sheet and sidebar on screen for seconds under the mockup. Hide them
+  // as soon as the frame has a document; attach() takes over from there.
+  var earlyTimer = setInterval(function () {
+    var doc = frame.contentDocument;
+    if (!doc || !doc.head || doc.URL === "about:blank") {
+      return;
+    }
+    clearInterval(earlyTimer);
+    if (variant === "asli" || doc.getElementById("mk-early")) {
+      return;
+    }
+    var early = doc.createElement("style");
+    early.id = "mk-early";
+    early.textContent = "#sidebar, #panel-toggle, .masthead { visibility: hidden !important; }";
+    doc.head.appendChild(early);
+  }, 30);
 
   frame.addEventListener("load", attach);
   layoutStage();
