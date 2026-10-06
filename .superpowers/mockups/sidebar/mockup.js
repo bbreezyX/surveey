@@ -562,6 +562,8 @@
   // switching variants needs no rebuild.
 
   var POPUP_CSS = "/.superpowers/mockups/sidebar/popup.css";
+  // The right-hand map controls follow the variant too, on the same class.
+  var CONTROLS_CSS = "/.superpowers/mockups/sidebar/controls.css";
 
   function insetSvg(key, here) {
     var w = 70;
@@ -1648,6 +1650,10 @@
     popupStyle.rel = "stylesheet";
     popupStyle.href = POPUP_CSS + "?v=" + Date.now();
     appDoc.head.appendChild(popupStyle);
+    var controlsStyle = appDoc.createElement("link");
+    controlsStyle.rel = "stylesheet";
+    controlsStyle.href = CONTROLS_CSS + "?v=" + Date.now();
+    appDoc.head.appendChild(controlsStyle);
     hookPopup();
 
     var Observer = appWin.MutationObserver || window.MutationObserver;
