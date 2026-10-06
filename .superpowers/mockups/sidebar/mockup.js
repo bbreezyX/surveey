@@ -1560,10 +1560,42 @@
   // A list scrolled under its header gets a soft shadow at the cut, so a
   // partly hidden row reads as passing under the header, not as a gap.
   function syncScrolled() {
-    panel.classList.toggle("is-scrolled", regions.list.scrollTop > 2);
+    var list = regions.list;
+    panel.classList.toggle("is-scrolled", list.scrollTop > 2);
+    // More below: B's lower edge blurs (mockup.css, .has-more).
+    panel.classList.toggle("has-more", list.scrollTop + list.clientHeight < list.scrollHeight - 2);
+    syncStuck();
+  }
+
+  // B's kecamatan head, stuck at the top with its rows passing under it,
+  // gets a frosted lower edge (.is-stuck) instead of cutting a row in half,
+  // so the half-hidden row reads as still part of that kecamatan. Measured
+  // here because CSS only learns "stuck" from scroll-state container
+  // queries, which only Chromium has. A head that merely sits at the top
+  // with nothing under it yet stays plain, so its first row is never
+  // blurred at rest.
+  function syncStuck() {
+    var heads = regions.list.querySelectorAll(".vb-section");
+    if (!heads.length) {
+      return;
+    }
+    var top = regions.list.getBoundingClientRect().top;
+    Array.prototype.forEach.call(heads, function (head) {
+      var box = head.getBoundingClientRect();
+      var next = head.nextElementSibling;
+      head.classList.toggle(
+        "is-stuck",
+        box.top <= top + 1 && !!next && next.getBoundingClientRect().top < box.bottom - 1
+      );
+    });
   }
 
   regions.list.addEventListener("scroll", syncScrolled, { passive: true });
+  // The phone sheet opening or closing changes how much of the list fits
+  // without a scroll, so "more below" is measured again then too.
+  if (window.ResizeObserver) {
+    new ResizeObserver(syncScrolled).observe(regions.list);
+  }
 
   function measurePeek() {
     if (!isMobile() || !appDoc) {
