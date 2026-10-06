@@ -696,7 +696,11 @@ body.is-sidebar-collapsed #sidebar {
    cannot scroll further) then reads as content passing under the header
    instead of an empty band. Rows of the grid also settle on their top edge
    mid-list. */
+/* The hairline over the grid belongs to the scroller, not the grid: on the
+   grid it sat 1px above the first row's snap point, so proximity snapping
+   scrolled to 1px on load and hid the line until the list was scrolled. */
 .sidebar-scroll:has(.atlas-grid) {
+    border-top: 1px solid var(--divider);
     scroll-snap-type: y proximity;
 }
 
@@ -722,7 +726,6 @@ body.is-sidebar-collapsed #sidebar {
 .atlas-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-top: 1px solid var(--divider);
 }
 
 .atlas-cell {
