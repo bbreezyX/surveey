@@ -1479,6 +1479,7 @@ body[data-variant="c"] .mk-expand {
   border-top: 1px solid var(--divider);
   color: var(--muted);
   font-size: 12.5px;
+  text-align: center;
 }
 
 /* ========================================================================

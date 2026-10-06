@@ -1548,9 +1548,12 @@
                 // not on each tile: "Dusun Teluk Bengkah" five times over, or
                 // a lone unit's landmark wrapped into half a row.
                 var shared = marks.every(function (mk) { return mk && mk === marks[0]; }) ? marks[0] : "";
+                // Hatched reserve tiles stay listed, as in the app, but
+                // Cadangan never counts: Pulau Betung has 15 tiles and 10
+                // titik, so its count agrees with the kecamatan head's.
                 return (
                   '<div class="vb-desa"><div class="vb-desa__head"><span class="vb-desa__title">' + esc(title) +
-                  '</span><span class="vb-desa__count">' + fmt(grp.items.length) + " titik</span></div>" +
+                  '</span><span class="vb-desa__count">' + fmt(grp.items.filter(function (it) { return !it.cadangan; }).length) + " titik</span></div>" +
                   (head.line ? '<p class="vb-desa__note">Rekapan: ' + esc(head.line) + "</p>" : "") +
                   (shared ? '<p class="vb-desa__note">' + esc(shared) + "</p>" : "") +
                   '<div class="vb-units">' +
