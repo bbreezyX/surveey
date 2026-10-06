@@ -654,13 +654,6 @@
     }
   }
 
-  function setTextContent(id, value) {
-    var node = document.getElementById(id);
-    if (node) {
-      node.textContent = value;
-    }
-  }
-
   function setDataControlsDisabled(isDisabled) {
     ["list-search", "fit-map"].forEach(function (id) {
       var node = document.getElementById(id);
@@ -679,7 +672,10 @@
 
   // Counts are unknown until the data lands. "0" is a claim; this is not.
   function setCountsUnknown() {
-    setTextContent("list-summary", "Data titik belum tersedia");
+    var meta = document.getElementById("panel-meta");
+    if (meta) {
+      meta.innerHTML = '<p class="atlas-summary" role="status">Data titik belum tersedia</p>';
+    }
   }
 
   function showDataLoading() {
@@ -692,35 +688,17 @@
       return;
     }
 
-    var wrap = document.createElement("div");
-    wrap.className = "data-loading";
-
-    var note = document.createElement("p");
-    note.className = "data-loading__note";
-    note.textContent = "Memuat titik survey…";
-    wrap.appendChild(note);
-
-    // Skeleton rows mirror the real row shape so nothing jumps when they are
-    // replaced by data.
-    for (var i = 0; i < 6; i++) {
-      var row = document.createElement("div");
-      row.className = "skeleton-row";
-      var code = document.createElement("span");
-      code.className = "skeleton skeleton--code";
-      var copy = document.createElement("span");
-      copy.className = "skeleton-row__copy";
-      var label = document.createElement("span");
-      label.className = "skeleton skeleton--label";
-      var sub = document.createElement("span");
-      sub.className = "skeleton skeleton--sub";
-      copy.appendChild(label);
-      copy.appendChild(sub);
-      row.appendChild(code);
-      row.appendChild(copy);
-      wrap.appendChild(row);
+    // Skeleton bars of uneven width, a title over a subline, so the panel
+    // reads as a list settling in rather than one flashing block.
+    var html = '<div class="panel-loading" role="status" aria-label="Memuat data titik">' +
+      '<p class="panel-loading__note">Memuat titik survey…</p>';
+    for (var i = 0; i < 7; i++) {
+      html +=
+        '<div class="panel-skel-row"><span class="panel-skel" style="width:' + (48 + ((i * 17) % 38)) +
+        '%"></span><span class="panel-skel panel-skel--sub" style="width:' + (28 + ((i * 23) % 30)) +
+        '%"></span></div>';
     }
-
-    listContainer.replaceChildren(wrap);
+    listContainer.innerHTML = html + "</div>";
   }
 
   function showDataLoadError(message, onRetry) {
@@ -737,20 +715,20 @@
     var errorNode = document.createElement("div");
     var title = document.createElement("p");
     var copy = document.createElement("p");
+    var actions = document.createElement("div");
     var action = document.createElement("button");
 
-    errorNode.className = "data-error";
+    errorNode.className = "panel-empty";
     errorNode.setAttribute("role", "alert");
 
-    title.className = "data-error__title";
+    title.className = "panel-empty__title";
     title.textContent = "Data titik belum bisa dimuat";
 
-    copy.className = "data-error__copy";
     copy.textContent = message ||
       "Periksa koneksi dan file data/points.geojson, lalu coba lagi.";
 
+    actions.className = "panel-empty__actions";
     action.type = "button";
-    action.className = "secondary-action data-error__action";
     action.textContent = onRetry ? "Coba lagi" : "Muat ulang halaman";
     action.addEventListener("click", function () {
       if (onRetry) {
@@ -760,9 +738,10 @@
       }
     });
 
+    actions.appendChild(action);
     errorNode.appendChild(title);
     errorNode.appendChild(copy);
-    errorNode.appendChild(action);
+    errorNode.appendChild(actions);
     listContainer.replaceChildren(errorNode);
   }
 
@@ -1350,10 +1329,17 @@
     var allFeatures = loadedFeatures;
     var listContainer = document.getElementById("list-data");
     var searchInput = document.getElementById("list-search");
-    var fitButton = document.getElementById("fit-map");
     var panelToggle = document.getElementById("panel-toggle");
     var panelClose = document.getElementById("sidebar-close");
-    var listSummary = document.getElementById("list-summary");
+    var panelEl = document.getElementById("sidebar");
+    var panelTop = document.getElementById("panel-top");
+    var panelMeta = document.getElementById("panel-meta");
+    var panelSearch = document.querySelector(".panel-search");
+    var listScroller = document.querySelector(".sidebar-scroll");
+    // The header is rewritten on every screen change; the lambang keeps the
+    // cache-busted src index.html gave it.
+    var lambangImg = panelTop ? panelTop.querySelector("img") : null;
+    var lambangSrc = lambangImg ? lambangImg.getAttribute("src") : "./assets/lambang-jambi.png";
     var popup = document.getElementById("popup");
     var popupContent = document.getElementById("popup-content");
 
@@ -1738,96 +1724,6 @@
       return groupMode === "kabupaten" ? "kabupaten" : "pengusul";
     }
 
-    // Every row on a pengusul's screen carries the kabupaten chip, even when
-    // the whole group sits in one kabupaten and the header already says so.
-    // An earlier version showed it only for groups spanning several
-    // kabupaten; users read the rows without the chip as missing data. In
-    // kabupaten mode the group name already is the kabupaten, so no chip.
-    function showsKabupatenPerRow() {
-      return groupMode !== "kabupaten";
-    }
-
-    // The kabupaten always wears the same chip wherever it appears, so the eye
-    // learns one shape and finds it instantly among the desa/kecamatan text.
-    // Chip-length names. "Tanjab" is the abbreviation the province itself
-    // uses for Tanjung Jabung, so it reads as the name, not as a truncation.
-    // Anything not listed is already short enough to print in full.
-    var KABUPATEN_SHORT = [
-      [/\bTanjung Jabung\b/i, "Tanjab"]
-    ];
-
-    function shortKabupaten(name) {
-      var short = String(name || "");
-      KABUPATEN_SHORT.forEach(function (rule) {
-        short = short.replace(rule[0], rule[1]);
-      });
-      return short;
-    }
-
-    function buildKabupatenTag(name, count) {
-      var tag = document.createElement("span");
-      tag.className = "kab-tag";
-      var short = shortKabupaten(name);
-      var label = document.createElement("span");
-      label.className = "kab-tag__name";
-      label.textContent = short;
-      tag.appendChild(label);
-      if (short !== name) {
-        // The full name stays one hover away, and is what gets read aloud.
-        tag.title = name;
-        label.setAttribute("aria-label", name);
-      }
-      if (count !== undefined) {
-        var num = document.createElement("span");
-        num.className = "kab-tag__count";
-        num.textContent = formatCount(count);
-        tag.appendChild(num);
-      }
-      return tag;
-    }
-
-    // One chip per kabupaten, biggest share first; the count only shows when
-    // the group actually spans more than one kabupaten.
-    // Jalur badge. Every pengusul sits in exactly one section of the sheet,
-    // so the badge belongs to the pengusul row, not to each point. Neutral
-    // grey on purpose: the blue capsule already means "kabupaten".
-    function buildJalurTag(jalur) {
-      var tag = document.createElement("span");
-      tag.className = "jalur-tag";
-      tag.textContent = jalur;
-      tag.title = "Jalur rekapan: " + jalur;
-      return tag;
-    }
-
-    // A group's jalur is its members' jalur; pick the first that carries one.
-    function groupJalur(group) {
-      var all = group.items.concat(group.cadangan);
-      for (var i = 0; i < all.length; i++) {
-        if (all[i].jalur) {
-          return all[i].jalur;
-        }
-      }
-      return "";
-    }
-
-    function buildGroupKabupatenTags(group) {
-      var counts = {};
-      group.items.forEach(function (item) {
-        var key = item.kabupaten || "Lainnya";
-        counts[key] = (counts[key] || 0) + 1;
-      });
-      var names = Object.keys(counts).sort(function (left, right) {
-        return counts[right] - counts[left] || collator.compare(left, right);
-      });
-      var fragment = document.createDocumentFragment();
-      names.forEach(function (name) {
-        fragment.appendChild(
-          buildKabupatenTag(name, names.length > 1 ? counts[name] : undefined)
-        );
-      });
-      return fragment;
-    }
-
     function formatCount(value) {
       return value.toLocaleString("id-ID");
     }
@@ -1870,55 +1766,6 @@
       }
     }
 
-    // One line that changes with the situation, instead of three numbers that
-    // are usually identical and therefore unreadable.
-    function renderSummary(matchCount, hasQuery) {
-      if (!listSummary) {
-        return;
-      }
-      var text;
-      if (activeGroup && statusFilter) {
-        var group = findGroup(activeGroup);
-        var label = STATUS_LABEL[statusFilter].count;
-        var flagged = group ? countGroupFlag(group, statusFilter) : matchCount;
-        text = hasQuery
-          ? formatCount(matchCount) + " dari " + formatCount(flagged) + " " +
-            label
-          : formatCount(matchCount) + " " + label + " dari " +
-            formatCount(group ? group.items.length : 0) + " titik";
-      } else if (activeGroup) {
-        text = hasQuery
-          ? formatCount(matchCount) + " dari " + formatCount(activeGroupSize()) +
-            " titik · peta difilter ke grup ini"
-          : formatCount(matchCount) + " titik · peta difilter ke grup ini";
-      } else if (hasQuery) {
-        text = matchCount
-          ? formatCount(matchCount) + " titik cocok di " +
-            formatCount(countMatchedGroups()) + " " + groupNoun()
-          : "Tidak ada titik yang cocok";
-      } else {
-        text = formatCount(items.length) + " titik · " +
-          formatCount(groupedItems.length) + " " + groupNoun();
-      }
-      listSummary.textContent = "";
-      var total = document.createElement("span");
-      var detail = document.createElement("span");
-      total.className = "list-summary__total";
-      detail.className = "list-summary__detail";
-      if (!activeGroup && !hasQuery) {
-        total.textContent = formatCount(items.length) + " titik";
-        detail.textContent = formatCount(groupedItems.length) + " " + groupNoun();
-      } else {
-        // Keep the complete filter context together when searching or in a group.
-        detail.textContent = text;
-      }
-      if (total.textContent) {
-        listSummary.appendChild(total);
-        listSummary.appendChild(document.createTextNode(" "));
-      }
-      listSummary.appendChild(detail);
-    }
-
     function activeGroupSize() {
       for (var i = 0; i < groupedItems.length; i++) {
         if (groupedItems[i].name === activeGroup) {
@@ -1957,9 +1804,9 @@
     // screen change; search narrows further inside it.
     var statusFilter = null;
 
-    // Only the statuses that still need a decision get a chip. Cadangan rows
-    // are marked in place (hatch + capsule) rather than filtered for.
-    var STATUS_FILTERS = ["belum", "duplikat"];
+    // Only the statuses that still need a decision get a pill. Cadangan
+    // tiles are marked in place (the hatch) rather than filtered for.
+    var STATUS_FILTERS = ["duplikat", "belum"];
 
     function itemMatchesFilter(item) {
       return !statusFilter || Boolean(item[statusFilter]);
@@ -1988,7 +1835,7 @@
     }
 
     function updateHighlight(itemId) {
-      var previous = listContainer.querySelector(".item.is-active");
+      var previous = listContainer.querySelector(".atlas-unit.is-active");
       if (previous) {
         previous.classList.remove("is-active");
       }
@@ -1997,9 +1844,9 @@
         return;
       }
 
-      var next = listContainer.querySelector('[data-item-id="' + itemId + '"]');
+      var next = listContainer.querySelector('.atlas-pt[data-item-id="' + itemId + '"]');
       if (next) {
-        next.classList.add("is-active");
+        next.querySelector(".atlas-unit").classList.add("is-active");
         scrollRowIntoPane(next);
       }
     }
@@ -2032,6 +1879,7 @@
       var coord = coordinate || defaultCoord;
 
       popupContent.innerHTML = buildPopupHtml(item);
+      addPopupInset(item);
       attachHatchControl(item);
       popup.style.display = "block";
 
@@ -2445,33 +2293,659 @@
       animateMapFocus(view, featureCenter, targetZoom, popupHeight);
     }
 
+    // ---- The atlas panel ------------------------------------------------------
+    // The list reads as an atlas index (see the Data panel block in custom.css).
+    // Screen 1 is a grid with every kabupaten drawn as its own outline and its
+    // poles dotted in; screen 2 is one kabupaten: its kecamatan as sticky
+    // heads, the desa under them, and each unit as a numbered tile beside its
+    // coordinate. The header (renderTop), the counts line (renderMeta) and the
+    // list are written on the same pass, so the three never disagree. Every
+    // control in them carries a data-action read by one click handler on the
+    // panel, because each render replaces the nodes.
+
+    var PANEL_ICONS = {
+      back: '<path d="m14.5 6-6 6 6 6"/>',
+      frame:
+        '<path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/>' +
+        '<circle cx="12" cy="12" r="2.2"/>',
+      collapse: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15M16 10l-2 2 2 2"/>'
+    };
+
+    function panelIcon(name, size) {
+      return (
+        '<svg class="panel-icon" viewBox="0 0 24 24" width="' + size + '" height="' + size +
+        '" aria-hidden="true" focusable="false">' + PANEL_ICONS[name] + "</svg>"
+      );
+    }
+
+    function collapseButtonHtml() {
+      return (
+        '<button class="panel-collapse" type="button" data-action="collapse" aria-label="Sembunyikan daftar" title="Sembunyikan daftar">' +
+        panelIcon("collapse", 20) + "</button>"
+      );
+    }
+
+    // "KAB. MERANGIN", "Kab. Merangin" and "Merangin" are one key: the boundary
+    // layer's name and the kabupaten resolved onto each point differ in case
+    // and prefix.
+    function normKey(name) {
+      return String(name || "")
+        .toUpperCase()
+        .replace(/^KAB(UPATEN)?\.?\s+/, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    // Under a "kabupaten/kota" heading the prefix is noise; "Kota" stays
+    // because it tells the city from the kabupaten around it.
+    function shortName(name) {
+      return String(name || "").replace(/^Kab\.\s+/i, "");
+    }
+
+    function itemCenter(item) {
+      var e = item.feature.getGeometry().getExtent();
+      return [(e[0] + e[2]) / 2, (e[1] + e[3]) / 2];
+    }
+
+    var itemsById = {};
+    mappedItems.forEach(function (item) {
+      itemsById[item.id] = item;
+    });
+
+    // Counted units only: a kabupaten's figures, like every count in the panel,
+    // leave Cadangan out.
+    function groupStats(group) {
+      var stats = { count: group.items.length, kecamatan: 0, duplikat: 0, belum: 0 };
+      var kecamatan = {};
+      group.items.forEach(function (item) {
+        if (item.display.kecamatan) {
+          kecamatan[item.display.kecamatan] = true;
+        }
+        if (item.duplikat) {
+          stats.duplikat += 1;
+        }
+        if (item.belum) {
+          stats.belum += 1;
+        }
+      });
+      stats.kecamatan = Object.keys(kecamatan).length;
+      return stats;
+    }
+
+    // ---- Geography for the atlas ----------------------------------------------
+    // Outlines come from the boundary layer, dots from the counted units, and
+    // both are drawn small: a vertex closer than a fraction of a pixel to the
+    // last one kept adds nothing at thumbnail size (ringPath). Paths are cached
+    // per size; dots are not, so a unit flagged on the local editor moves
+    // between dot kinds on the next render.
+    var geo = (function () {
+      var polys = {};
+      var extent = null;
+      kabupatenPolygons.forEach(function (f) {
+        var g = f.getGeometry();
+        if (!g) {
+          return;
+        }
+        polys[normKey(f.get("KABUPATEN_") || f.get("NAMOBJ"))] = f;
+        var e = g.getExtent();
+        extent = extent
+          ? [Math.min(extent[0], e[0]), Math.min(extent[1], e[1]), Math.max(extent[2], e[2]), Math.max(extent[3], e[3])]
+          : e.slice();
+      });
+      return extent ? { polys: polys, extent: extent, cache: {} } : null;
+    })();
+
+    function ringsOf(geometry) {
+      var type = geometry.getType();
+      if (type === "Polygon") {
+        return geometry.getCoordinates();
+      }
+      if (type === "MultiPolygon") {
+        return geometry.getCoordinates().reduce(function (all, poly) {
+          return all.concat(poly);
+        }, []);
+      }
+      return [];
+    }
+
+    function fitTransform(extent, w, h, pad, alignStart) {
+      var ew = extent[2] - extent[0] || 1;
+      var eh = extent[3] - extent[1] || 1;
+      var s = Math.min((w - pad * 2) / ew, (h - pad * 2) / eh);
+      var ox = alignStart ? pad : (w - ew * s) / 2;
+      var oy = (h - eh * s) / 2;
+      return function (c) {
+        return [(c[0] - extent[0]) * s + ox, (extent[3] - c[1]) * s + oy];
+      };
+    }
+
+    function ringPath(rings, tx, step) {
+      var d = "";
+      rings.forEach(function (ring) {
+        var seg = "";
+        var last = null;
+        var n = 0;
+        for (var i = 0; i < ring.length; i++) {
+          var p = tx(ring[i]);
+          if (last && Math.abs(p[0] - last[0]) + Math.abs(p[1] - last[1]) < step) {
+            continue;
+          }
+          seg += (n ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1);
+          last = p;
+          n += 1;
+        }
+        if (n > 2) {
+          d += seg + "Z";
+        }
+      });
+      return d;
+    }
+
+    // Belum and duplikat drawn last, so an estimate or a pin to be checked
+    // stays seen among its neighbours.
+    var DOT_ORDER = { sk: 0, belum: 1, duplikat: 2 };
+
+    function dotsByKabupaten() {
+      var out = {};
+      items.forEach(function (item) {
+        var key = normKey(item.kabupaten);
+        (out[key] = out[key] || []).push(item);
+      });
+      Object.keys(out).forEach(function (key) {
+        out[key].sort(function (a, b) {
+          return DOT_ORDER[itemKind(a)] - DOT_ORDER[itemKind(b)];
+        });
+      });
+      return out;
+    }
+
+    function shapeSvg(key, dots, w, h, r) {
+      if (!geo || !geo.polys[key]) {
+        return "";
+      }
+      var geometry = geo.polys[key].getGeometry();
+      // Left-aligned, so the outline starts on the same edge as the name.
+      var tx = fitTransform(geometry.getExtent(), w, h, r + 1.5, true);
+      var ck = "shape|" + key + "|" + w + "x" + h;
+      var d = geo.cache[ck] || (geo.cache[ck] = ringPath(ringsOf(geometry), tx, 0.6));
+      var circles = (dots || [])
+        .map(function (item) {
+          var q = tx(itemCenter(item));
+          return (
+            '<circle class="atlas-dot atlas-dot--' + itemKind(item) + '" cx="' + q[0].toFixed(1) +
+            '" cy="' + q[1].toFixed(1) + '" r="' + r + '"/>'
+          );
+        })
+        .join("");
+      return (
+        '<svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="xMinYMid meet" aria-hidden="true" focusable="false">' +
+        '<path class="atlas-shape" fill-rule="evenodd" d="' + d + '"/>' + circles + "</svg>"
+      );
+    }
+
+    function locatorSvg(activeKey, w, h) {
+      if (!geo) {
+        return "";
+      }
+      var tx = fitTransform(geo.extent, w, h, 2);
+      var keys = Object.keys(geo.polys).sort(function (a, b) {
+        return (a === activeKey) - (b === activeKey);
+      });
+      return (
+        '<svg viewBox="0 0 ' + w + " " + h + '" aria-hidden="true" focusable="false">' +
+        keys
+          .map(function (k) {
+            var ck = "loc|" + k + "|" + w + "x" + h;
+            var d = geo.cache[ck] || (geo.cache[ck] = ringPath(ringsOf(geo.polys[k].getGeometry()), tx, 0.5));
+            return '<path class="atlas-loc' + (k === activeKey ? " is-on" : "") + '" fill-rule="evenodd" d="' + d + '"/>';
+          })
+          .join("") +
+        "</svg>"
+      );
+    }
+
+    // The point card's locator: where in the kabupaten this pole stands, the
+    // kabupaten's other poles faint around it.
+    function insetSvg(key, here) {
+      var w = 70;
+      var h = 52;
+      var geometry = geo.polys[key].getGeometry();
+      var tx = fitTransform(geometry.getExtent(), w, h, 4);
+      var ck = "inset|" + key;
+      var d = geo.cache[ck] || (geo.cache[ck] = ringPath(ringsOf(geometry), tx, 0.5));
+      var dots = (dotsByKabupaten()[key] || [])
+        .map(function (item) {
+          var q = tx(itemCenter(item));
+          return '<circle class="popup-inset__dot" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="1.3"/>';
+        })
+        .join("");
+      var at = tx(here);
+      var x = at[0].toFixed(1);
+      var y = at[1].toFixed(1);
+      return (
+        '<svg viewBox="0 0 ' + w + " " + h + '" aria-hidden="true" focusable="false">' +
+        '<path class="popup-inset__shape" fill-rule="evenodd" d="' + d + '"/>' + dots +
+        '<circle class="popup-inset__here-ring" cx="' + x + '" cy="' + y + '" r="6"/>' +
+        '<circle class="popup-inset__here" cx="' + x + '" cy="' + y + '" r="3.2"/></svg>'
+      );
+    }
+
+    // Built inside openPopupForItem's write, before the card is measured, so
+    // the map frames the card at its real height.
+    function addPopupInset(item) {
+      var key = normKey(item.kabupaten);
+      if (!geo || !geo.polys[key] || !popupContent) {
+        return;
+      }
+      var body = popupContent.querySelector(".feature-popup__body");
+      var media = popupContent.querySelector(".feature-popup__media");
+      if (!body) {
+        return;
+      }
+      var inset = document.createElement("span");
+      // No photo (lokasi belum ditetapkan): the inset leads the body instead.
+      inset.className = "popup-inset" + (media ? "" : " popup-inset--block");
+      inset.setAttribute("aria-hidden", "true");
+      inset.innerHTML = insetSvg(key, itemCenter(item));
+      if (media) {
+        media.appendChild(inset);
+      } else {
+        body.insertBefore(inset, body.firstChild);
+      }
+    }
+
+    // ---- Desa groups and landmarks --------------------------------------------
+    // One group per place name and desa. The per-point note is not part of the
+    // key: keying on it split a place in two whenever only some of its points
+    // had one (RT 04 Tanjung Raden). Each unit shows it above its coordinate
+    // instead (unitInfo). The desa from Nomor stays in the key because the
+    // 3-digit code only runs within one desa: "Distrik Center HKBP Jambi"
+    // covers Pelempang 001-003 and Tempino 001-002, and one group read 001 002
+    // 003 001 002. Only a place name that spans two desa gets the desa named on
+    // its groups (groupHead; three places as of Oct 2026, the others being
+    // Kec. Tanah Tumbuh and Muara Siau). Naming the desa wherever the place
+    // name didn't contain it flagged 16 groups, mostly spelling drift ("Sei.
+    // Kayu Aro" against SUNGAI KAYU ARO) that only added noise.
+    function desaGroups(rows) {
+      var desaPerPlace = {};
+      rows.forEach(function (item) {
+        var place = plain(item.display.primary);
+        (desaPerPlace[place] = desaPerPlace[place] || {})[desaOf(item.nomor)] = true;
+      });
+      var out = [];
+      var byKey = {};
+      rows.forEach(function (item) {
+        var place = plain(item.display.primary);
+        var desa = desaOf(item.nomor);
+        var key = place + "|" + desa.toLowerCase();
+        var group = byKey[key];
+        if (!group) {
+          var split = Object.keys(desaPerPlace[place]).length > 1;
+          group = byKey[key] = { label: item.display.primary, desa: split ? desa : "", items: [] };
+          out.push(group);
+        }
+        group.items.push(item);
+      });
+      return out;
+    }
+
+    // "MUARO JAMBI-MESTONG-TEMPINO-001": back 1 -> "Tempino", back 2 -> "Mestong".
+    function nomorPart(nomor, back) {
+      var parts = String(nomor || "").split("-");
+      if (parts.length < 3 || !/^\d+$/.test(parts[parts.length - 1].trim())) {
+        return "";
+      }
+      return parts[parts.length - 1 - back]
+        .trim()
+        .toLowerCase()
+        .replace(/(^|\s)\S/g, function (c) { return c.toUpperCase(); });
+    }
+
+    function desaOf(nomor) {
+      return nomorPart(nomor, 1);
+    }
+
+    // "RT 02 Desa Embacang Gedang, Kec. Muara Tabir" under a "Kec. Muara Tabir"
+    // head: the head already says where, so the group drops the repeat. The
+    // full wording stays searchable and in the point card.
+    function underSection(label, section) {
+      var kec = String(section || "").trim();
+      if (!/^Kec\.\s/i.test(kec)) {
+        return label;
+      }
+      var tail = ", " + kec;
+      return label.length > tail.length && label.slice(-tail.length).toLowerCase() === tail.toLowerCase()
+        ? label.slice(0, -tail.length)
+        : label;
+    }
+
+    // A sheet line that names nothing below the kecamatan only repeats the
+    // section head: "Kec. Tanah Tumbuh" (seven Bungo units in two desa) read
+    // "Kec. Tanah Tumbuh · Lubuk Niur" under a "Kec. Tanah Tumbuh" head, and
+    // "Muara Siau, Kec. Muara Siau" read "Muara Siau · Muara Siau". Such a
+    // group is headed by its desa instead, Desa or Kel. as its Alamat says;
+    // the sheet line stays the point card's title. Three groups as of Oct
+    // 2026. Nor does a split place repeat a desa its line already names
+    // ("…, Desa Pelempang · Pelempang").
+    //
+    // The HKBP line also covers two units whose photo stamps put them in
+    // Tempino, next to Pelempang, and "Distrik Center HKBP Jambi, Desa
+    // Pelempang · Tempino" named two desa at once. That group is headed by
+    // where its units are, with the sheet line under it. Review (Oct 2026)
+    // chose this for the HKBP line alone; four other lines that name a
+    // different desa than their units keep the heading (Desa Muara Siau over
+    // Sungai Ulas, Desa Tenam over Simpang Terusan, Kel. Rengas Condong over
+    // Teratai, Kel. Pematang Sulur over Telanaipura).
+    var LINE_ELSEWHERE = ["Distrik Center HKBP Jambi, Desa Pelempang, Kec. Mestong"];
+
+    function desaTitle(item) {
+      return (/^\s*kel(\.|urahan)/i.test(item.alamat) ? "Kel. " : "Desa ") + desaOf(item.nomor);
+    }
+
+    // { title, line }: line is the sheet line to show under a title that
+    // isn't it.
+    function groupHead(grp, section) {
+      var label = underSection(grp.label, section);
+      var first = grp.items[0];
+      var area = function (text) { return words(text).join(" ").replace(/^kec(amatan)? /, ""); };
+      if (area(label) === area(section)) {
+        return { title: desaTitle(first), line: "" };
+      }
+      var named = (" " + words(label).join(" ") + " ").indexOf(" " + words(desaOf(first.nomor)).join(" ") + " ") !== -1;
+      if (!named && LINE_ELSEWHERE.indexOf(grp.label) !== -1) {
+        return { title: desaTitle(first), line: label };
+      }
+      return { title: label + (grp.desa && !named ? " · " + grp.desa : ""), line: "" };
+    }
+
+    // A tile carries the unit's coordinate, lat over lon, and above it the
+    // survey landmark ("Depan Musholla RT 01", "Belakang SMP 7") when the unit
+    // has one of its own: 138 of the 500 units carry a Keterangan that says
+    // more than their desa. A landmark the whole group shares sits once under
+    // the group's heading instead, and one that only restates the heading is
+    // not shown (restates). The landmark is read off the row's second line
+    // (display.secondary), so the cleaning of GPS-app logs and survey
+    // bookkeeping applies unchanged, and then tidied for the list
+    // (tidyLandmark).
+    //
+    // Tried and turned down in review (Oct 2026): the distance to the nearest
+    // unit ("30 m dari 005") in place of the coordinate. The coordinate stays.
+    // Measured and left out: a compass side within the group ("sisi utara")
+    // put 3 of Durian Luncuk's 5 units on the same side; the road name in the
+    // photo stamp is there in about 1 photo in 6 and OCRs badly; the photo
+    // shows people's faces and is already on the point card. The map says the
+    // rest: a hovered tile lights its pin (setUnitHover), and close in every
+    // pin carries its number (pin labels).
+    //
+    // The landmark is whatever is left of the second line once the desa, the
+    // kecamatan and the place name are taken out: "Kemantan Darat · Air
+    // Hangat Timur" keeps "Kemantan Darat".
+    function landmarkOf(item) {
+      var place = plain(item.display.primary);
+      var drop = [plain(desaOf(item.nomor)), plain(nomorPart(item.nomor, 2)), plain(item.kabupaten)];
+      var parts = String(item.display.secondary || "").split(" · ");
+      for (var i = 0; i < parts.length; i++) {
+        var p = plain(parts[i]);
+        if (p && drop.indexOf(p) === -1 && place.indexOf(p) === -1) {
+          return parts[i].trim();
+        }
+      }
+      return "";
+    }
+
+    // The surveyors typed these by hand, and the 129 shown in Oct 2026 read
+    // untidy side by side: "RT.12", "rt 12" and "Rt.01" in one desa,
+    // "Simpg.lapangan" and "H.Muzar" without a space, a GPS app's plus code
+    // "(Hv7c+2vm)", and one in capitals ("JL. PUSKESMAS PAMENANG PASAR ...").
+    // Display only: the point card keeps the cleaned Keterangan as it is.
+    var ACRONYM = /\b(Rt|Rw|Pnpm|Sd|Sdn|Smp|Smpn|Sma|Smk|Tk|Kud)\b/g;
+
+    function tidyLandmark(text) {
+      var t = String(text || "").replace(/\s*\([a-z0-9]{4}\+[a-z0-9]{2,3}\)/gi, "");
+      if (!/[a-z]/.test(t) && /[A-Z]{4}/.test(t)) {
+        t = t
+          .toLowerCase()
+          .replace(/(^|[\s(,.\/-])([a-z])/g, function (m, before, c) { return before + c.toUpperCase(); })
+          .replace(ACRONYM, function (a) { return a.toUpperCase(); });
+      }
+      return t
+        .replace(/\b(rt|rw)\s*\.?\s*(\d+)/gi, function (m, key, n) { return key.toUpperCase() + " " + n; })
+        .replace(/\b([A-Za-z]{1,6}\.)(?=[A-Za-z])/g, "$1 ")
+        .replace(/\bNo\.(?=\d)/g, "No. ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    }
+
+    // Words of a phrase, numbers without leading zeros: "RT 001" and "RT 01"
+    // are one RT.
+    function words(text) {
+      return String(text || "")
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean)
+        .map(function (w) { return /^\d+$/.test(w) ? String(Number(w)) : w; });
+    }
+
+    // "RT 01 Bakung Jaya 1" under "RT 001 Bakung Jaya", "RT 21 Rawasari" under
+    // "RT 21, Kel. Rawasari", "HKBP Desa Pelempang 4" under "Distrik Center
+    // HKBP Jambi, Desa Pelempang": every word is already in the heading but
+    // the surveyor's running number, so the landmark says nothing new (29
+    // rows). A number after RT, RW or No. is part of an address, not a running
+    // number.
+    function restates(landmark, heading) {
+      var w = words(landmark);
+      if (w.length > 1 && /^\d+$/.test(w[w.length - 1]) && ["rt", "rw", "no"].indexOf(w[w.length - 2]) === -1) {
+        w.pop();
+      }
+      var seen = words(heading);
+      return w.every(function (x) { return seen.indexOf(x) !== -1; });
+    }
+
+    // The landmark a tile shows: tidied, and none when it only restates the
+    // heading above it, the kabupaten included ("... Kota Jambi 1").
+    function landmarkFor(item, heading) {
+      var landmark = tidyLandmark(landmarkOf(item));
+      return landmark && !restates(landmark, heading + " " + item.kabupaten) ? landmark : "";
+    }
+
+    function plain(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/\b(desa|kel\.|kelurahan)\s+/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function unitFlags(item) {
+      var out = [];
+      if (item.cadangan) {
+        out.push(STATUS_LABEL.cadangan.tag);
+      }
+      if (item.duplikat) {
+        out.push(STATUS_LABEL.duplikat.tag);
+      }
+      if (item.belum) {
+        out.push(STATUS_LABEL.belum.tag);
+      }
+      return out;
+    }
+
+    function unitClass(item) {
+      return (
+        (item.cadangan ? " is-cadangan" : "") +
+        (item.duplikat ? " is-duplikat" : "") +
+        (item.belum ? " is-belum" : "") +
+        (item.id === activeItemId ? " is-active" : "")
+      );
+    }
+
+    // The tile's coordinate, lat over lon. An unplaced unit shows none: its
+    // digits are an estimate (koordinatSingkat); the card still has them.
+    function unitCoord(item) {
+      var c = String(item.koordinatSingkat || "").split(/,\s*/);
+      if (c.length !== 2 || !c[0]) {
+        return '<span class="atlas-pt__coord atlas-pt__coord--none">Belum ada koordinat</span>';
+      }
+      return '<span class="atlas-pt__coord">' + escapeHtml(c[0]) + "<br>" + escapeHtml(c[1]) + "</span>";
+    }
+
+    function unitInfo(item, landmark) {
+      if (!landmark) {
+        return unitCoord(item);
+      }
+      return (
+        '<span class="atlas-pt__info"><span class="atlas-pt__note">' + escapeHtml(landmark) + "</span>" +
+        unitCoord(item) + "</span>"
+      );
+    }
+
+    function unitHtml(item, landmark) {
+      var flags = unitFlags(item);
+      var aria = ["Titik " + item.display.code]
+        .concat(flags, [item.display.primary, item.display.secondary])
+        .filter(Boolean)
+        .join(". ");
+      var title = ["Titik " + item.display.code]
+        .concat(flags.map(function (f) { return f.toLowerCase(); }))
+        .join(", ");
+      return (
+        '<button class="atlas-pt" type="button" data-action="point" data-item-id="' + item.id +
+        '" aria-label="' + escapeHtml(aria) + '" title="' + escapeHtml(title) + '"><span class="atlas-unit' +
+        unitClass(item) + '">' + escapeHtml(item.display.code) + "</span>" + unitInfo(item, landmark) + "</button>"
+      );
+    }
+
+    // Sections are { title, items }: a kecamatan head when a kabupaten spans
+    // several, untitled otherwise (and for search results across kabupaten).
+    function sectionsHtml(sections) {
+      return sections
+        .map(function (s) {
+          var count = s.items.filter(function (item) { return !item.cadangan; }).length;
+          return (
+            '<div class="atlas-group">' +
+            (s.title
+              ? '<div class="atlas-section" role="heading" aria-level="3">' + escapeHtml(s.title) +
+                "<span>" + formatCount(count) + " titik</span></div>"
+              : "") +
+            desaGroups(s.items)
+              .map(function (grp) {
+                var head = groupHead(grp, s.title);
+                var marks = grp.items.map(function (item) {
+                  return landmarkFor(item, head.title + " " + head.line + " " + s.title);
+                });
+                // A landmark every unit shares goes under the heading once,
+                // not on each tile: "Dusun Teluk Bengkah" five times over, or
+                // a lone unit's landmark wrapped into half a row.
+                var shared = marks.every(function (mk) { return mk && mk === marks[0]; }) ? marks[0] : "";
+                // Hatched reserve tiles stay listed but never count: Desa
+                // Pulau Betung has 15 tiles and 10 titik, so its count agrees
+                // with the kecamatan head's.
+                var counted = grp.items.filter(function (item) { return !item.cadangan; }).length;
+                return (
+                  '<div class="atlas-desa"><div class="atlas-desa__head"><span class="atlas-desa__title">' +
+                  escapeHtml(head.title) + '</span><span class="atlas-desa__count">' + formatCount(counted) +
+                  " titik</span></div>" +
+                  (head.line ? '<p class="atlas-desa__note">Rekapan: ' + escapeHtml(head.line) + "</p>" : "") +
+                  (shared ? '<p class="atlas-desa__note">' + escapeHtml(shared) + "</p>" : "") +
+                  '<div class="atlas-units">' +
+                  grp.items
+                    .map(function (item, i) {
+                      return unitHtml(item, shared ? "" : marks[i]);
+                    })
+                    .join("") +
+                  "</div></div>"
+                );
+              })
+              .join("") +
+            "</div>"
+          );
+        })
+        .join("");
+    }
+
+    var FLAG_SHORTCUT = { duplikat: "perlu verifikasi", belum: "belum ditetapkan" };
+
+    function cellHtml(group, dots) {
+      var key = normKey(group.name);
+      var stats = groupStats(group);
+      var flags = ["duplikat", "belum"].filter(function (flag) { return stats[flag]; });
+      var aria = [group.name, formatCount(stats.count) + " titik", formatCount(stats.kecamatan) + " kecamatan"]
+        .concat(flags.map(function (flag) { return formatCount(stats[flag]) + " " + STATUS_LABEL[flag].count; }))
+        .concat("buka daftar")
+        .join(", ");
+      // A status count is also a shortcut into the filtered kabupaten. Spans
+      // inside a button cannot be buttons themselves, so the click handler
+      // reads which part was hit; keyboard users reach the same filter from
+      // the pills on screen 2.
+      var flagSpans = flags
+        .map(function (flag) {
+          return (
+            '<span class="status-flag status-flag--' + flag + '" data-shortcut="' + flag +
+            '" title="Tampilkan hanya ' + FLAG_SHORTCUT[flag] + '">' + formatCount(stats[flag]) + " " +
+            FLAG_SHORTCUT[flag] + "</span>"
+          );
+        })
+        .join("");
+      return (
+        '<button class="atlas-cell" type="button" data-action="open" data-group="' + escapeHtml(group.name) +
+        '" data-key="' + escapeHtml(key) + '" aria-label="' + escapeHtml(aria) + '">' +
+        '<span class="atlas-cell__shape">' + shapeSvg(key, dots[key], 160, 54, 2) + "</span>" +
+        '<span class="atlas-cell__name">' + escapeHtml(shortName(group.name)) + "</span>" +
+        '<span class="atlas-cell__meta"><b>' + formatCount(stats.count) + "</b> titik di " +
+        formatCount(stats.kecamatan) + " kecamatan</span>" + flagSpans + "</button>"
+      );
+    }
+
+    function emptyHtml(hasQuery) {
+      var copy;
+      var actions = "";
+      if (hasQuery && activeGroup) {
+        copy = "Tidak ada titik yang cocok di dalam " + activeGroup + ".";
+        actions += '<button type="button" data-action="widen">Cari di semua titik</button>';
+      } else if (hasQuery) {
+        copy = "Tidak ada titik yang cocok dengan pencarian. Coba nomor titik, nama kabupaten, patokan lokasi, nama desa, atau koordinat.";
+      } else {
+        copy = "Belum ada titik untuk ditampilkan.";
+      }
+      if (hasQuery) {
+        actions += '<button type="button" data-action="clear-search">Hapus pencarian</button>';
+      }
+      return (
+        '<div class="panel-empty"><p>' + escapeHtml(copy) + "</p>" +
+        (actions ? '<div class="panel-empty__actions">' + actions + "</div>" : "") + "</div>"
+      );
+    }
+
+    // ---- Writing the panel ----------------------------------------------------
+
     function renderList(query) {
       var normalizedQuery = getNormalizedText(query);
       var coordQuery = parseCoordinateQuery(query);
-      var fragment = document.createDocumentFragment();
 
       visibleIds.clear();
-      listContainer.innerHTML = "";
 
-      var visibleCount = activeGroup
-        ? renderItemScreen(fragment, normalizedQuery, coordQuery)
-        : renderGroupScreen(fragment, normalizedQuery, coordQuery);
+      var screen = activeGroup
+        ? renderItemScreen(normalizedQuery, coordQuery)
+        : renderGroupScreen(normalizedQuery, coordQuery);
 
-      renderPanelNav();
+      renderTop();
       searchInput.placeholder = activeGroup
-        ? "Cari dalam kelompok"
+        ? "Cari dalam " + activeGroup + "…"
         : "Cari lokasi atau kabupaten…";
 
-      listContainer.appendChild(fragment);
-      renderSummary(visibleCount, Boolean(normalizedQuery));
+      listContainer.innerHTML = screen.html;
+      renderMeta(screen.count, Boolean(normalizedQuery));
+      markScreenChange();
       redrawPoints();
       updateHighlight(activeItemId);
+      syncScrolled();
+      measurePeek();
     }
 
-    // Screen 1. With no query: one row per group, no points. With a query:
-    // matching points across every group, flat — search is the shortcut past
-    // the drill-down, so it must not make you pick a group first.
-    function renderGroupScreen(fragment, normalizedQuery, coordQuery) {
+    // Screen 1. With no query: one cell per kabupaten, Kota Jambi first. With a
+    // query: matching points across every kabupaten — search is the shortcut
+    // past the drill-down, so it must not make you pick a kabupaten first.
+    function renderGroupScreen(normalizedQuery, coordQuery) {
       var visibleCount = 0;
 
       if (normalizedQuery) {
@@ -2485,18 +2959,13 @@
             if (!item.cadangan) {
               visibleCount += 1;
             }
-            matched.push({ item: item, groupName: group.name });
+            matched.push(item);
           });
         });
-
-        matched.forEach(function (entry) {
-          fragment.appendChild(buildItemRow(entry.item, entry.groupName));
-        });
-
-        if (!visibleCount) {
-          fragment.appendChild(buildEmptyState(true));
-        }
-        return visibleCount;
+        return {
+          count: visibleCount,
+          html: visibleCount ? sectionsHtml([{ title: "", items: matched }]) : emptyHtml(true)
+        };
       }
 
       groupedItems.forEach(function (group) {
@@ -2506,26 +2975,37 @@
             visibleCount += 1;
           }
         });
-        fragment.appendChild(buildGroupRow(group));
       });
 
       if (!groupedItems.length) {
-        fragment.appendChild(buildEmptyState(false));
+        return { count: 0, html: emptyHtml(false) };
       }
-      return visibleCount;
+      // Kota before the kabupaten, as asked in review (Oct 2026). The sort is
+      // stable, so each side keeps its alphabetical order.
+      var kotaFirst = groupedItems.slice().sort(function (a, b) {
+        return /^Kota\s/i.test(b.name) - /^Kota\s/i.test(a.name);
+      });
+      var dots = dotsByKabupaten();
+      return {
+        count: visibleCount,
+        html:
+          '<div class="atlas-grid">' +
+          kotaFirst.map(function (group) { return cellHtml(group, dots); }).join("") +
+          "</div>"
+      };
     }
 
     // Screen 2. Only the active group contributes rows.
-    function renderItemScreen(fragment, normalizedQuery, coordQuery) {
+    function renderItemScreen(normalizedQuery, coordQuery) {
       var group = findGroup(activeGroup);
       if (!group) {
         activeGroup = null;
         statusFilter = null;
-        return renderGroupScreen(fragment, normalizedQuery, coordQuery);
+        return renderGroupScreen(normalizedQuery, coordQuery);
       }
 
       // The local editor can clear the last flag of the kind being filtered;
-      // an empty filter would then hide the whole group behind a chip that no
+      // an empty filter would then hide the whole group behind a pill that no
       // longer exists.
       if (statusFilter && !countGroupFlag(group, statusFilter)) {
         statusFilter = null;
@@ -2540,40 +3020,37 @@
         visibleIds.add(item.id);
       });
 
+      if (!matchedItems.length) {
+        return { count: 0, html: emptyHtml(Boolean(normalizedQuery)) };
+      }
+
       // Rows sort by Nomor (KABUPATEN-KECAMATAN-DESA-NNN), so a group's
       // kecamatan already arrive in contiguous runs. When there is more than
-      // one, a sticky label at the top of each run names it and says how many
-      // units sit there -- the structure a 40-row list otherwise hides in the
-      // sublines. One kecamatan needs no label: the rows already say it.
+      // one, each run gets a sticky head naming it and saying how many units
+      // sit there. One kecamatan needs no head: the header already says where.
       var sections = sectionsByKecamatan(matchedItems);
-      var showKabupaten = showsKabupatenPerRow();
       var sectioned = sections.length > 1;
-      sections.forEach(function (section) {
-        if (sectioned) {
-          fragment.appendChild(buildSectionHeader(section));
-        }
-        section.items.forEach(function (item) {
-          fragment.appendChild(buildItemRow(item, null, showKabupaten));
-        });
-      });
-
-      if (!matchedItems.length) {
-        fragment.appendChild(buildEmptyState(Boolean(normalizedQuery)));
-      }
-        var skCount = 0;
+      var skCount = 0;
       matchedItems.forEach(function (item) {
         if (!item.cadangan) {
           skCount += 1;
         }
       });
-      return skCount;
+      return {
+        count: skCount,
+        html: sectionsHtml(sections.map(function (section) {
+          return {
+            title: sectioned ? (section.key ? "Kec. " + section.key : "Kecamatan lain") : "",
+            items: section.items
+          };
+        }))
+      };
     }
 
     // One section per kecamatan, in order of first appearance. Keyed rather
     // than run-based so a stray Nomor prefix ("JAMBI-KOTA BARU-…" among
     // "KOTA JAMBI-KOTA BARU-…") joins its kecamatan instead of opening a
-    // second header for it. Cadangan rows travel with their kecamatan but do
-    // not count: the header total matches the summary line.
+    // second head for it. Cadangan rows travel with their kecamatan.
     function sectionsByKecamatan(rows) {
       var sections = [];
       var byKey = {};
@@ -2581,460 +3058,107 @@
         var key = item.display.kecamatan || "";
         var section = byKey[key];
         if (!section) {
-          section = byKey[key] = { key: key, items: [], count: 0 };
+          section = byKey[key] = { key: key, items: [] };
           sections.push(section);
         }
         section.items.push(item);
-        if (!item.cadangan) {
-          section.count += 1;
-        }
       });
       return sections;
     }
 
-    function buildSectionHeader(section) {
-      var header = document.createElement("div");
-      var title = document.createElement("span");
-      var count = document.createElement("span");
-
-      header.className = "list-section";
-      header.setAttribute("role", "heading");
-      header.setAttribute("aria-level", "3");
-
-      title.className = "list-section__title";
-      title.textContent = section.key ? "Kec. " + section.key : "Kecamatan lain";
-
-      count.className = "list-section__count";
-      count.textContent = formatCount(section.count) + " titik";
-
-      header.appendChild(title);
-      header.appendChild(count);
-      return header;
+    // Each region is rewritten only when its markup changes, so a control the
+    // reader is on survives a render that did not touch it.
+    function setRegion(el, html) {
+      if (el && el.getAttribute("data-html") !== html) {
+        el.innerHTML = html;
+        el.setAttribute("data-html", html);
+      }
     }
 
-    // Where a group's units sit and how many pins still need a field check.
-    // Pengusul rows name the kabupaten (biggest share first); kabupaten rows
-    // say how many pengusul share it. Duplikat and Belum Ditetapkan counts
-    // follow only when non-zero, so a clean group stays a clean line.
-    function buildGroupMeta(group) {
-      var meta = document.createElement("span");
-      meta.className = "group-row__meta";
-      var parts = [];
-
-      if (groupMode === "kabupaten") {
-        // Was "N pengusul"; this build hides proposers, so the row counts
-        // the kecamatan the kabupaten's points spread over instead.
-        var kecamatan = {};
-        group.items.forEach(function (item) {
-          if (item.display.kecamatan) {
-            kecamatan[item.display.kecamatan] = true;
-          }
-        });
-        var n = Object.keys(kecamatan).length;
-        if (n) {
-          parts.push({ text: formatCount(n) + " kecamatan" });
-        }
-      } else {
-        var counts = {};
-        group.items.forEach(function (item) {
-          var key = item.kabupaten || "Lainnya";
-          counts[key] = (counts[key] || 0) + 1;
-        });
-        var names = Object.keys(counts).sort(function (left, right) {
-          return counts[right] - counts[left] || collator.compare(left, right);
-        });
-        // No-break space before each dot: a long list may wrap, but the dot
-        // then ends a line instead of opening the next one.
-        parts.push({
-          text: names.map(shortKabupatenInline).join("\u00a0· "),
-          title: names.join(", ")
-        });
-      }
-
-      var duplikat = 0;
-      var belum = 0;
-      group.items.forEach(function (item) {
-        if (item.duplikat) {
-          duplikat += 1;
-        }
-        if (item.belum) {
-          belum += 1;
-        }
-      });
-      if (duplikat) {
-        parts.push({
-          text: formatCount(duplikat) + " " + STATUS_LABEL.duplikat.count,
-          flag: "duplikat"
-        });
-      }
-      if (belum) {
-        parts.push({
-          text: formatCount(belum) + " " + STATUS_LABEL.belum.count,
-          flag: "belum"
-        });
-      }
-
-      parts.forEach(function (part) {
-        var span = document.createElement("span");
-        span.className = "group-row__meta-item";
-        if (part.title) {
-          span.title = part.title;
-        }
-        if (part.flag) {
-          span.className += " group-row__flag group-row__flag--" + part.flag;
-          var dot = document.createElement("span");
-          dot.className = "group-row__dot";
-          dot.setAttribute("aria-hidden", "true");
-          span.appendChild(dot);
-        }
-        span.appendChild(document.createTextNode(part.text));
-        meta.appendChild(span);
-      });
-
-      meta.dataset.text = parts
-        .map(function (part) { return part.text; })
-        .join(", ");
-      return meta;
-    }
-
-    // "Kab. Merangin" is the polygon's name; on a line that already sits under
-    // a pengusul it is the noun that matters, so the prefix goes. "Kota Jambi"
-    // keeps its word: it distinguishes the city from the kabupaten around it.
-    function shortKabupatenInline(name) {
-      return shortKabupaten(name).replace(/^Kab\.\s+/i, "");
-    }
-
-    function buildGroupRow(group) {
-      var row = document.createElement("button");
-      var copy = document.createElement("span");
-      var title = document.createElement("span");
-      var count = document.createElement("span");
-      var chevron = document.createElement("span");
-
-      row.type = "button";
-      row.className = "group-row";
-      row.dataset.groupName = group.name;
-      // Only pengusul rows carry a jalur; a kabupaten spans several.
-      var jalur = groupMode === "kabupaten" ? "" : groupJalur(group);
-      var meta = buildGroupMeta(group);
-
-      // The accessible name spells the whole row out in reading order.
-      row.setAttribute(
-        "aria-label",
-        group.name +
-          (jalur ? ", jalur " + jalur : "") +
-          ", " + meta.dataset.text +
-          ", " + group.items.length + " titik, buka daftar"
-      );
-
-      copy.className = "group-row__copy";
-      title.className = "group-row__title";
-      title.textContent = group.name;
-      copy.appendChild(title);
-      // The jalur badge leads the second line rather than sitting in its own
-      // column: that column cost the line half its width, and a kabupaten
-      // list or a "belum ditetapkan" count ended in an ellipsis.
-      if (jalur) {
-        meta.insertBefore(buildJalurTag(jalur), meta.firstChild);
-      }
-      copy.appendChild(meta);
-
-      // Status belongs on its own line so the location remains easy to scan.
-      var flags = meta.querySelectorAll(".group-row__flag");
-      if (flags.length) {
-        var statuses = document.createElement("span");
-        statuses.className = "group-row__statuses";
-        flags.forEach(function (flag) { statuses.appendChild(flag); });
-        copy.appendChild(statuses);
-      }
-
-      // Number over its unit, so "70" is never left to guess at.
-      count.className = "group-row__count";
-      count.setAttribute("aria-hidden", "true");
-      count.innerHTML =
-        "<strong>" + escapeHtml(formatCount(group.items.length)) + "</strong>" +
-        "<small>titik</small>";
-
-      chevron.className = "group-row__chevron";
-      chevron.setAttribute("aria-hidden", "true");
-
-      row.appendChild(copy);
-      row.appendChild(count);
-      row.appendChild(chevron);
-
-      // A status count is a shortcut: it opens the group narrowed to those
-      // rows. Spans inside a button cannot be buttons themselves, so the row
-      // reads which part was hit; keyboard users reach the same filter from
-      // the chips on screen 2.
-      flags.forEach(function (flag) {
-        var kind = flag.classList.contains("group-row__flag--belum")
-          ? "belum"
-          : "duplikat";
-        flag.dataset.filter = kind;
-        flag.title = "Tampilkan hanya " + STATUS_LABEL[kind].count;
-      });
-      row.addEventListener("click", function (event) {
-        var hit = event.target.closest ? event.target.closest(".group-row__flag") : null;
-        setActiveGroup(group.name, {
-          filter: hit && row.contains(hit) ? hit.dataset.filter : null
-        });
-      });
-
-      return row;
-    }
-
-    // groupName closes the subline on screen 1 search results, where the row
-    // has to say which group it came from. withKabupaten adds the kabupaten
-    // chip on a pengusul's screen 2.
-    function buildItemRow(item, groupName, withKabupaten) {
-      var button = document.createElement("button");
-      var code = document.createElement("span");
-      var copy = document.createElement("span");
-      var headline = document.createElement("span");
-      var label = document.createElement("span");
-      var subline = document.createElement("span");
-
-      button.type = "button";
-      button.className = "item";
-      if (item.cadangan) {
-        button.classList.add("is-cadangan");
-      }
-      if (item.duplikat) {
-        button.classList.add("is-duplikat");
-      }
-      if (item.belum) {
-        button.classList.add("is-belum");
-      }
-      button.dataset.itemId = item.id;
-      button.title = item.nomor;
-      button.setAttribute(
-        "aria-label",
-        [
-          "Titik " + item.display.code,
-          item.cadangan ? STATUS_LABEL.cadangan.tag : "",
-          item.duplikat ? STATUS_LABEL.duplikat.tag : "",
-          item.belum ? STATUS_LABEL.belum.tag : "",
-          item.display.primary,
-          item.display.secondary,
-          item.kabupaten
-        ]
-          .filter(Boolean)
-          .join(". ")
-      );
-
-      code.className = "item-code";
-      code.textContent = item.display.code;
-
-      copy.className = "item-copy";
-      headline.className = "item-headline";
-
-      label.className = "item-label";
-      label.textContent = item.display.primary;
-      headline.appendChild(label);
-
-      if (item.koordinatSingkat) {
-        var coord = document.createElement("span");
-        coord.className = "item-coord";
-        coord.textContent = item.koordinatSingkat;
-        headline.appendChild(coord);
-      }
-
-      // Status capsules get a line of their own under the title. In the
-      // headline they left the title a few letters of width next to the
-      // coordinate ("K a…"); on their own line the title and the location
-      // line read exactly as they do on an unflagged row.
-      var status = null;
-      if (item.duplikat || item.belum || item.cadangan) {
-        status = document.createElement("span");
-        status.className = "item-status";
-      }
-      if (item.cadangan) {
-        var cadanganFlag = document.createElement("span");
-        cadanganFlag.className = "item-flag item-flag--cadangan";
-        cadanganFlag.textContent = STATUS_LABEL.cadangan.tag;
-        cadanganFlag.title = "Di luar jatah; dipasang hanya jika ada titik lain yang batal";
-        status.appendChild(cadanganFlag);
-      }
-      if (item.duplikat) {
-        var flag = document.createElement("span");
-        flag.className = "item-flag";
-        flag.textContent = STATUS_LABEL.duplikat.tag;
-        flag.title = STATUS_LABEL.duplikat.legend;
-        status.appendChild(flag);
-      }
-      if (item.belum) {
-        var belumFlag = document.createElement("span");
-        belumFlag.className = "item-flag item-flag--belum";
-        belumFlag.textContent = STATUS_LABEL.belum.tag;
-        status.appendChild(belumFlag);
-      }
-
-      subline.className = "item-subline";
-      var sublineText = [item.display.secondary, groupName]
-        .filter(Boolean)
-        .join(" · ");
-      if (sublineText) {
-        subline.appendChild(document.createTextNode(sublineText));
-      }
-      if (withKabupaten && item.kabupaten) {
-        subline.appendChild(buildKabupatenTag(item.kabupaten));
-      }
-
-      copy.appendChild(headline);
-      if (status) {
-        copy.appendChild(status);
-      }
-      copy.appendChild(subline);
-      button.appendChild(code);
-      button.appendChild(copy);
-
-      if (item.id === activeItemId) {
-        button.classList.add("is-active");
-      }
-
-      button.addEventListener("click", function () {
-        focusItem(item, { closePanel: true, zoom: 17 });
-      });
-
-      return button;
-    }
-
-    // The context header above the list: back button + group name, on screen 2
-    // only. Screen 1 has none.
-    function renderPanelNav() {
-      var header = document.querySelector(".sidebar-header");
-      var existing = document.querySelector(".panel-context");
-      if (existing) {
-        existing.remove();
-      }
-
-      // Screen 2 hides two controls: the grouping toggle, because changing how
-      // points are grouped from inside one group has no coherent meaning; and
-      // "Lihat semua", because the back button already does that job and says
-      // so more plainly.
-      header.classList.toggle("is-detail", Boolean(activeGroup));
-      var fitBtn = document.getElementById("fit-map");
-      if (fitBtn) {
-        fitBtn.hidden = Boolean(activeGroup);
-      }
-
+    function renderTop() {
       if (!activeGroup) {
+        setRegion(
+          panelTop,
+          '<div class="atlas-head"><img src="' + escapeHtml(lambangSrc) +
+          '" alt="Lambang Provinsi Jambi" width="38" height="39" decoding="async">' +
+          '<div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p>' +
+          '<h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div>' + collapseButtonHtml() + "</div>"
+        );
         return;
       }
-
-      var wrap = document.createElement("div");
-      var back = document.createElement("button");
-      var title = document.createElement("p");
-
-      wrap.className = "panel-context";
-
-      back.type = "button";
-      back.className = "panel-back";
-      // The chevron carries "back", so the visible label is just the
-      // destination; screen readers still get the verb.
-      back.textContent = "Semua " + groupNoun();
-      back.setAttribute("aria-label", "Kembali ke semua " + groupNoun());
-      back.addEventListener("click", function () {
-        setActiveGroup(null);
-      });
-
-      title.className = "panel-context__title";
-      title.textContent = activeGroup;
-
-      wrap.appendChild(back);
-      wrap.appendChild(title);
-
       var group = findGroup(activeGroup);
-
-      // Where this pengusul's points sit. The title alone answers "who";
-      // this line answers "where", which is the question the list of desa
-      // names underneath cannot settle by itself.
-      if (groupMode !== "kabupaten") {
-        if (group) {
-          var meta = document.createElement("p");
-          meta.className = "panel-context__meta";
-          var jalur = groupJalur(group);
-          if (jalur) {
-            meta.appendChild(buildJalurTag(jalur));
-          }
-          meta.appendChild(buildGroupKabupatenTags(group));
-          wrap.appendChild(meta);
-        }
-      }
-
-      if (group) {
-        var filters = buildStatusFilters(group);
-        if (filters) {
-          wrap.appendChild(filters);
-        }
-      }
-
-      header.insertBefore(wrap, header.firstChild);
-    }
-
-    // One chip per status the group actually has, plus "Semua" to get back.
-    // A clean group shows no row at all: there is nothing to jump to.
-    function buildStatusFilters(group) {
-      var counts = {};
-      var any = false;
-      STATUS_FILTERS.forEach(function (flag) {
-        counts[flag] = countGroupFlag(group, flag);
-        if (counts[flag]) {
-          any = true;
-        }
-      });
-      if (!any) {
-        return null;
-      }
-
-      var row = document.createElement("div");
-      row.className = "status-filters";
-      row.setAttribute("role", "group");
-      row.setAttribute("aria-label", "Saring menurut status");
-
-      row.appendChild(
-        buildStatusChip(null, "Semua", group.items.length, !statusFilter)
+      var stats = group ? groupStats(group) : null;
+      setRegion(
+        panelTop,
+        '<div class="atlas-detail"><div class="atlas-detail__bar">' +
+        '<button class="atlas-back" type="button" data-action="back" aria-label="Kembali ke semua wilayah">' +
+        panelIcon("back", 16) + "Semua wilayah</button>" + collapseButtonHtml() + "</div>" +
+        '<div class="atlas-detail__main"><div><h1>' + escapeHtml(activeGroup) + "</h1>" +
+        (stats
+          ? "<p><b>" + formatCount(stats.count) + "</b> titik di <b>" + formatCount(stats.kecamatan) + "</b> kecamatan</p>"
+          : "") +
+        '</div><div class="atlas-locator" role="img" aria-label="Letak ' + escapeHtml(activeGroup) +
+        ' di Provinsi Jambi">' + locatorSvg(normKey(activeGroup), 112, 84) + "</div></div></div>"
       );
-      STATUS_FILTERS.forEach(function (flag) {
-        if (!counts[flag]) {
-          return;
-        }
-        row.appendChild(
-          buildStatusChip(
-            flag,
-            STATUS_LABEL[flag].count,
-            counts[flag],
-            statusFilter === flag
-          )
-        );
-      });
-      return row;
     }
 
-    function buildStatusChip(flag, label, count, isActive) {
-      var chip = document.createElement("button");
-      var num = document.createElement("span");
-      chip.type = "button";
-      chip.className = "status-chip" + (flag ? " status-chip--" + flag : "");
-      chip.classList.toggle("is-active", isActive);
-      chip.setAttribute("aria-pressed", isActive ? "true" : "false");
-      if (flag) {
-        var dot = document.createElement("span");
-        dot.className = "group-row__dot";
-        dot.setAttribute("aria-hidden", "true");
-        chip.appendChild(dot);
+    // One line that changes with the situation, instead of three numbers that
+    // are usually identical and therefore unreadable.
+    function summaryText(matchCount, hasQuery) {
+      if (activeGroup && statusFilter) {
+        var group = findGroup(activeGroup);
+        var label = STATUS_LABEL[statusFilter].count;
+        var flagged = group ? countGroupFlag(group, statusFilter) : matchCount;
+        return hasQuery
+          ? formatCount(matchCount) + " dari " + formatCount(flagged) + " " + label
+          : formatCount(matchCount) + " " + label + " dari " +
+            formatCount(group ? group.items.length : 0) + " titik";
       }
-      num.className = "status-chip__count";
-      num.textContent = formatCount(count);
-      chip.appendChild(num);
-      chip.appendChild(document.createTextNode(" " + label));
-      chip.addEventListener("click", function () {
-        setStatusFilter(flag);
-      });
-      return chip;
+      if (activeGroup) {
+        return hasQuery
+          ? formatCount(matchCount) + " dari " + formatCount(activeGroupSize()) + " titik"
+          : formatCount(matchCount) + " titik";
+      }
+      if (hasQuery) {
+        return matchCount
+          ? formatCount(matchCount) + " titik cocok di " +
+            formatCount(countMatchedGroups()) + " " + groupNoun()
+          : "Tidak ada titik yang cocok";
+      }
+      return formatCount(items.length) + " titik · " +
+        formatCount(groupedItems.length) + " " + groupNoun();
     }
 
-    // Flip the screen 2 filter. The chip that is already on turns back off
+    var PILL_LABEL = { duplikat: "Perlu verifikasi", belum: "Belum ditetapkan" };
+
+    // One pill per status the kabupaten actually has, plus "Semua" to get
+    // back. A clean kabupaten shows no pills at all: there is nothing to jump
+    // to.
+    function pillsHtml(group) {
+      var flags = STATUS_FILTERS.filter(function (flag) {
+        return countGroupFlag(group, flag);
+      });
+      if (!flags.length) {
+        return "";
+      }
+      var pill = function (flag, label, count) {
+        var on = (statusFilter || "") === flag;
+        return (
+          '<button class="atlas-pill" type="button" data-action="filter" data-flag="' + flag +
+          '" aria-pressed="' + on + '">' +
+          (flag ? '<span class="atlas-pill__swatch atlas-pill__swatch--' + flag + '" aria-hidden="true"></span>' : "") +
+          label + " <b>" + formatCount(count) + "</b></button>"
+        );
+      };
+      return (
+        '<div class="atlas-pills" role="group" aria-label="Saring menurut status">' +
+        pill("", "Semua", group.items.length) +
+        flags.map(function (flag) { return pill(flag, PILL_LABEL[flag], countGroupFlag(group, flag)); }).join("") +
+        "</div>"
+      );
+    }
+
+    // Flip the screen 2 filter. The pill that is already on turns back off
     // (same as "Semua"); the list scrolls to its top because the survivors
     // may all have sat below the fold.
     function setStatusFilter(flag) {
@@ -3045,56 +3169,411 @@
       statusFilter = next;
       clearSelection();
       renderList(searchInput.value);
-      var scroller = document.querySelector(".sidebar-scroll");
-      if (scroller) {
-        scroller.scrollTop = 0;
-      }
-      var chip = document.querySelector(
-        statusFilter
-          ? ".status-chip--" + statusFilter
-          : ".status-chip:not([class*=' status-chip--'])"
+      listScroller.scrollTop = 0;
+      focusWithoutScroll(
+        panelMeta.querySelector('.atlas-pill[data-flag="' + (statusFilter || "") + '"]')
       );
-      focusWithoutScroll(chip);
       fitToVisible({ maxZoom: 16, duration: 500 });
     }
 
-    function buildEmptyState(hasQuery) {
-      var wrap = document.createElement("div");
-      wrap.className = "empty-state";
-
-      var copy = document.createElement("p");
-      copy.className = "empty-state__copy";
-      wrap.appendChild(copy);
-
-      if (hasQuery && activeGroup) {
-        copy.textContent =
-          "Tidak ada titik yang cocok di dalam " + activeGroup + ".";
-        var widen = document.createElement("button");
-        widen.type = "button";
-        widen.className = "secondary-action";
-        widen.textContent = "Cari di semua titik";
-        widen.addEventListener("click", function () {
-          // Keep the query: the point of this button is to widen the same
-          // search, not to start over.
-          var carried = searchInput.value;
-          activeGroup = null;
-          statusFilter = null;
-          restoreFocusGroup = null;
-          clearSelection();
-          searchInput.value = carried;
-          renderList(carried);
-          fitToVisible({ maxZoom: 16, duration: 500 });
-        });
-        wrap.appendChild(widen);
-      } else if (hasQuery) {
-        copy.textContent =
-          "Tidak ada titik yang cocok dengan pencarian. Coba nomor titik, nama kabupaten, patokan lokasi, nama desa, atau koordinat.";
-      } else {
-        copy.textContent = "Belum ada titik untuk ditampilkan.";
+    function renderMeta(matchCount, hasQuery) {
+      var text = summaryText(matchCount, hasQuery);
+      if (activeGroup) {
+        var group = findGroup(activeGroup);
+        setRegion(
+          panelMeta,
+          (group ? pillsHtml(group) : "") + '<p class="atlas-hint" role="status">' +
+          escapeHtml(hasQuery || statusFilter ? text : "Pilih nomor titik untuk melihatnya di peta.") + "</p>"
+        );
+        return;
       }
-
-      return wrap;
+      if (hasQuery) {
+        setRegion(panelMeta, '<p class="atlas-summary" role="status">' + escapeHtml(text) + "</p>");
+        return;
+      }
+      setRegion(
+        panelMeta,
+        '<div class="atlas-summary"><p role="status"><b>' + formatCount(items.length) + "</b> titik di <b>" +
+        formatCount(groupedItems.length) + "</b> kabupaten/kota</p>" +
+        '<button id="fit-map" type="button" data-action="fit" title="Tampilkan semua titik di peta">' +
+        panelIcon("frame", 16) + "<span>Lihat semua</span></button></div>"
+      );
     }
+
+    // Screen changes answer a click: the new screen slides in from the side
+    // the reader is travelling toward (custom.css, #sidebar[data-enter]).
+    var lastScreen = null;
+    var enterTimer = null;
+
+    function markScreenChange() {
+      var screen = activeGroup || "";
+      if (lastScreen !== null && screen !== lastScreen) {
+        panelEl.removeAttribute("data-enter");
+        void panelEl.offsetWidth;
+        panelEl.setAttribute("data-enter", activeGroup ? "fwd" : "back");
+        clearTimeout(enterTimer);
+        enterTimer = setTimeout(function () {
+          panelEl.removeAttribute("data-enter");
+        }, 320);
+        setUnitHover(null);
+      }
+      lastScreen = screen;
+      setRegionHover(regionHoverKey);
+    }
+
+    // A list scrolled under the header gets a soft shadow at the cut (the
+    // grid's ::before), and the kecamatan head in view turns navy.
+    function syncScrolled() {
+      panelEl.classList.toggle("is-scrolled", listScroller.scrollTop > 2);
+      syncStuck();
+    }
+
+    // The kecamatan head in view turns navy (.is-stuck) so the kecamatan the
+    // rows belong to is spotted at a glance. Measured here because CSS only
+    // learns "stuck" from scroll-state container queries, which only Chromium
+    // has. One head at a time: the head stuck at the top with its rows passing
+    // under it, or the next head once it starts pushing that one out, so the
+    // colour moves to the incoming kecamatan as it takes the top instead of
+    // flipping when it lands. Nothing is navy at rest: a head that merely sits
+    // at the top with no rows under it yet stays plain.
+    function syncStuck() {
+      var heads = listContainer.querySelectorAll(".atlas-section");
+      if (!heads.length) {
+        return;
+      }
+      var top = listScroller.getBoundingClientRect().top;
+      var current = null;
+      Array.prototype.forEach.call(heads, function (head) {
+        var box = head.getBoundingClientRect();
+        var next = head.nextElementSibling;
+        var stuck = box.top <= top + 1 && !!next && next.getBoundingClientRect().top < box.bottom - 1;
+        var pushing = !!current && box.top > top + 1 && box.top < top + box.height - 1;
+        if (stuck || pushing) {
+          current = head;
+        }
+      });
+      Array.prototype.forEach.call(heads, function (head) {
+        head.classList.toggle("is-stuck", head === current);
+      });
+    }
+
+    listScroller.addEventListener("scroll", syncScrolled, { passive: true });
+
+    // Phones: the closed sheet peeks down to its search field, whatever the
+    // header above it holds on this screen, so the fit padding and the
+    // control stack (both read --sheet-peek) follow the screen too.
+    function measurePeek() {
+      if (!isMobileViewport() || !panelSearch) {
+        return;
+      }
+      var peek = Math.round(panelSearch.offsetTop + panelSearch.offsetHeight + 14);
+      document.documentElement.style.setProperty("--sheet-peek", peek + "px");
+    }
+
+    window.addEventListener("resize", measurePeek);
+
+    // ---- Panel controls -------------------------------------------------------
+
+    panelEl.addEventListener("click", function (event) {
+      var el = event.target.closest ? event.target.closest("[data-action]") : null;
+      if (!el || !panelEl.contains(el)) {
+        return;
+      }
+      var action = el.getAttribute("data-action");
+      if (action === "open") {
+        var shortcut = event.target.closest("[data-shortcut]");
+        setActiveGroup(el.getAttribute("data-group"), {
+          filter: shortcut && el.contains(shortcut) ? shortcut.getAttribute("data-shortcut") : null
+        });
+      } else if (action === "back") {
+        setActiveGroup(null);
+      } else if (action === "filter") {
+        setStatusFilter(el.getAttribute("data-flag") || null);
+      } else if (action === "point") {
+        var item = itemsById[el.getAttribute("data-item-id")];
+        if (item) {
+          setUnitHover(null);
+          focusItem(item, { closePanel: true, zoom: 17 });
+        }
+      } else if (action === "fit") {
+        searchInput.value = "";
+        setActiveGroup(null);
+        if (window.innerWidth < 960) {
+          setPanelOpen(false);
+        }
+      } else if (action === "collapse") {
+        setSidebarCollapsed(true);
+        focusWithoutScroll(panelToggle);
+      } else if (action === "clear-search") {
+        clearTimeout(searchDebounce);
+        searchInput.value = "";
+        searchInput.focus();
+        renderList("");
+        fitToVisible({ maxZoom: 16, duration: 500 });
+      } else if (action === "widen") {
+        // Keep the query: the point of this button is to widen the same
+        // search, not to start over.
+        var carried = searchInput.value;
+        activeGroup = null;
+        statusFilter = null;
+        restoreFocusGroup = null;
+        clearSelection();
+        searchInput.value = carried;
+        renderList(carried);
+        fitToVisible({ maxZoom: 16, duration: 500 });
+      }
+    });
+
+    // ---- The kabupaten under the pointer, outlined on the map -----------------
+    // Hovering a cell (or focusing it) outlines its kabupaten on the map in
+    // yellow over a dark halo; with one kabupaten open, its outline stays.
+    var regionSource = new ol.source.Vector();
+    var regionLayer = new ol.layer.Vector({
+      source: regionSource,
+      style: [
+        new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: "rgba(14, 24, 34, 0.5)", width: 5.5 })
+        }),
+        new ol.style.Style({
+          fill: new ol.style.Fill({ color: "rgba(254, 229, 15, 0.08)" }),
+          stroke: new ol.style.Stroke({ color: "#fee50f", width: 2.5 })
+        })
+      ]
+    });
+    // Under the points, over the boundaries.
+    (function insertRegionLayer() {
+      var layers = window.map.getLayers();
+      var arr = layers.getArray();
+      var holds = function (layer, target) {
+        return layer === target || (layer.getLayers
+          ? layer.getLayers().getArray().some(function (child) { return holds(child, target); })
+          : false);
+      };
+      for (var i = 0; i < arr.length; i++) {
+        if (holds(arr[i], window.lyr_260331_4)) {
+          layers.insertAt(i, regionLayer);
+          return;
+        }
+      }
+      layers.push(regionLayer);
+    })();
+
+    var regionHoverKey = null;
+    var regionShown;
+
+    function setRegionHover(key) {
+      regionHoverKey = key;
+      var show = key || (activeGroup ? normKey(activeGroup) : null);
+      if (show === regionShown) {
+        return;
+      }
+      regionShown = show;
+      regionSource.clear();
+      var f = show && geo && geo.polys[show];
+      if (f) {
+        regionSource.addFeature(new ol.Feature(f.getGeometry()));
+      }
+    }
+
+    // ---- A tile's pin, lit from the list --------------------------------------
+    // Hovering a unit tile lights its pin the way the map lights a pin under
+    // the cursor: the symbol a step bigger and the same dark pill. Here the eye
+    // is on the list, not the map, so the pin also gets the ground halo of a
+    // selected point, and a dot (zoomed out past pins) grows by 40% rather than
+    // 2px, which nobody would spot from the list. Pointer hover and keyboard
+    // focus only: a finger never hovers, and a tap selects the point.
+    var canHover = !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+    var grownCache = new WeakMap();
+    var unitHoverSource = new ol.source.Vector({ useSpatialIndex: false });
+    var unitHoverHalos = {
+      yellow: selectionHalo("rgba(254, 229, 15, 0.26)", "rgba(255, 255, 255, 0.7)"),
+      slate: selectionHalo("rgba(107, 122, 140, 0.24)", "rgba(255, 255, 255, 0.7)")
+    };
+    new ol.layer.Vector({
+      map: window.map,
+      source: unitHoverSource,
+      zIndex: 4,
+      style: function (ghost, resolution) {
+        var styles = grownStyle(ghost.get("item"), resolution);
+        return styles ? [unitHoverHalos[ghost.get("halo")]].concat(styles) : null;
+      }
+    });
+    var unitTipEl = document.createElement("div");
+    unitTipEl.className = "pin-tip";
+    unitTipEl.setAttribute("aria-hidden", "true");
+    var unitTip = new ol.Overlay({ element: unitTipEl, positioning: "bottom-center", stopEvent: false, insertFirst: false });
+    window.map.addOverlay(unitTip);
+    var unitHoverId = null;
+
+    // The pin as drawn right now, a step bigger; null when no layer draws it
+    // (filtered out, or its layer switched off).
+    function grownStyle(item, resolution) {
+      if (!isItemShown(item)) {
+        return null;
+      }
+      var base = singleStyle(item, resolution);
+      var hit = grownCache.get(base);
+      if (!hit) {
+        hit = base.map(function (s) {
+          var image = s.getImage().clone();
+          var scale = image.getScale();
+          image.setScale((typeof scale === "number" ? scale : 1) * (image instanceof ol.style.Icon ? 1.12 : 1.4));
+          return new ol.style.Style({ image: image, zIndex: 5 });
+        });
+        grownCache.set(base, hit);
+      }
+      return hit;
+    }
+
+    // Pill above the symbol: clear of a pin's head, or of a dot's edge.
+    function unitTipOffset(styles) {
+      var image = styles[0].getImage();
+      var scale = image.getScale();
+      scale = typeof scale === "number" ? scale : 1;
+      if (image instanceof ol.style.Icon) {
+        var size = image.getSize();
+        return -((size ? size[1] : 32) * scale + 6);
+      }
+      return -(image.getRadius() * scale + 8);
+    }
+
+    function setUnitHover(id) {
+      if (id === unitHoverId) {
+        return;
+      }
+      unitHoverId = id;
+      unitHoverSource.clear();
+      unitTipEl.classList.remove("is-visible");
+      unitTip.setPosition(undefined);
+      var item = id ? itemsById[id] : null;
+      // The selected point already has its card and its own enlarged pin.
+      if (!item || item.id === activeItemId) {
+        return;
+      }
+      var styles = grownStyle(item, window.map.getView().getResolution());
+      if (!styles) {
+        return;
+      }
+      unitHoverSource.addFeature(new ol.Feature({
+        geometry: item.feature.getGeometry(),
+        item: item,
+        halo: item.belum || item.cadangan ? "slate" : "yellow"
+      }));
+      // The tile's own landmark, not the place line: the heading already
+      // says the place, and the pill has to tell this pin from its neighbours.
+      var label = truncateLabel(landmarkFor(item, item.display.primary) || desaOf(item.nomor), 34);
+      unitTipEl.textContent = "Titik " + item.display.code + (label ? " · " + label : "");
+      unitTip.setOffset([0, unitTipOffset(styles)]);
+      unitTip.setPosition(item.feature.getGeometry().getCoordinates());
+      requestAnimationFrame(function () {
+        if (unitHoverId === id) {
+          unitTipEl.classList.add("is-visible");
+        }
+      });
+    }
+
+    function unitIdAt(target) {
+      var unit = target && target.closest ? target.closest(".atlas-pt[data-item-id]") : null;
+      return unit && panelEl.contains(unit) ? unit.getAttribute("data-item-id") : null;
+    }
+
+    function regionKeyAt(target) {
+      var cell = target && target.closest ? target.closest("[data-key]") : null;
+      return cell && panelEl.contains(cell) ? cell.getAttribute("data-key") : null;
+    }
+
+    panelEl.addEventListener("mouseover", function (event) {
+      setRegionHover(regionKeyAt(event.target));
+      if (canHover) {
+        setUnitHover(unitIdAt(event.target));
+      }
+    });
+
+    panelEl.addEventListener("mouseleave", function () {
+      setRegionHover(null);
+      setUnitHover(null);
+    });
+
+    // Keyboard focus lights the pin too; a mouse click focuses the tile as
+    // well, and the click itself selects the point.
+    panelEl.addEventListener("focusin", function (event) {
+      setRegionHover(regionKeyAt(event.target));
+      if (event.target.matches && event.target.matches(":focus-visible")) {
+        setUnitHover(unitIdAt(event.target));
+      }
+    });
+
+    panelEl.addEventListener("focusout", function (event) {
+      if (!panelEl.contains(event.relatedTarget)) {
+        setRegionHover(null);
+        setUnitHover(null);
+      }
+    });
+
+    // ---- Numbers on the pins ----------------------------------------------------
+    // From about zoom 15 in, every pin carries its 3-digit number, so a tile
+    // and its pin match without hovering, which a phone cannot do. Units on
+    // one coordinate share a label ("002–008") instead of stacking seven. A
+    // label names only the pins actually drawn (isItemShown), so a hidden
+    // kabupaten or a layer switched off leaves no orphan numbers. The labels
+    // declutter among themselves, so where two would overlap one waits for the
+    // next zoom step; the pins underneath never declutter (layers/layers.js).
+    var LABEL_MAX_RESOLUTION = 4.8;
+
+    function codeList(codes) {
+      var sorted = codes.slice().sort();
+      var nums = sorted.map(Number);
+      var run = nums.every(function (n, i) { return i === 0 || n === nums[i - 1] + 1; });
+      return run && sorted.length >= 3 ? sorted[0] + "–" + sorted[sorted.length - 1] : sorted.join(", ");
+    }
+
+    var pinLabelLayer = (function () {
+      var spots = {};
+      mappedItems.forEach(function (item) {
+        var at = item.feature.getGeometry().getCoordinates();
+        var key = Math.round(at[0] * 2) + "," + Math.round(at[1] * 2);
+        (spots[key] = spots[key] || { at: at, units: [] }).units.push(item);
+      });
+      var cache = {};
+      var layer = new ol.layer.Vector({
+        source: new ol.source.Vector({
+          features: Object.keys(spots).map(function (k) {
+            return new ol.Feature({ geometry: new ol.geom.Point(spots[k].at), units: spots[k].units });
+          })
+        }),
+        declutter: true,
+        maxResolution: LABEL_MAX_RESOLUTION,
+        style: function (f) {
+          var codes = f.get("units")
+            .filter(isItemShown)
+            .map(function (item) { return item.display.code; });
+          if (!codes.length) {
+            return null;
+          }
+          var text = codeList(codes);
+          if (!cache[text]) {
+            // Beside the pin's head (20px above its tip), not over the pin.
+            cache[text] = new ol.style.Style({
+              text: new ol.style.Text({
+                text: text,
+                font: "700 11px Figtree, system-ui, sans-serif",
+                textAlign: "left",
+                textBaseline: "middle",
+                offsetX: 14,
+                offsetY: -20,
+                padding: [3, 5, 2, 5],
+                fill: new ol.style.Fill({ color: INK }),
+                backgroundFill: new ol.style.Fill({ color: "rgba(255, 255, 255, 0.92)" }),
+                backgroundStroke: new ol.style.Stroke({ color: "rgba(41, 61, 80, 0.28)", width: 1 })
+              })
+            });
+          }
+          return cache[text];
+        }
+      });
+      window.map.addLayer(layer);
+      return layer;
+    })();
 
     // ---- Map <-> list synchronisation --------------------------------------
     // The layers render exactly the ids the list is showing, so the "tampil"
@@ -3174,6 +3653,7 @@
     pointLayers.forEach(function (layer) {
       layer.on("change:visible", function () {
         renderLegend();
+        pinLabelLayer.changed();
       });
     });
 
@@ -3543,6 +4023,7 @@
       // A filtered-out point may be the one under the pointer.
       setHover(null);
       renderLegend();
+      pinLabelLayer.changed();
     };
 
     // ---- Popup scroll hint --------------------------------------------------
@@ -3704,15 +4185,15 @@
 
     function moveFocusForScreen() {
       if (activeGroup) {
-        focusWithoutScroll(document.querySelector(".panel-back"));
+        focusWithoutScroll(panelTop.querySelector(".atlas-back"));
         return;
       }
       if (!restoreFocusGroup) {
         return;
       }
-      var rows = listContainer.querySelectorAll(".group-row");
+      var rows = listContainer.querySelectorAll(".atlas-cell");
       for (var i = 0; i < rows.length; i++) {
-        if (rows[i].dataset.groupName === restoreFocusGroup) {
+        if (rows[i].getAttribute("data-group") === restoreFocusGroup) {
           focusWithoutScroll(rows[i]);
           scrollRowIntoPane(rows[i]);
           break;
@@ -3809,14 +4290,6 @@
       });
     }
 
-    fitButton.addEventListener("click", function () {
-      searchInput.value = "";
-      setActiveGroup(null);
-      if (window.innerWidth < 960) {
-        setPanelOpen(false);
-      }
-    });
-
     // Grouping toggle: Pengusul (default) <-> Kabupaten/Kota
     var groupModeButtons = Array.prototype.slice.call(
       document.querySelectorAll(".group-mode__btn")
@@ -3867,10 +4340,6 @@
       document.body.classList.toggle("is-sidebar-collapsed", collapsed);
       if (panelToggle) {
         panelToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-        panelToggle.setAttribute(
-          "data-tooltip",
-          collapsed ? "Tampilkan daftar" : "Sembunyikan daftar"
-        );
       }
       refreshMapSizeDuring(380);
     }
@@ -3881,6 +4350,9 @@
           setSidebarCollapsed(
             !document.body.classList.contains("is-sidebar-collapsed")
           );
+          if (!document.body.classList.contains("is-sidebar-collapsed")) {
+            focusWithoutScroll(panelTop.querySelector(".panel-collapse"));
+          }
         } else {
           setPanelOpen(!document.body.classList.contains("is-panel-open"));
         }

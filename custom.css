@@ -12,6 +12,13 @@
     --hairline: #dce8f1;
     --hairline-strong: #d4dee6;
     --divider: #e9eef2;
+    --frost: #f4f7fa;
+    --row-hover: #f3f8fd;
+    /* Cadangan (arsir): the same diagonal hatch everywhere, dark enough to read
+       at a glance next to plain units, with the code kept legible on top. */
+    --hatch-edge: #7d90a1;
+    --hatch: repeating-linear-gradient(-45deg, #7d90a1 0 1.5px, #fff 1.5px 5px);
+    --hatch-halo: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff;
     /* Text ramp, all measured on --surface. The audience skews older, so the
        target moved from AA (4.5) to AAA (7) for the body tier. Three tiers all
        above 7:1 would be visually indistinguishable — grays run out of room —
@@ -32,25 +39,28 @@
     --radius-md: 12px;
     --radius-sm: 10px;
     --radius-xs: 6px;
-    --panel-width: clamp(350px, 26vw, 380px);
+    /* Wide enough for the atlas grid's two kabupaten cells and two columns of
+       unit tiles side by side. */
+    --panel-width: 392px;
     --panel-left: 20px;
     --panel-top: 20px;
-    /* The 52px panel tab, centred on the brand card (frame padding 8px,
-       card ~96px tall). */
-    --panel-toggle-top: calc(var(--panel-top) + 31px);
     /* Figtree carries both titles and data rows: a friendly geometric voice
        that stays legible at small sizes and keeps tabular numbers. */
     --font-display: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
     --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-    /* Map control chrome: the sidebar's surface recipe at chip scale — a near
-       solid white, a hairline, one contact shadow plus one soft ambient one.
-       Hover is a border colour change, never a lift. */
-    --ctl-surface: rgba(255, 255, 255, 0.92);
-    --ctl-surface-near: rgba(255, 255, 255, 0.97);
+    /* Map control chrome, in the atlas sheet's colours rather than the site's
+       blue: the pale slate of the kabupaten silhouettes for surfaces, their
+       outline (--atlas-edge) for edges, ink for type, and ink with yellow for
+       "on". One contact shadow plus one soft ambient one; hover is a border
+       colour change, never a lift. */
+    --atlas-paper: #eef3f7;
+    --atlas-edge: #b6c4d1;
+    --ctl-surface: rgba(238, 243, 247, 0.96);
+    --ctl-surface-near: #f4f7fa;
     --ctl-surface-hover: #ffffff;
-    --ctl-border: var(--hairline-strong);
-    --ctl-border-hover: var(--blue);
+    --ctl-border: var(--atlas-edge);
+    --ctl-border-hover: var(--ink);
     --ctl-shadow: 0 1px 2px rgba(20, 38, 53, 0.1), 0 6px 16px rgba(20, 38, 53, 0.14);
     --ctl-shadow-near: 0 1px 2px rgba(20, 38, 53, 0.1),
         0 8px 20px rgba(20, 38, 53, 0.16);
@@ -61,9 +71,8 @@
     /* Layer chip footprint. The icon overlay is sized from the same token —
        see .ctl-layers-slot for why the icon cannot live inside the button. */
     --ctl-chip: 44px;
-    /* Ripple + pressed-state tint. Blue, not gray: the wave should read as
-       the control lighting up, not as a smudge. */
-    --ctl-ripple: rgba(0, 114, 188, 0.22);
+    /* Ripple + pressed-state tint, in ink to match the slate chrome. */
+    --ctl-ripple: rgba(41, 61, 80, 0.18);
     --ctl-press-scale: 0.92;
 
     --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
@@ -155,37 +164,35 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 16px 8px 12px;
-    /* Same surface as the panel's brand block, which this replaces on
-       mobile: white, hairline, the control-scale shadow. */
+    padding: 6px 20px 6px 10px;
+    /* The atlas capsule, in the map controls' slate: on phones the identity
+       leaves the sheet for the top of the map. */
     background: var(--ctl-surface);
-    border: 1px solid var(--hairline-strong);
-    border-radius: 12px;
-    box-shadow: var(--ctl-shadow);
+    border: 1px solid var(--atlas-edge);
+    border-radius: 999px;
+    box-shadow: 0 6px 16px rgba(20, 38, 53, 0.22);
 }
 
 .masthead-lambang {
-    width: 34px;
+    width: 30px;
     height: auto;
     display: block;
 }
 
 .masthead-copy {
     display: grid;
-    gap: 1px;
+    gap: 0;
 }
 
 .masthead-kicker {
     margin: 0;
-    font: 600 10px var(--font-ui);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted-2);
+    font: 600 11.5px/1.45 var(--font-ui);
+    color: var(--muted);
 }
 
 .masthead-title {
     margin: 0;
-    font: 700 20px/1.2 var(--font-display);
+    font: 750 16px/1.2 var(--font-display);
     letter-spacing: -0.01em;
     color: var(--ink);
 }
@@ -198,62 +205,18 @@ body {
     }
 }
 
-/* Right padding reserves the collapse toggle's slot so the title can never
-   run underneath it, even at the panel's 320px minimum width. */
-.panel-brand {
-    position: relative;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-height: 98px;
-    padding: 20px 46px 18px 20px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--divider);
-}
-
-.panel-brand__mark {
-    flex: 0 0 auto;
-    display: block;
-}
-
-.panel-brand__lambang {
-    width: 36px;
-    height: auto;
-    display: block;
-}
-
-.panel-brand__copy {
-    min-width: 0;
-}
-
-.panel-brand__kicker {
-    margin: 0;
-    font: 700 9px/1.4 var(--font-ui);
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--muted-2);
-}
-
-.panel-brand__title {
-    margin: 4px 0 0;
-    font: 700 21px/1.25 var(--font-display);
-    letter-spacing: -0.025em;
-    color: var(--ink);
-}
-
-.panel-brand__description {
-    margin: 4px 0 0;
-    font: 500 10.5px/1.4 var(--font-ui);
-    color: var(--muted-2);
-}
-
-/* ---------- Data panel ---------- */
+/* ---------- Data panel: the atlas ----------
+   An atlas index: each kabupaten drawn as its own outline with its poles
+   dotted in, read like the region pages of an atlas. The header stays quiet
+   so the shapes carry the page. One white panel, top to bottom: the header
+   (identity, or the open kabupaten with its locator), the search, a line of
+   counts or filters, the list, and the footer. custom.js writes the header,
+   the counts line and the list (renderTop, renderMeta, renderList). */
 
 #sidebar {
     position: absolute;
     top: var(--panel-top);
-    bottom: 20px;
+    bottom: var(--panel-top);
     left: var(--panel-left);
     /* Above OpenLayers' .ol-overlaycontainer-stopevent, which ships z-index 21.
        Below 21 the map's own furniture — attribution, layer chip, zoom, scale —
@@ -263,21 +226,27 @@ body {
     width: var(--panel-width);
     display: flex;
     flex-direction: column;
-    background: var(--surface);
-    border: 1px solid var(--hairline-strong);
-    border-radius: 18px;
-    /* Still a floating object over satellite imagery, so it needs a real
-       shadow to separate — but one soft layer, not a card-stack glow. */
-    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.1),
-        0 14px 36px rgba(20, 38, 53, 0.18);
     overflow: hidden;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.14), 0 18px 48px rgba(20, 38, 53, 0.3);
+    font-size: 14px;
+    line-height: 1.45;
+    transition:
+        transform 340ms var(--ease-out),
+        opacity 240ms var(--ease-out);
 }
 
 body.is-sidebar-collapsed #sidebar {
-    transform: translateX(calc(-100% - 40px));
+    transform: translateX(calc(-100% - 2 * var(--panel-left)));
     opacity: 0;
     pointer-events: none;
+}
+
+:where(#sidebar) button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
 }
 
 #sheet-handle {
@@ -292,1324 +261,895 @@ body.is-sidebar-collapsed #sidebar {
     display: none;
 }
 
-.sidebar-header {
-    flex-shrink: 0;
-    display: grid;
-    gap: 14px;
-    padding: 16px 20px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--divider);
-}
-
-.summary-row {
-    order: 1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 0;
-}
-
-.list-summary {
-    margin: 0;
+.panel-top,
+.panel-meta {
+    flex: none;
     min-width: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 3px 8px;
-    font: 500 12px/1.5 var(--font-ui);
-    font-variant-numeric: tabular-nums;
-    color: var(--muted);
 }
 
-.list-summary__total {
-    font: 700 23px/1.2 var(--font-display);
-    letter-spacing: -0.045em;
-    color: var(--ink);
-    white-space: nowrap;
-}
-
-.list-summary__detail {
-    color: var(--muted-2);
-}
-
-/* "Show every point on the map": a tinted pill with a frame-the-map icon,
-   so it reads as a map action rather than a text link, and sits on the
-   summary's centre line opposite the count. */
-#fit-map {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 34px;
-    padding: 0 13px 0 11px;
-    border: 1px solid transparent;
-    border-radius: 999px;
-    background: var(--blue-tint);
-    color: var(--blue-deep);
-    font: 600 12.5px/1 var(--font-ui);
-    text-decoration: none;
-    transition: background-color var(--dur) var(--ease-out),
-        border-color var(--dur) var(--ease-out),
-        color var(--dur) var(--ease-out),
-        transform 0.12s ease;
-}
-
-#fit-map[hidden] {
+.panel-meta:empty {
     display: none;
 }
 
-#fit-map svg {
-    flex: 0 0 15px;
+.panel-icon {
+    flex: none;
     fill: none;
     stroke: currentColor;
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-    transition: scale var(--dur) var(--ease-spring);
 }
 
-@media (hover: hover) {
-    #fit-map:not(:disabled):hover {
-        background: #dcecfb;
-        border-color: rgba(0, 114, 188, 0.35);
-        color: var(--blue-deep);
-        text-decoration: none;
+/* Screen changes answer a click: the new content slides in from the side
+   the reader is travelling toward (custom.js sets data-enter). Nothing
+   animates on its own. */
+#sidebar[data-enter="fwd"] :is(.panel-meta, .sidebar-scroll) {
+    animation: panel-in-fwd 260ms var(--ease-out);
+}
+
+#sidebar[data-enter="back"] :is(.panel-meta, .sidebar-scroll) {
+    animation: panel-in-back 260ms var(--ease-out);
+}
+
+#sidebar[data-enter] .panel-top > * {
+    animation: panel-fade 220ms var(--ease-out);
+}
+
+@keyframes panel-in-fwd {
+    from {
+        opacity: 0;
+        transform: translateX(16px);
     }
+}
 
-    /* The corners open out, echoing the map zooming out to fit. */
-    #fit-map:not(:disabled):hover svg {
-        scale: 1.12;
+@keyframes panel-in-back {
+    from {
+        opacity: 0;
+        transform: translateX(-16px);
     }
 }
 
-#fit-map:not(:disabled):active {
-    transform: scale(0.96);
-    background: #cfe4f8;
+@keyframes panel-fade {
+    from {
+        opacity: 0;
+    }
 }
 
-#fit-map:focus-visible {
-    outline: 2px solid var(--blue);
-    outline-offset: 2px;
+/* Header, overview: the office and the map's name beside the lambang. */
+.atlas-head {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 12px 14px 18px;
 }
 
-#fit-map:disabled {
-    background: #f1f4f7;
-    color: var(--disabled-ink);
+.atlas-head img {
+    display: block;
+    width: 38px;
+    height: auto;
 }
 
-.link-action {
-    flex-shrink: 0;
-    appearance: none;
-    border: none;
+.atlas-head__org {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.atlas-head__title {
+    margin: 1px 0 0;
+    font-size: 19px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+/* Collapse: a plain round button in the header. The panel's re-open control
+   (#panel-toggle) lives outside the panel, which slides away with it. */
+.panel-collapse {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+}
+
+.panel-collapse:hover {
+    background: var(--frost);
+    color: var(--ink);
+}
+
+/* Header, one kabupaten: back, its name and counts, and where it sits in
+   the province. */
+.atlas-detail {
+    padding: 14px 12px 12px 18px;
+}
+
+.atlas-detail__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.atlas-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin: 0 0 0 -6px;
+    padding: 5px 10px 5px 4px;
+    border: 0;
+    border-radius: 8px;
     background: none;
-    min-height: 28px;
-    padding: 0 3px;
-    font: 600 11.5px var(--font-ui);
     color: var(--blue);
-    cursor: pointer;
-    text-decoration: underline;
-    text-decoration-color: transparent;
-    text-underline-offset: 3px;
-    transition: color var(--dur) var(--ease-out),
-        text-decoration-color var(--dur) var(--ease-out);
+    font-size: 14px;
+    font-weight: 650;
 }
 
-.link-action:not(:disabled):hover {
+.atlas-back:hover {
+    background: var(--blue-tint);
     color: var(--blue-deep);
-    text-decoration-color: currentColor;
 }
 
-.link-action:disabled {
-    color: var(--disabled-ink);
-    cursor: default;
+.atlas-detail__main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 112px;
+    align-items: center;
+    gap: 14px;
+    margin-top: 6px;
+    padding-right: 6px;
 }
 
-.search-field {
-    order: 2;
-    position: relative;
+.atlas-detail h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.atlas-detail p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 13.5px;
+}
+
+.atlas-detail p b {
+    color: var(--ink);
+    font-weight: 750;
+}
+
+.atlas-locator {
+    height: 84px;
+}
+
+.atlas-locator svg,
+.atlas-cell__shape svg {
     display: block;
     width: 100%;
+    height: 100%;
+    overflow: visible;
 }
 
-/* CSS-drawn magnifier: circle + handle. Font Awesome is gone from this
-   project, so the old <i class="fas fa-search"> rendered nothing. */
-.search-icon {
+.atlas-loc {
+    fill: #e5ecf2;
+    stroke: #fff;
+    stroke-width: 0.9;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.atlas-loc.is-on {
+    fill: var(--ink);
+    stroke: var(--ink);
+}
+
+/* Search: one element on both screens, so typing never loses focus while
+   the list re-renders. */
+.panel-search {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: 44px;
+    margin: 0 16px 12px;
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    background: var(--frost);
+    transition:
+        border-color var(--dur),
+        background-color var(--dur);
+}
+
+.panel-search:focus-within {
+    border-color: var(--blue);
+    background: #fff;
+}
+
+.panel-search__icon {
     position: absolute;
     left: 15px;
-    top: 50%;
-    width: 10px;
-    height: 10px;
-    margin-top: -6px;
-    border: 1.6px solid var(--muted-2);
-    border-radius: 50%;
+    fill: none;
+    stroke: var(--muted-2);
+    stroke-width: 2;
+    stroke-linecap: round;
     pointer-events: none;
 }
 
-.search-icon::after {
-    content: "";
-    position: absolute;
-    top: 9px;
-    left: 7px;
-    width: 1.6px;
-    height: 5px;
-    border-radius: 1px;
-    background: var(--muted-2);
-    transform: rotate(-45deg);
-    transform-origin: top center;
-}
-
-.search-field input {
-    width: 100%;
-    /* A pill, like the back button and status chips around it. */
-    height: 38px;
-    border: 1px solid var(--hairline-strong);
-    border-radius: 999px;
-    background: #f6f8fa;
-    box-shadow: none;
-    padding: 0 38px 0 36px;
-    font: 500 13px var(--font-ui);
-    color: var(--ink);
-    transition: border-color var(--dur) var(--ease-out),
-        box-shadow var(--dur) var(--ease-out),
-        background-color var(--dur) var(--ease-out);
-}
-
-/* The 36px right inset is for the clear button. That button is hidden while
-   the field is empty, so the placeholder can use the space and "koordinat"
-   reaches the field edge instead of clipping mid-word. */
-.search-field input:placeholder-shown {
-    padding-right: 14px;
-}
-
-.search-field input::placeholder {
-    color: var(--muted-2);
-}
-
-/* The native cancel button is WebKit-only, takes almost no styling, carries no
-   accessible name, and the keyboard skips it. Ours replaces it outright. */
-.search-field input::-webkit-search-cancel-button {
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.search-clear {
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    width: 28px;
-    height: 28px;
-    margin-top: -14px;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
+.panel-search input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0 42px;
+    border: 0;
+    outline: none;
     background: transparent;
-    cursor: pointer;
-    transition: opacity 0.15s ease, background 0.15s ease;
+    color: var(--ink);
+    font: 500 15px/1 var(--font-ui);
+}
+
+.panel-search input::placeholder {
+    color: var(--muted-2);
+    opacity: 1;
+}
+
+/* The native cancel button is WebKit-only and takes almost no styling; the
+   panel has its own. */
+.panel-search input::-webkit-search-cancel-button {
+    display: none;
+    -webkit-appearance: none;
+}
+
+.panel-search__clear {
+    position: absolute;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
 }
 
 /* Nothing typed, nothing to clear. :placeholder-shown tracks programmatic
-   resets too, so the button needs no JS to know when to hide. */
-.search-field input:placeholder-shown ~ .search-clear {
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
-}
-
-.search-clear:hover {
-    background: var(--hairline);
-}
-
-.search-clear:focus-visible {
-    outline: 2px solid var(--blue);
-    outline-offset: 1px;
-}
-
-/* Drawn in CSS like .search-icon above — this project ships no icon font. */
-.search-clear::before,
-.search-clear::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 11px;
-    height: 1.6px;
-    margin: -0.8px 0 0 -5.5px;
-    border-radius: 1px;
-    background: var(--muted-2);
-}
-
-.search-clear::before {
-    transform: rotate(45deg);
-}
-
-.search-clear::after {
-    transform: rotate(-45deg);
-}
-
-.search-clear:hover::before,
-.search-clear:hover::after {
-    background: var(--ink);
-}
-
-.search-field input:focus-visible {
-    outline: none;
-    border-color: var(--blue);
-    background: var(--surface);
-    box-shadow: 0 0 0 3px rgba(0, 114, 188, 0.14);
-}
-
-.secondary-action {
-    height: 40px;
-    padding: 0 14px;
-    border: 1px solid var(--hairline-strong);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--blue-deep);
-    font: 600 13px var(--font-ui);
-    cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.secondary-action:not(:disabled):hover {
-    background: var(--blue-tint);
-    border-color: var(--blue);
-}
-
-.secondary-action:active {
-    background: var(--hairline);
-}
-
-.group-mode-field {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.group-mode-label {
-    flex-shrink: 0;
-    font: 600 12px/1.4 var(--font-ui);
-    color: var(--muted);
-    white-space: nowrap;
-}
-
-.group-mode {
-    flex: 1;
-    min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 4px;
-    padding: 4px;
-    border-radius: 10px;
-    background: #f0f3f6;
-}
-
-/* The filled segment makes the current grouping visible at a glance. */
-.group-mode__btn {
-    appearance: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    border: none;
-    border-radius: 7px;
-    background: none;
-    padding: 6px 12px;
-    margin: 0;
-    font: 700 12px var(--font-ui);
-    color: var(--muted-2);
-    cursor: pointer;
-    box-shadow: none;
-    transition: color var(--dur) var(--ease-out),
-        background-color var(--dur) var(--ease-out);
-}
-
-.group-mode__btn:not(:disabled):not(.is-active):hover {
-    color: var(--ink);
-    background: #e3eaf0;
-}
-
-.group-mode__btn:focus-visible {
-    outline: 2px solid var(--blue);
-    outline-offset: 2px;
-}
-
-.group-mode__btn.is-active {
-    color: #ffffff;
-    background: var(--blue-deep);
-}
-
-/* ---------- Group list ---------- */
-
-.sidebar-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    /* No top padding here: a sticky .list-section pins below the scroller's
-       padding, so rows scrolling past would peek through that strip. The
-       top gap lives on #list-data instead, where it scrolls away. */
-    padding: 0 0 8px;
-    overscroll-behavior: contain;
-    background: var(--surface);
-    scrollbar-width: thin;
-    scrollbar-color: var(--hairline-strong) transparent;
-}
-
-.sidebar-scroll::-webkit-scrollbar {
-    width: 5px;
-}
-
-.sidebar-scroll::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.sidebar-scroll::-webkit-scrollbar-thumb {
-    border-radius: 5px;
-    background: #bdcad4;
-}
-
-/* Desktop only: the mobile scroller never had a top gap, and the sheet's
-   peek height is tuned without one. */
-@media (min-width: 960px) {
-    #list-data {
-        padding-top: 4px;
-    }
-
-    /* A grey section header opening the list should butt against the
-       header's hairline; the gap would show as a white strip above it
-       until the first scroll pins the header. */
-    #list-data:has(> .list-section:first-child) {
-        padding-top: 0;
-    }
-}
-
-/* ---------- Screen 1: group rows ---------- */
-
-.group-row {
-    position: relative;
-    width: 100%;
-    min-height: 76px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px 14px 20px;
-    border: none;
-    border-radius: 0;
-    background: none;
-    cursor: pointer;
-    font: inherit;
-    text-align: left;
-    transition: background-color var(--dur) var(--ease-out);
-}
-
-.group-row + .group-row {
-    box-shadow: inset 0 1px 0 var(--divider);
-}
-
-@media (hover: hover) {
-    .group-row:hover {
-        background: #f4f8fb;
-    }
-
-    .group-row:hover .group-row__title {
-        color: var(--blue-deep);
-    }
-
-    .group-row:hover .group-row__count {
-        background: var(--blue-tint);
-        box-shadow: inset 0 0 0 1px rgba(0, 114, 188, 0.25);
-    }
-
-    .group-row:hover .group-row__chevron {
-        border-color: var(--blue);
-        translate: 2px 0;
-    }
-}
-
-.group-row:focus-visible {
-    outline: none;
-    box-shadow: inset 0 0 0 2px var(--blue);
-}
-
-.group-row:active {
-    background: #eaf2f7;
-}
-
-/* Three lines, each with one job: the name, where it spreads, and — only
-   when there is something to check — the status chips. */
-.group-row__copy {
-    flex: 1;
-    min-width: 0;
-    display: grid;
-    gap: 4px;
-}
-
-.group-row__title {
-    min-width: 0;
-    font: 700 15px var(--font-ui);
-    line-height: 1.35;
-    letter-spacing: -0.01em;
-    color: var(--ink);
-    transition: color var(--dur) var(--ease-out);
-}
-
-.group-row__meta {
-    min-width: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    /* Spacing avoids separators stranded at the start of a wrapped line. */
-    gap: 3px 10px;
-    font: 500 12px var(--font-ui);
-    line-height: 1.35;
-    font-variant-numeric: tabular-nums;
-    color: var(--muted);
-}
-
-/* Status counts are small tinted chips in the map legend's colours, so a
-   "check this" reads as a label, not as an error message in the text. */
-.group-row__statuses {
-    margin-top: 4px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-}
-
-.group-row__flag {
-    display: inline-flex;
-    align-items: center;
-    min-height: 22px;
-    padding: 0 8px 0 7px;
-    border-radius: 6px;
-    background: #f1f4f7;
-    box-shadow: inset 0 0 0 1px var(--divider);
-    font: 600 11px/1.2 var(--font-ui);
-    font-variant-numeric: tabular-nums;
-    color: var(--muted);
-    white-space: nowrap;
-}
-
-.group-row__flag--duplikat {
-    background: var(--orange-tint);
-    box-shadow: inset 0 0 0 1px rgba(232, 115, 26, 0.3);
-    color: var(--orange-deep);
-}
-
-.group-row .jalur-tag {
-    padding: 0;
-    border-radius: 0;
-    background: none;
-    box-shadow: none;
-    font-size: 10px;
-    letter-spacing: 0.03em;
-}
-
-.group-row__dot {
-    flex: 0 0 7px;
-    width: 7px;
-    height: 7px;
-    margin-right: 5px;
-    border-radius: 50%;
-    box-sizing: border-box;
-}
-
-.group-row__flag--duplikat .group-row__dot {
-    background: var(--orange-tint);
-    border: 1.5px solid var(--orange);
-}
-
-.group-row__flag--belum .group-row__dot {
-    background: var(--surface);
-    border: 1.5px dashed #6b7a8c;
-}
-
-/* The count box: the number over its unit, one fixed-width column so every
-   row's total lines up for a quick scan down the list. */
-.group-row__count {
-    flex-shrink: 0;
-    display: grid;
-    justify-items: center;
-    align-content: center;
-    gap: 1px;
-    width: 52px;
-    min-height: 46px;
-    padding: 4px 0;
-    border-radius: 10px;
-    background: #f1f4f7;
-    color: var(--ink);
-    text-align: center;
-    transition: background-color var(--dur) var(--ease-out),
-        box-shadow var(--dur) var(--ease-out);
-}
-
-.group-row__count strong {
-    font: 700 16px/1.1 var(--font-ui);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-}
-
-.group-row__count small {
-    font: 600 9.5px/1.2 var(--font-ui);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--muted-2);
-}
-
-.group-row__chevron {
-    display: block;
-    flex: 0 0 7px;
-    width: 7px;
-    height: 7px;
-    border-top: 2px solid var(--muted-2);
-    border-right: 2px solid var(--muted-2);
-    transform: rotate(45deg);
-    transition: border-color var(--dur) var(--ease-out),
-        translate var(--dur) var(--ease-out);
-}
-
-/* ---------- Screen 2: context header ---------- */
-
-.panel-context {
-    display: grid;
-    gap: 7px;
-    margin: -16px -20px 0;
-    padding: 8px 20px 16px;
-    background: #f8fafc;
-    border-bottom: 1px solid var(--divider);
-}
-
-/* Back to screen 1: a ghost button — chevron and text, no frame. An outlined
-   pill here read as a fourth filter chip beside the status chips below it,
-   and outranked the title it serves. The tint on hover and press, and a
-   full-height hit area, keep it from reading as a caption. The negative
-   margin lines the chevron up with the title's left edge. */
-.panel-back {
-    justify-self: start;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 32px;
-    margin-left: -8px;
-    padding: 0 10px 0 8px;
-    appearance: none;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    font: 600 13px/1 var(--font-ui);
-    color: var(--blue-deep);
-    cursor: pointer;
-    transition: background-color var(--dur) var(--ease-out),
-        transform 0.12s ease;
-}
-
-.panel-back::before {
-    content: "";
-    flex: 0 0 6px;
-    width: 6px;
-    height: 6px;
-    margin-left: 1px;
-    border-left: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    transform: rotate(45deg);
-    transition: translate var(--dur) var(--ease-out);
-}
-
-@media (hover: hover) {
-    .panel-back:hover {
-        background: var(--blue-tint);
-    }
-
-    /* The chevron leans the way the tap goes. */
-    .panel-back:hover::before {
-        translate: -2px 0;
-    }
-}
-
-.panel-back:active {
-    transform: scale(0.97);
-    background: #dcecfb;
-}
-
-.panel-back:focus-visible {
-    outline: 2px solid var(--blue);
-    outline-offset: 0;
-}
-
-.panel-context__title {
-    margin: 0;
-    font: 700 20px/1.35 var(--font-display);
-    letter-spacing: -0.035em;
-    color: var(--ink);
-}
-
-/* Kabupaten chips under the pengusul name. */
-.panel-context__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 5px;
-    margin: 5px 0 0;
-}
-
-/* ---------- Status filter chips ----------
-   Under the group name on screen 2: one toggle per status the group has, so
-   the reader jumps straight to the pins that still need a decision instead
-   of scrolling a 50-row list for a dashed tag. Same disc as the group rows
-   and the legend; the active chip fills with the status colour. */
-.status-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 4px 0 0;
-}
-
-.status-chip {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 0 10px;
-    border: 1px solid var(--hairline-strong);
-    border-radius: 999px;
-    background: var(--surface);
-    font: 600 11px/1.4 var(--font-ui);
-    font-variant-numeric: tabular-nums;
-    color: var(--muted-2);
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.status-chip:hover {
-    border-color: var(--blue);
-    color: var(--blue-deep);
-}
-
-.status-chip:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--blue);
-}
-
-.status-chip .group-row__dot {
-    margin-right: 6px;
-}
-
-.status-chip__count {
-    margin-right: 0.35em;
-    font-weight: 700;
-    color: var(--ink);
-}
-
-.status-chip--belum .group-row__dot {
-    background: var(--surface);
-    border: 1.5px dashed #6b7a8c;
-}
-
-.status-chip--duplikat .group-row__dot {
-    background: var(--orange-tint);
-    border: 1.5px solid var(--orange);
-}
-
-.status-chip.is-active {
-    border-color: var(--blue-deep);
-    background: var(--blue-deep);
-    color: #ffffff;
-}
-
-.status-chip.is-active .status-chip__count {
-    color: #ffffff;
-}
-
-.status-chip--belum.is-active {
-    border-color: #4d5d70;
-    background: #4d5d70;
-}
-
-.status-chip--duplikat.is-active {
-    border-color: var(--orange-deep);
-    background: var(--orange-deep);
-}
-
-.status-chip.is-active .group-row__dot {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(255, 255, 255, 0.9);
-}
-
-/* On screen 1 the status counts are shortcuts into the filtered group. */
-.group-row__flag[data-filter] {
-    cursor: pointer;
-    transition: box-shadow 0.15s ease, background-color 0.15s ease;
-}
-
-@media (hover: hover) {
-    .group-row__flag[data-filter]:hover {
-        box-shadow: inset 0 0 0 1px currentColor;
-    }
-}
-
-/* ---------- Kabupaten chip ----------
-   The kabupaten is the one fact the desa/kecamatan text cannot carry, so it
-   gets a shape of its own: a small tinted capsule with small caps, the same
-   everywhere it appears (context header, item sublines). Blue-deep on
-   blue-tint measures 8.6:1, comfortably past AAA for the tiny size. */
-.kab-tag {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 5px;
-    padding: 1px 7px 1px 6px;
-    border-radius: 999px;
-    background: var(--blue-tint);
-    box-shadow: inset 0 0 0 1px var(--hairline);
-    font: 700 10px/1.5 var(--font-ui);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--blue-deep);
-    white-space: nowrap;
-    vertical-align: middle;
-}
-
-.kab-tag__count {
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0;
-    color: var(--blue);
-}
-
-/* ---------- Jalur badge ----------
-   Which section of the allocation sheet the pengusul is filed under (Ketua
-   DPRD, Komisi III, Gubernur). Same capsule as the kabupaten chip so it reads
-   as metadata, but grey: blue is already taken by the kabupaten. */
-.jalur-tag {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    padding: 1px 7px;
-    border-radius: 999px;
-    background: #f0f4f8;
-    box-shadow: inset 0 0 0 1px var(--divider);
-    font: 700 10px/1.5 var(--font-ui);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--muted-2);
-    white-space: nowrap;
-    vertical-align: middle;
-}
-
-/* In a subline the chip trails the desa/kecamatan text; when the text is
-   long the chip drops to its own line, flush left, instead of indenting. */
-.item-subline:has(.kab-tag) {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 2px 7px;
-}
-
-/* Screen 2 keeps context, filter summary and scoped search together. */
-.group-mode-field {
-    order: 3;
-}
-
-.sidebar-header.is-detail .group-mode-field {
+   value changes too, so custom.js never has to toggle it. */
+.panel-search input:placeholder-shown ~ .panel-search__clear {
     display: none;
 }
 
-.sidebar-header.is-detail .panel-context {
-    order: 1;
+.panel-search__clear:hover {
+    background: var(--divider);
 }
 
-/* The detail view ends with the scoped search. */
-.sidebar-header.is-detail {
-    padding-bottom: 12px;
+.panel-search__clear svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
 }
 
-.sidebar-header.is-detail .summary-row {
-    order: 2;
-    padding: 2px 0;
+/* Counts line, overview: the total and "Lihat semua". */
+.atlas-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 0 18px 10px;
+    color: var(--muted);
+    font-size: 13.5px;
 }
 
-.sidebar-header.is-detail .search-field {
-    order: 3;
+.atlas-summary p {
+    margin: 0;
 }
 
-/* ---------- Kecamatan section label ----------
-   Sticky at the top of the scroller, so while the reader is deep in a
-   40-row pengusul the kecamatan they are looking at stays in view. Small
-   caps in the metadata voice; the count is the same tabular number the group
-   rows use. Sits above the rows (z-index) because the active row paints a
-   tinted background that would otherwise scroll over it. */
-.list-section {
+.atlas-summary b {
+    color: var(--ink);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+#fit-map {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    padding: 6px 2px;
+    border: 0;
+    background: none;
+    color: var(--blue);
+    font-size: 13.5px;
+    font-weight: 650;
+}
+
+#fit-map:hover {
+    color: var(--blue-deep);
+}
+
+#fit-map:hover span {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* Counts line, one kabupaten: the status filters and a hint. */
+.atlas-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 16px 8px;
+}
+
+.atlas-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 650;
+    transition:
+        background-color var(--dur),
+        border-color var(--dur),
+        color var(--dur);
+}
+
+.atlas-pill:hover {
+    border-color: var(--blue);
+}
+
+.atlas-pill b {
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+.atlas-pill[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #fff;
+}
+
+/* The pill's swatch is a miniature unit tile, so the filter doubles as the
+   legend for the tiles below it. */
+.atlas-pill__swatch {
+    width: 14px;
+    height: 11px;
+    border-radius: 3px;
+}
+
+.atlas-pill__swatch--duplikat {
+    border: 2px solid var(--orange);
+    background: var(--orange-tint);
+}
+
+.atlas-pill__swatch--belum {
+    border: 1.5px dashed var(--muted-2);
+    background: #fff;
+}
+
+.atlas-hint {
+    margin: 0;
+    padding: 2px 18px 12px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* The list. */
+.sidebar-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #c3cfda transparent;
+}
+
+/* The overview grid, scrolled: a soft shadow at the top edge of the list,
+   under the header (lists with sticky kecamatan heads have their own edge).
+   A partly hidden row (most visible at the end of the grid, where the list
+   cannot scroll further) then reads as content passing under the header
+   instead of an empty band. Rows of the grid also settle on their top edge
+   mid-list. */
+.sidebar-scroll:has(.atlas-grid) {
+    scroll-snap-type: y proximity;
+}
+
+.sidebar-scroll:has(.atlas-grid)::before {
+    content: "";
     position: sticky;
+    z-index: 3;
     top: 0;
+    display: block;
+    height: 12px;
+    margin-bottom: -12px;
+    background: linear-gradient(rgba(20, 38, 53, 0.16), rgba(20, 38, 53, 0));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur) var(--ease-out);
+}
+
+#sidebar.is-scrolled .sidebar-scroll:has(.atlas-grid)::before {
+    opacity: 1;
+}
+
+/* Overview: every kabupaten as a cell with its outline and its poles. */
+.atlas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid var(--divider);
+}
+
+.atlas-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--divider);
+    background: #fff;
+    text-align: left;
+    scroll-snap-align: start;
+    transition: background-color var(--dur);
+}
+
+.atlas-cell:nth-child(odd) {
+    border-right: 1px solid var(--divider);
+}
+
+.atlas-cell:hover {
+    background: var(--row-hover);
+}
+
+.atlas-cell__shape {
+    display: block;
+    height: 54px;
+    margin-bottom: 6px;
+}
+
+.atlas-shape {
+    fill: #e5ecf2;
+    stroke: #8ea2b5;
+    stroke-width: 0.9;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    transition:
+        fill var(--dur),
+        stroke var(--dur);
+}
+
+.atlas-cell:hover .atlas-shape,
+.atlas-cell:focus-visible .atlas-shape {
+    fill: #d9e9f7;
+    stroke: var(--blue);
+}
+
+.atlas-dot {
+    fill: var(--yellow);
+    stroke: var(--ink);
+    stroke-width: 0.8;
+    vector-effect: non-scaling-stroke;
+}
+
+.atlas-dot--duplikat {
+    stroke: var(--orange);
+    stroke-width: 1.6;
+}
+
+.atlas-dot--belum {
+    fill: #fff;
+    stroke: var(--ink);
+    stroke-dasharray: 1.6 1.2;
+}
+
+.atlas-cell__name {
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.atlas-cell__meta {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.atlas-cell__meta b {
+    color: var(--ink);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+.atlas-cell .status-flag {
+    margin-top: 3px;
+    font-size: 12px;
+}
+
+/* Status words keep the map's own symbols: a yellow disc with an orange ring
+   for "perlu verifikasi", a dashed outline for "belum ditetapkan". On a cell
+   each is also a shortcut into the kabupaten, filtered (custom.js reads which
+   part of the cell was hit). */
+.status-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.status-flag::before {
+    content: "";
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-flag--duplikat {
+    color: var(--orange-deep);
+}
+
+.status-flag--duplikat::before {
+    border: 2px solid var(--orange);
+    background: var(--yellow);
+}
+
+.status-flag--belum {
+    color: var(--muted);
+}
+
+.status-flag--belum::before {
+    border: 1.5px dashed var(--muted-2);
+    background: #fff;
+}
+
+@media (hover: hover) {
+    .atlas-cell .status-flag:hover {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+}
+
+/* One kabupaten: kecamatan groups, desa groups inside, unit tiles inside. */
+.atlas-section {
+    position: sticky;
     z-index: 1;
+    top: 0;
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 10px;
-    padding: 10px 20px;
-    background: #f6f8fa;
+    gap: 12px;
+    padding: 8px 18px;
+    border-top: 1px solid var(--divider);
+    border-bottom: 1px solid var(--divider);
+    background: var(--frost);
+    font-size: 13.5px;
+    font-weight: 750;
+    /* Slower than the panel's ease-out, and eased both ways: the head
+       changes colour mid-scroll, under the eye, and a quick flip read as a
+       flash. The border fades with it so no hard edge lands before the fill. */
+    transition:
+        background-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
+        color 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* A strip of frost between two kecamatan, so the break reads from the
+   whitespace alone, even at a quick scroll. On the group, outside the box
+   its sticky head is held to, so it scrolls away and never thickens a head
+   stuck at the top. Each kecamatan is its own group so its head is held to
+   its own rows: the next kecamatan pushes it out of the top instead of
+   stacking over it. */
+.atlas-group + .atlas-group {
+    border-top: 8px solid var(--frost);
+}
+
+/* The head of the kecamatan in view (custom.js, syncStuck) turns navy: it is
+   the only dark bar in the list, where navy on every head gave each the same
+   weight. */
+.atlas-section.is-stuck {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #fff;
+}
+
+/* The count is read with the name, not after it: ink and as heavy as the
+   name, so "20 titik" lands at the same glance. */
+.atlas-section span {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    transition: color 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.atlas-section.is-stuck span {
+    color: #fff;
+}
+
+.atlas-desa {
+    padding: 12px 18px 14px;
     border-bottom: 1px solid var(--divider);
 }
 
-.list-section + .item {
-    border-top: none;
+.atlas-desa:last-child {
+    border-bottom: 0;
 }
 
-.item + .list-section {
-    margin-top: 6px;
-    border-top: 1px solid var(--divider);
-}
-
-.list-section__title {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font: 700 10px/1.5 var(--font-ui);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--muted-2);
-}
-
-.list-section__count {
-    flex-shrink: 0;
-    font: 500 11px/1.5 var(--font-ui);
-    font-variant-numeric: tabular-nums;
-    color: var(--muted-2);
-}
-
-.item {
-    position: relative;
-    width: 100%;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin: 0;
-    padding: 9px 16px 9px 13px;
-    border: none;
-    border-radius: 0;
-    background: none;
-    cursor: pointer;
-    text-align: left;
-    font: inherit;
-    box-shadow: inset 3px 0 transparent;
-    transition: background-color var(--dur) var(--ease-out),
-        box-shadow var(--dur) var(--ease-out);
-}
-
-.item + .item {
-    border-top: 1px solid var(--divider);
-}
-
-.item:hover {
-    background: #f3f7fa;
-}
-
-.item:focus-visible {
-    outline: none;
-    box-shadow: inset 0 0 0 2px var(--blue);
-}
-
-/* Yellow means "this point on the map" — same as the marker and the legend. */
-.item.is-active {
-    background: #fdf8de;
-    box-shadow: inset 3px 0 var(--yellow);
-}
-
-/* Reserve rows stay in the list so the survey is complete, but they must
-   not read as SK units: hatched background, everything a step quieter, and
-   the kabupaten chip drops its blue so the eye lands on the SK rows first. */
-.item.is-cadangan {
-    background-color: #f6f8fa;
-    background-image: repeating-linear-gradient(
-        -45deg,
-        rgba(41, 61, 80, 0.085) 0 1px,
-        transparent 1px 7px
-    );
-    box-shadow: inset 3px 0 #c5cdd6;
-}
-
-.item.is-cadangan:hover {
-    background-color: #eef2f5;
-}
-
-.item.is-cadangan .item-code,
-.item.is-cadangan .item-coord,
-.item.is-cadangan .item-subline {
-    color: var(--disabled-ink);
-}
-
-.item.is-cadangan .item-label {
-    color: var(--muted-2);
-    font-weight: 400;
-}
-
-.item.is-cadangan .kab-tag {
-    background: #eceff2;
-    box-shadow: inset 0 0 0 1px #d8dee4;
-    color: var(--muted-2);
-}
-
-.item.is-cadangan.is-active {
-    background-color: #e9edf1;
-    box-shadow: inset 3px 0 var(--muted-2);
-}
-
-/* Status line between the title and the location: the capsule(s) alone, so
-   neither the title nor the desa line gives up width to them. */
-.item-status {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px 6px;
-    margin: 2px 0 1px;
-}
-
-/* Perlu verifikasi rows keep the SK look — they still count — and add one
-   small orange capsule so the crew knows the pin is provisional. */
-.item-flag {
-    display: inline-block;
-    padding: 1px 7px;
-    border: 1px dashed var(--orange);
-    border-radius: 999px;
-    background: var(--orange-tint);
-    font: 700 9.5px/1.5 var(--font-ui);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--orange-deep);
-    white-space: nowrap;
-}
-
-/* Belum Ditetapkan rows: still counted, so the row keeps the SK weight, but
-   a dashed slate edge and a grey tag say "unit exists, place not yet". */
-.item.is-belum {
-    box-shadow: inset 3px 0 #b7c1cc;
-}
-
-.item.is-belum .item-coord {
-    color: var(--disabled-ink);
-}
-
-.item-flag--belum {
-    border-color: #6b7a8c;
-    background: #f4f6f8;
-    color: var(--muted);
-}
-
-/* Cadangan capsule: solid grey edge, no tint — a label, not a warning. */
-.item-flag--cadangan {
-    border: 1px solid #c5cdd6;
-    background: var(--surface);
-    color: var(--muted-2);
-}
-
-/* The sequence number is the row's identity: a fixed column so the digits
-   line up, set quiet so the landmark still leads. */
-.item-code {
-    flex-shrink: 0;
-    min-width: 2.4em;
-    margin-top: 2px;
-    font: 500 11px var(--font-ui);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
-    color: var(--muted-2);
-}
-
-.item-copy {
-    flex: 1;
-    min-width: 0;
-    display: grid;
-    gap: 1px;
-}
-
-.item-headline {
+.atlas-desa__head {
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 12px;
 }
 
-/* Survey landmarks run to 60+ characters. Two lines keeps the rows a uniform
-   height and scannable; the full text is in the row's accessible name and in
-   the popup. */
-.item-label {
-    flex: 1;
-    min-width: 0;
-    font: 600 14px var(--font-ui);
-    line-height: 1.35;
-    color: var(--ink);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    overflow-wrap: anywhere;
+.atlas-desa__title {
+    font-size: 14.5px;
+    font-weight: 650;
+    line-height: 1.3;
 }
 
-.item-coord {
-    flex-shrink: 0;
-    font-size: 10.5px;
-    font-variant-numeric: tabular-nums;
+.atlas-desa__count {
+    flex: none;
     color: var(--muted);
-    white-space: nowrap;
-}
-
-.item-subline {
-    font-size: 11.5px;
-    line-height: 1.35;
-    color: var(--muted);
-}
-
-.empty-state {
-    display: grid;
-    justify-items: start;
-    gap: 10px;
-    padding: 16px;
-}
-
-.empty-state__copy {
-    margin: 0;
     font-size: 12.5px;
-    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+}
+
+/* A line under the heading: the landmark every unit of the group shares,
+   once, or the sheet line of a group headed by its desa (groupHead). */
+.atlas-desa__note {
+    margin: 2px 0 0;
     color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.35;
+    text-wrap: pretty;
 }
 
-/* ---------- Loading state ---------- */
-
-.data-loading__note {
-    margin: 0 0 4px;
-    padding: 9px 16px 0;
-    font-size: 11.5px;
-    color: var(--muted);
-}
-
-.skeleton-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 16px;
-}
-
-.skeleton-row__copy {
-    flex: 1;
-    min-width: 0;
+/* Units in two columns: the numbered tile with its coordinate beside it,
+   under the survey landmark where there is one. */
+.atlas-units {
     display: grid;
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 4px 10px;
+    margin-top: 10px;
 }
 
-.skeleton {
-    display: block;
-    height: 9px;
-    border-radius: 4px;
-    background: var(--divider);
-    animation: skeleton-pulse 1.4s ease-in-out infinite;
+.atlas-pt {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    margin: 0;
+    padding: 3px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    text-align: left;
+    transition: background-color var(--dur);
 }
 
-.skeleton--code {
-    flex-shrink: 0;
-    width: 26px;
-    margin-top: 1px;
+.atlas-pt:hover {
+    background: var(--row-hover);
 }
 
-.skeleton--label {
-    width: 78%;
+.atlas-pt__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    line-height: 1.3;
 }
 
-.skeleton--sub {
-    width: 52%;
-    height: 8px;
+/* Two lines at most: "Depan Rumah Kepala Kampung Rt.02" is the long end. */
+.atlas-pt__note {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 12.5px;
+    font-weight: 600;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+    /* No word left alone on the last line. */
+    text-wrap: pretty;
 }
 
-/* Stagger so the rows read as a list settling in, not one flashing block. */
-.skeleton-row:nth-child(3) .skeleton { animation-delay: 0.08s; }
-.skeleton-row:nth-child(4) .skeleton { animation-delay: 0.16s; }
-.skeleton-row:nth-child(5) .skeleton { animation-delay: 0.24s; }
-.skeleton-row:nth-child(6) .skeleton { animation-delay: 0.32s; }
-.skeleton-row:nth-child(7) .skeleton { animation-delay: 0.4s; }
-
-@keyframes skeleton-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.45; }
+.atlas-pt__coord {
+    min-width: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Unavailable data: make disabled look disabled ---------- */
-
-.search-field input:disabled,
-.secondary-action:disabled,
-.group-mode__btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-}
-
-body.is-data-unavailable .search-field input::placeholder {
-    color: var(--muted-2);
-}
-
-/* Unknown counts must not look like a claim of zero. */
-body.is-data-unavailable .list-summary {
+.atlas-pt__coord--none {
     color: var(--muted-2);
     font-style: italic;
 }
 
-.loading-state {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 16px;
-    font-size: 12.5px;
+.atlas-unit {
+    display: grid;
+    place-items: center;
+    flex: none;
+    min-width: 46px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid #c6d3df;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition:
+        background-color var(--dur),
+        border-color var(--dur);
+}
+
+/* Colour only: the background shorthand also wiped the cadangan hatch, so a
+   reserve tile went plain blue under the pointer. */
+.atlas-pt:hover .atlas-unit:not(.is-active) {
+    border-color: var(--blue);
+    background-color: var(--blue-tint);
+}
+
+.atlas-unit.is-duplikat {
+    border: 2px solid var(--orange);
+    background: var(--orange-tint);
+    color: var(--orange-deep);
+}
+
+.atlas-unit.is-belum {
+    border: 1.5px dashed var(--muted-2);
     color: var(--muted);
 }
 
-.loading-spinner {
-    flex-shrink: 0;
-    width: 18px;
-    height: 18px;
-    border: 2px solid var(--hairline-strong);
-    border-top-color: var(--blue);
-    border-radius: 50%;
-    animation: loading-spin 0.8s linear infinite;
+.atlas-unit.is-cadangan {
+    border: 1.5px solid var(--hatch-edge);
+    background: var(--hatch);
+    color: var(--ink);
+    font-weight: 800;
+    text-shadow: var(--hatch-halo);
 }
 
-@keyframes loading-spin {
+/* Yellow means "this point on the map" — same as the marker and the legend. */
+.atlas-unit.is-active {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--yellow);
+    text-shadow: none;
+}
+
+/* Loading, empty and error states. */
+.panel-loading {
+    display: grid;
+    gap: 18px;
+    padding: 18px 20px;
+}
+
+.panel-loading__note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.panel-skel-row {
+    display: grid;
+    gap: 8px;
+}
+
+.panel-skel {
+    display: block;
+    height: 14px;
+    border-radius: 7px;
+    background: linear-gradient(90deg, #eef2f6 25%, #f7f9fb 50%, #eef2f6 75%);
+    background-size: 200% 100%;
+    animation: panel-shimmer 1.3s linear infinite;
+}
+
+.panel-skel--sub {
+    height: 11px;
+}
+
+@keyframes panel-shimmer {
     to {
-        transform: rotate(360deg);
+        background-position: -200% 0;
     }
 }
 
-.data-error {
-    display: grid;
-    gap: 10px;
-    margin: 12px 16px;
-    padding: 16px;
-    border: 1px solid #f0c7c7;
-    border-radius: var(--radius-sm);
-    background: #fff5f5;
-    color: #7a1f1f;
-}
-
-.data-error__title {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 16px;
-    line-height: 1.3;
-    color: #5f1717;
-}
-
-.data-error__copy {
-    margin: 0;
+.panel-empty {
+    padding: 32px 24px;
+    color: var(--muted);
     font-size: 14px;
-    line-height: 1.55;
+    text-align: center;
 }
 
-.data-error__action {
-    justify-self: start;
-    border-color: #d99b9b;
-    color: #7a1f1f;
+.panel-empty__title {
+    margin: 0 auto 6px;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
 }
 
-.sidebar-footer {
-    flex-shrink: 0;
-    margin: 0;
-    padding: 12px 20px;
-    border-top: 1px solid var(--divider);
-    background: #f8fafc;
-    font-size: 10.5px;
-    font-weight: 500;
-    line-height: 1.35;
-    letter-spacing: 0.01em;
+.panel-empty p {
+    max-width: 34ch;
+    margin: 0 auto 14px;
+}
+
+.panel-empty__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.panel-empty button {
+    height: 38px;
+    padding: 0 16px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-weight: 650;
+}
+
+.panel-empty button:hover {
+    border-color: var(--blue);
+    color: var(--blue-deep);
+}
+
+/* Unavailable data: disabled looks disabled, and unknown counts must not
+   look like a claim of zero. */
+.panel-search input:disabled,
+#fit-map:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+body.is-data-unavailable .atlas-summary {
     color: var(--muted-2);
+    font-style: italic;
+}
+
+/* Footer: "Survey lapangan & pelaksanaan" over the newest survey date and
+   the agency, centred under the list. */
+.sidebar-footer {
+    flex: none;
+    margin: 0;
+    padding: 10px 18px 14px;
+    border-top: 1px solid var(--divider);
+    color: var(--muted);
+    font-size: 12.5px;
+    text-align: center;
 }
 
 .sidebar-footer__title {
     display: block;
-    margin-bottom: 3px;
     color: var(--ink-soft);
-    font-size: 11.5px;
+    font-size: 12.5px;
     font-weight: 600;
     line-height: 1.4;
 }
 
 .sidebar-footer__meta {
     display: block;
-    line-height: 1.5;
-}
-
-/* ---------- Desktop panel: frame + two cards ----------
-   The panel is a tinted frame holding two white cards — the brand on top,
-   the controls and list below — so identity and data read as separate
-   objects. Radii are concentric: frame 24 = card 16 + 8 of frame padding.
-   The mobile sheet gets the same frame, minus the brand card (see the
-   max-width: 959px block). */
-
-.panel-body {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    background: var(--surface);
-    border: 1px solid var(--hairline);
-    border-radius: 16px;
-    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.06);
-    overflow: hidden;
-}
-
-@media (min-width: 960px) {
-    #sidebar {
-        gap: 8px;
-        padding: 8px;
-        background: rgba(249, 250, 252, 0.97);
-        border-color: rgba(255, 255, 255, 0.6);
-        border-radius: 24px;
-        -webkit-backdrop-filter: blur(12px) saturate(1.2);
-        backdrop-filter: blur(12px) saturate(1.2);
-    }
-
-    .panel-brand {
-        min-height: 88px;
-        padding: 16px;
-        border: 1px solid var(--hairline);
-        border-radius: 16px;
-        box-shadow: 0 1px 2px rgba(20, 38, 53, 0.06);
-    }
-
-    .sidebar-header {
-        padding: 16px;
-    }
-
-    /* The footer sits on the frame itself, between the cards' edges. */
-    .sidebar-footer {
-        padding: 6px 16px 5px;
-        border-top: none;
-        background: transparent;
-    }
-
-    /* Open: a tab on the frame's right edge — the side-panel handle Google
-       Maps readers already know. It takes the frame's ground and edge and
-       tucks 1px over it, so it reads as part of the panel, not a loose chip.
-       Level with the brand card, not halfway down: there it sat beside the
-       rows' own ">" chevrons and read as one more of them. The :not() lifts
-       these over the base .panel-toggle rules further down. */
-    body:not(.is-sidebar-collapsed) .panel-toggle {
-        top: var(--panel-toggle-top);
-        left: calc(var(--panel-left) + var(--panel-width) - 1px);
-        width: 26px;
-        height: 52px;
-        border-color: rgba(255, 255, 255, 0.6);
-        border-left-color: transparent;
-        border-radius: 0 12px 12px 0;
-        background: rgba(249, 250, 252, 0.97);
-        box-shadow: 4px 2px 10px rgba(20, 38, 53, 0.18);
-    }
-
-    body:not(.is-sidebar-collapsed) .panel-toggle:hover {
-        background: var(--blue-tint);
-        border-color: rgba(255, 255, 255, 0.6);
-        border-left-color: transparent;
-    }
-
-    body:not(.is-sidebar-collapsed) .panel-toggle__chevron {
-        width: 7px;
-        height: 7px;
-        border-width: 0 0 2px 2px;
-        border-color: var(--ink);
-        transform: rotate(45deg) translate(1px, -1px);
-    }
-
-    body:not(.is-sidebar-collapsed) .panel-toggle:hover .panel-toggle__chevron {
-        border-color: var(--blue);
-    }
+    margin-top: 1px;
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.45;
 }
 
 /* ---------- Map control state ladder ---------- */
@@ -1797,8 +1337,8 @@ body.is-sidebar-collapsed .panel-toggle.is-near {
         transition-delay: 350ms;
     }
 
-    /* The open panel toggle sits at the sidebar's right edge, so a tooltip
-       to its left would land on top of the panel it belongs to. */
+    /* The panel toggle sits at the map's left edge, so its tooltip opens to
+       the right, onto the map. */
     .panel-toggle[data-tooltip]::after {
         right: auto;
         left: calc(100% + 10px);
@@ -1854,95 +1394,41 @@ body.is-sidebar-collapsed .panel-toggle.is-near {
 
 /* ---------- Panel toggle (desktop) ---------- */
 
-/* Open: the toggle sits inside the panel's own header, flat and chrome-less,
-   so the panel reads as one object instead of a card trailed by a loose chip.
-   It cannot live in the panel's DOM — collapsing translates the panel off
-   screen and would take its own re-open control with it — so it is positioned
-   over the header from outside. */
+/* The panel closes from the round button in its own header; this is the way
+   back. It cannot live in the panel — collapsing slides the panel off screen
+   and would take its own re-open control with it — so it waits where the
+   panel's corner was, in the control-chip chrome, and only while the panel
+   is away. */
 .panel-toggle {
     position: absolute;
-    top: calc(var(--panel-top) + 18px);
-    left: calc(var(--panel-left) + var(--panel-width) - 42px);
+    top: var(--panel-top);
+    left: var(--panel-left);
     z-index: 23;
-    width: 30px;
-    height: 30px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background: transparent;
-    box-shadow: none;
-    cursor: pointer;
-    transition: top var(--dur-state) var(--ease-out),
-        left var(--dur-state) var(--ease-out),
-        width var(--dur-state) var(--ease-out),
-        height var(--dur-state) var(--ease-out),
-        border-radius var(--dur-state) var(--ease-out),
-        background-color var(--dur) var(--ease-out),
-        border-color var(--dur) var(--ease-out),
-        box-shadow var(--dur) var(--ease-out),
-        transform var(--dur) var(--ease-out),
-        scale var(--dur-state) var(--ease-spring);
-}
-
-/* Open state has no chrome — it belongs to the panel header — so its hover
-   is a tint, not the chip ladder. */
-.panel-toggle:hover {
-    background: #f3f7fa;
-    border-color: var(--divider);
-}
-
-.panel-toggle:hover .panel-toggle__chevron {
-    border-color: var(--blue);
-}
-
-/* Collapsed: the same tab at the same height, now flush with the screen's
-   left edge — it rides out with the panel and waits where the panel was, so
-   opening is found exactly where closing happened. Control-chip chrome, as
-   it now sits on the map alone. */
-body.is-sidebar-collapsed .panel-toggle {
-    top: var(--panel-toggle-top);
-    left: 0;
-    width: 26px;
-    height: 52px;
-    border-color: var(--ctl-border);
-    border-left-color: transparent;
-    border-radius: 0 12px 12px 0;
+    display: none;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 1px solid var(--ctl-border);
+    border-radius: 14px;
     background: var(--ctl-surface);
     box-shadow: var(--ctl-shadow);
+    color: var(--ink);
+    cursor: pointer;
 }
 
-/* The chevron slides toward wherever the panel is about to travel — left to
-   close, right to open. Cheap directional preview of what the click does.
-   The slide uses the standalone `translate` property so it happens in the
-   parent's coordinate space, unrotated by the 45deg in `transform`. */
-.panel-toggle__chevron {
-    display: block;
-    /* Above the ripple layer, which is absolutely positioned. */
+body.is-sidebar-collapsed .panel-toggle {
+    display: grid;
+}
+
+.panel-toggle svg {
     position: relative;
     z-index: 1;
-    width: 8px;
-    height: 8px;
-    margin: 0 auto;
-    border-left: 2px solid var(--ink-soft);
-    border-bottom: 2px solid var(--ink-soft);
-    transform: rotate(45deg) translate(1px, -1px);
-    translate: 0;
-    transition: transform var(--dur-state) var(--ease-out),
-        translate var(--dur) var(--ease-spring),
-        border-color var(--dur) var(--ease-out);
-}
-
-.panel-toggle:hover .panel-toggle__chevron {
-    translate: -2px;
-}
-
-body.is-sidebar-collapsed .panel-toggle__chevron {
-    transform: rotate(225deg) translate(1px, -1px);
-    border-color: var(--ink);
-}
-
-body.is-sidebar-collapsed .panel-toggle:hover .panel-toggle__chevron {
-    translate: 2px;
-    border-color: var(--blue);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 /* ---------- Point popup (desktop: anchored overlay) ---------- */
@@ -3209,11 +2695,11 @@ body.is-sidebar-collapsed .map-legend {
 
 @media (max-width: 959px) {
     :root {
-        /* Tall enough that the first list row peeks above the fold —
-           signals there's content to pull up. Grew with the handle (a labelled
-           chip under the grabber, ~65px against the old 40) so that row still
-           shows. */
-        --sheet-peek: 266px;
+        /* Closed, the sheet peeks down to its search field, so the search is
+           always on screen and the masthead carries the identity. custom.js
+           (measurePeek) sets the real value from the rendered sheet on every
+           screen; this is only the first paint's guess. */
+        --sheet-peek: 124px;
         --sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);
         --popup-ease: cubic-bezier(0.22, 1, 0.36, 1);
         /* 48px touch target. Drives the layer button AND its icon overlay —
@@ -3222,67 +2708,30 @@ body.is-sidebar-collapsed .map-legend {
     }
 
     /* Mobile keeps the floating masthead: the sheet is mostly off-screen, so
-       the panel's own brand block would take the map's identity down with it. */
-    .panel-brand {
+       the panel's own header would take the map's identity down with it. The
+       sheet keeps only its handle, the search and the counts on top; one
+       kabupaten keeps its header, a touch smaller. The panel is closed from
+       its handle, not collapsed. */
+    .atlas-head,
+    .panel-collapse {
         display: none;
     }
 
-    /* The peek keeps the summary, search and grouping controls visible. */
-    .sidebar-header {
-        gap: 10px;
-        padding: 4px 16px 12px;
+    .atlas-detail {
+        padding-top: 2px;
     }
 
-    .search-field input {
-        /* iOS zooms focused form controls below 16px. */
-        height: 40px;
+    .atlas-locator {
+        height: 72px;
+    }
+
+    .atlas-detail__main {
+        grid-template-columns: minmax(0, 1fr) 96px;
+    }
+
+    /* iOS zooms focused form controls below 16px. */
+    .panel-search input {
         font-size: 16px;
-    }
-
-    .group-mode__btn {
-        min-height: 40px;
-    }
-
-    .group-row {
-        min-height: 72px;
-        padding: 13px 16px;
-    }
-
-    .panel-back {
-        min-height: 40px;
-        font-size: 14px;
-    }
-
-    .panel-context {
-        margin: -4px -16px 0;
-        padding: 10px 16px 12px;
-    }
-
-    .summary-row {
-        gap: 12px;
-    }
-
-    .list-summary__total {
-        font-size: 21px;
-    }
-
-    /* 40px touch target; a touch more type to match. */
-    #fit-map {
-        min-height: 40px;
-        padding: 0 15px 0 12px;
-        font-size: 13.5px;
-    }
-
-    .search-clear {
-        width: 40px;
-        height: 40px;
-        right: 0;
-        margin-top: -20px;
-    }
-
-    .item {
-        min-height: 48px;
-        padding: 11px 16px 11px 13px;
     }
 
     /* The masthead has the header line to itself (the layer chip lives at
@@ -3297,8 +2746,6 @@ body.is-sidebar-collapsed .map-legend {
         max-width: calc(100% - 24px);
         margin: 0 auto;
         min-height: 48px;
-        padding: 6px 14px 6px 10px;
-        gap: 10px;
     }
 
     /* Layer chip joins the control stack at the foot: directly above the
@@ -3347,16 +2794,10 @@ body.is-sidebar-collapsed .map-legend {
     }
 
 
-    .masthead-lambang {
-        width: 30px;
-    }
-
-    .masthead-kicker {
-        font-size: 10px;
-        letter-spacing: 0.08em;
-        /* Ellipsis, not wrap. Below ~340px this line outruns its box, and a
-           second line grows the masthead into the layer chip's row. The title
-           beneath it already degrades this way. */
+    /* Ellipsis, not wrap. Below ~340px a line outruns its box, and a second
+       line grows the masthead into the layer chip's row. */
+    .masthead-kicker,
+    .masthead-title {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -3364,14 +2805,6 @@ body.is-sidebar-collapsed .map-legend {
 
     .masthead-copy {
         min-width: 0;
-    }
-
-    .masthead-title {
-        font-size: 17px;
-        letter-spacing: -0.03em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
     .panel-toggle {
@@ -3384,16 +2817,15 @@ body.is-sidebar-collapsed .map-legend {
         right: 0;
         bottom: 0;
         width: auto;
-        /* The desktop frame tint, but opaque: the sheet covers the whole
-           screen, so letting the map through buys no depth and makes
-           high-contrast satellite labels legible straight through the list. */
-        background: #f9fafc;
-        max-height: 85dvh;
-        height: 85dvh;
-        border-radius: 16px 16px 0 0;
-        border-left: none;
-        border-right: none;
-        border-bottom: none;
+        /* Open, the sheet stops under the masthead (12 + 48 + 12) instead of
+           covering it. Opaque: letting the map through buys no depth and
+           makes high-contrast satellite labels legible through the list. */
+        max-height: calc(100dvh - 72px);
+        height: calc(100dvh - 72px);
+        padding-bottom: env(safe-area-inset-bottom);
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -2px 6px rgba(20, 38, 53, 0.12), 0 -14px 36px rgba(20, 38, 53, 0.24);
+        opacity: 1;
         transform: translate3d(0, calc(100% - var(--sheet-peek)), 0);
         transition: transform 0.32s var(--sheet-ease);
         will-change: transform;
@@ -3603,11 +3035,6 @@ body.is-sidebar-collapsed .map-legend {
     }
 
 
-    /* Inset from the sheet's sides so the frame shows around it. */
-    .panel-body {
-        margin: 0 8px;
-    }
-
     .sidebar-scroll {
         padding: 0 0 10px;
         overflow-y: hidden;
@@ -3769,6 +3196,390 @@ body.is-sidebar-collapsed .map-legend {
     }
 }
 
+/* ---------- Map controls: the atlas look ----------
+   The layer chip, its panel, the zoom rail and the legend in the sidebar's
+   atlas colours. Kept after the mobile block so these shapes hold at every
+   width: the phone rules above move the controls, they do not restyle them. */
+
+.ctl-layers {
+    stroke: var(--ink);
+}
+
+/* Open = ink with a yellow icon. Ink on a dark satellite sea vanishes, so a
+   white ring keeps the chip. */
+#top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button {
+    background-color: var(--ink);
+    border-color: var(--ink);
+    box-shadow: 0 0 0 2px #fff, 0 6px 16px rgba(20, 38, 53, 0.3);
+}
+
+#top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button ~ .ctl-layers-slot .ctl-layers {
+    stroke: var(--yellow);
+}
+
+@media (hover: hover) {
+    #top-right-container .layer-switcher > button:hover ~ .ctl-layers-slot .ctl-layers {
+        stroke: var(--ink);
+    }
+
+    #top-right-container .layer-switcher.shown.layer-switcher-activation-mode-click > button:hover {
+        background-color: #1d2e3e;
+        border-color: #1d2e3e;
+    }
+}
+
+/* Layer panel: switches for the layers, a segmented base map. */
+#top-right-container .layer-switcher .panel {
+    min-width: 268px;
+    padding: 14px 16px 16px;
+    border-color: var(--atlas-edge);
+    border-radius: 22px;
+    background: linear-gradient(var(--atlas-paper), #fff 84px);
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.1), 0 16px 36px rgba(20, 38, 53, 0.2);
+}
+
+#top-right-container .layer-switcher .panel li.group {
+    border-bottom-color: #dfe6ec;
+}
+
+#top-right-container .layer-switcher .panel li.group > label {
+    color: var(--ink);
+    font: 700 13px var(--font-ui);
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+#top-right-container .layer-switcher .panel li.layer {
+    flex-direction: row-reverse;
+    justify-content: space-between;
+}
+
+#top-right-container .layer-switcher .panel li label {
+    flex: 1;
+}
+
+/* A switch drawn on the checkbox itself: the knob is a radial gradient that
+   slides across the track. */
+#top-right-container .layer-switcher .panel li input[type="checkbox"] {
+    appearance: none;
+    width: 36px;
+    height: 22px;
+    margin: 0;
+    border-radius: 999px;
+    background: radial-gradient(circle closest-side, #fff calc(100% - 1px), transparent) no-repeat 3px 50% / 16px 16px,
+        #c4d3df;
+    cursor: pointer;
+    transition: background-position var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+}
+
+#top-right-container .layer-switcher .panel li input[type="checkbox"]:checked {
+    background-image: radial-gradient(circle closest-side, var(--yellow) calc(100% - 1px), transparent);
+    background-color: var(--ink);
+    background-position: calc(100% - 3px) 50%;
+}
+
+#top-right-container .layer-switcher .panel li input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Base map: two capsules in one track; the chosen one fills ink. */
+#top-right-container .layer-switcher .panel .layer-switcher-base-group {
+    margin: 10px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px solid #dbe9f4;
+    border-bottom: 0;
+}
+
+#top-right-container .layer-switcher .panel .layer-switcher-base-group > ul {
+    display: flex;
+    gap: 3px;
+    width: auto;
+    margin: 8px 0 0;
+    padding: 3px;
+    border: 1px solid var(--atlas-edge);
+    border-radius: 999px;
+    background: var(--atlas-paper);
+}
+
+#top-right-container .layer-switcher .panel .layer-switcher-base-group li {
+    position: relative;
+    flex: 1;
+    padding: 0;
+}
+
+#top-right-container .layer-switcher .panel .layer-switcher-base-group input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#top-right-container .layer-switcher .panel .layer-switcher-base-group li label {
+    justify-content: center;
+    padding: 8px 10px;
+    border-radius: 999px;
+    color: var(--ink);
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+}
+
+#top-right-container .layer-switcher .panel .layer-switcher-base-group li:has(input:checked) label {
+    background: var(--ink);
+    color: var(--yellow);
+    box-shadow: 0 2px 6px rgba(20, 38, 53, 0.3);
+}
+
+#top-right-container .layer-switcher .panel .layer-switcher-base-group input:focus-visible + label {
+    outline: 2px solid var(--blue);
+    outline-offset: 1px;
+}
+
+/* Zoom: a horizontal − | + capsule. */
+.ol-zoom {
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.ol-zoom button {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.ol-zoom .ol-zoom-in {
+    border-radius: 0 999px 999px 0;
+}
+
+.ol-zoom .ol-zoom-out {
+    border-radius: 999px 0 0 999px;
+}
+
+.ol-zoom .ol-zoom-out::before {
+    top: 11px;
+    bottom: 11px;
+    left: auto;
+    right: 0;
+    width: 1px;
+    height: auto;
+    background: var(--atlas-edge);
+}
+
+.ol-zoom button:focus-visible,
+.ol-zoom button:active {
+    background: #fff;
+    color: var(--ink);
+}
+
+@media (hover: hover) {
+    .ol-zoom button:hover {
+        background: #fff;
+        color: var(--ink);
+    }
+}
+
+/* Legend: one key plate, read-only. Loose rounded chips took the shape of
+   the sidebar's filter pills (Semua / Perlu verifikasi), which are buttons,
+   so the key read as three toggles. Squared to the info box's 14px beside
+   it and split by hairlines, it reads as a caption for the map. */
+.map-legend__pill {
+    gap: 0;
+    padding: 8px 4px;
+    border: 1px solid var(--atlas-edge);
+    border-radius: 14px;
+    background: rgba(238, 243, 247, 0.96);
+    box-shadow: 0 4px 12px rgba(20, 38, 53, 0.18);
+}
+
+.map-legend__item {
+    padding: 0 12px;
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.map-legend__item + .map-legend__item {
+    border-left: 1px solid var(--atlas-edge);
+}
+
+@media (min-width: 960px) {
+    .map-meta {
+        flex-direction: row;
+        align-items: flex-end;
+        gap: 10px;
+    }
+
+    .ol-zoom button {
+        width: 50px;
+    }
+
+    .map-meta__info {
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(20, 38, 53, 0.18);
+    }
+
+    .ol-scale-line,
+    .bottom-attribution {
+        border-color: var(--atlas-edge);
+        border-radius: 0;
+        background: rgba(238, 243, 247, 0.96) !important;
+    }
+
+    .ol-scale-line-inner {
+        border-color: var(--ink);
+        color: var(--ink);
+    }
+}
+
+/* ---------- Point card: the atlas look ----------
+   A map card: rounder, borderless, and a locator inset on the photo shows
+   where in the kabupaten this pole stands (custom.js, insetSvg). After the
+   mobile block, like the controls, so the shape holds at every width. */
+
+.ol-popup {
+    border-color: transparent;
+    border-radius: 18px;
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.12), 0 18px 44px rgba(20, 38, 53, 0.26);
+}
+
+.feature-popup {
+    border-radius: 18px;
+}
+
+.ol-popup-closer {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    line-height: 28px;
+}
+
+.feature-popup__body {
+    padding: 14px 16px 16px;
+}
+
+.feature-popup__eyebrow {
+    color: var(--muted);
+    font: 600 13px/1.3 var(--font-ui);
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.feature-popup__title {
+    margin-top: 4px;
+    font: 750 19px/1.25 var(--font-display);
+}
+
+.popup-inset {
+    position: absolute;
+    z-index: 1;
+    left: 10px;
+    bottom: 10px;
+    display: block;
+    width: 80px;
+    height: 62px;
+    padding: 5px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+}
+
+/* No photo (lokasi belum ditetapkan): the inset leads the body instead. */
+.popup-inset--block {
+    position: static;
+    margin: 0 0 10px;
+    background: var(--frost);
+    box-shadow: none;
+}
+
+.popup-inset svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.popup-inset__shape {
+    fill: #e5ecf2;
+    stroke: #8ea2b5;
+    stroke-width: 0.9;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.popup-inset__dot {
+    fill: #a9b8c6;
+}
+
+.popup-inset__here-ring {
+    fill: rgba(254, 229, 15, 0.35);
+    stroke: var(--ink);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+.popup-inset__here {
+    fill: var(--yellow);
+    stroke: var(--ink);
+    stroke-width: 1.4;
+    vector-effect: non-scaling-stroke;
+}
+
+.feature-popup__meta {
+    margin-top: 12px;
+}
+
+.feature-popup__route {
+    min-height: 50px;
+    padding-left: 6px;
+    border-color: var(--blue);
+    border-radius: 999px;
+    background: var(--blue);
+    box-shadow: 0 6px 16px rgba(0, 114, 188, 0.26);
+}
+
+.feature-popup__route:hover {
+    border-color: var(--blue-deep);
+    background: var(--blue-deep);
+}
+
+.feature-popup__route-icon {
+    border-radius: 999px;
+}
+
+.feature-popup__tools {
+    border-radius: 14px;
+}
+
+.feature-popup__hatch {
+    border-radius: 999px;
+}
+
+/* No scrollbar gutter in the card. A 6px bar ran from the very top, past the
+   rounded corner and beside the photo, leaving a white strip next to it. The
+   card scrolls without a visible bar, edge to edge, clipped to its radius;
+   the "more below" fade (.popup-scroll-fade) still says there is more until
+   the end. */
+#popup-content {
+    border-radius: inherit;
+    scrollbar-width: none;
+}
+
+#popup-content::-webkit-scrollbar {
+    display: none;
+}
+
+/* On phones the whole card is the scroller (see the mobile block), so the
+   bar goes there too. */
+@media (max-width: 959px) {
+    .ol-popup {
+        scrollbar-width: none;
+    }
+
+    .ol-popup::-webkit-scrollbar {
+        display: none;
+    }
+}
+
 /* ---------- First-visit map gesture hint (phones) ----------
    The whole visible map goes soft behind a clear, blurred layer, and a hand
    with a line of text floats in the middle of the area above the sheet peek
@@ -3892,18 +3703,9 @@ body.is-sidebar-collapsed .map-legend {
 }
 
 @media (max-width: 959px) and (max-height: 500px) {
-    :root {
-        /* Handle + search field only; the labelled handle costs ~25px more. */
-        --sheet-peek: 148px;
-    }
-
-    .sidebar-header {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 6px;
-    }
-
-    /* Use the extra width to keep results usable on a short landscape screen. */
-    /* A short landscape screen keeps the bar and puts the caption beside it. */
+    /* A short landscape screen keeps the bar and puts the caption beside it,
+       and the open kabupaten drops its locator: the list needs the height
+       more than the province does. */
     #sheet-handle {
         flex-direction: row;
         gap: 10px;
@@ -3911,39 +3713,12 @@ body.is-sidebar-collapsed .map-legend {
         padding: 4px 12px;
     }
 
-    .sidebar-header .search-field {
-        grid-column: 2;
-        grid-row: 1;
+    .atlas-detail__main {
+        grid-template-columns: minmax(0, 1fr);
     }
 
-    .sidebar-header .summary-row {
-        grid-column: 1;
-        grid-row: 1;
-        padding-right: 10px;
-    }
-
-    .sidebar-header .group-mode-field {
-        grid-column: 1 / -1;
-        grid-row: 2;
-    }
-
-    .sidebar-header.is-detail .panel-context {
-        grid-column: 1;
-        grid-row: 1 / 3;
-        margin: -4px 0 -12px -16px;
-        padding: 4px 16px 12px;
-        border-bottom: none;
-        border-right: 1px solid var(--divider);
-    }
-
-    .sidebar-header.is-detail .summary-row {
-        grid-column: 2;
-        grid-row: 1;
-    }
-
-    .sidebar-header.is-detail .search-field {
-        grid-column: 2;
-        grid-row: 2;
+    .atlas-locator {
+        display: none;
     }
 }
 
@@ -3957,19 +3732,10 @@ body.is-sidebar-collapsed .map-legend {
 }
 
 /* ---------- Quiet script focus ----------
-   custom.js tags nodes it focuses after a mouse or touch press (the back pill,
-   a status chip, a group row) with .is-quiet-focus, because browsers paint
-   that script focus as :focus-visible. Kept last so it outranks each
-   control's own ring; the rows keep their hairline divider. */
+   custom.js tags nodes it focuses after a mouse or touch press (the back
+   button, a status pill, a kabupaten cell) with .is-quiet-focus, because
+   browsers paint that script focus as :focus-visible. Kept last so it
+   outranks each control's own ring. */
 .is-quiet-focus:focus-visible {
     outline: none;
-}
-
-.status-chip.is-quiet-focus:focus-visible,
-.group-row.is-quiet-focus:focus-visible {
-    box-shadow: none;
-}
-
-.group-row + .group-row.is-quiet-focus:focus-visible {
-    box-shadow: inset 0 1px 0 var(--divider);
 }
