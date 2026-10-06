@@ -557,6 +557,35 @@ body.is-sidebar-collapsed #sidebar {
     font-variant-numeric: tabular-nums;
 }
 
+/* The total is the figure the page exists to report, so it is set as a
+   headline number with its unit and spread stacked beside it, not as a
+   word inside a sentence. */
+.atlas-total {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.atlas-summary .atlas-total__num {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.atlas-total__label {
+    display: flex;
+    flex-direction: column;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.atlas-total__label > span:first-child {
+    color: var(--ink);
+    font-weight: 650;
+}
+
 #fit-map {
     display: inline-flex;
     align-items: center;
