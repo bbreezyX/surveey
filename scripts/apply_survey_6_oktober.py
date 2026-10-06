@@ -17,6 +17,10 @@ the crew marking its base, 4 m away. The user chose to swap 002 to shot 04.
 Likewise 003's 13 Mei photo is a pose in open grass with no landmark; it
 takes shot 07 (crew marking beside the blue-tarp shed), 17 m away.
 
+That left 006 as the only point with no 6 Oktober shot and shot 06 (cassava
+garden by the fence) as the only unused shot. The user chose to relocate 006
+there, 73 m north -- a re-siting, not GPS noise.
+
 Entries already applied (same coordinate and photo) are skipped, so the
 script can be re-run after a new entry is added.
 
@@ -45,11 +49,12 @@ TR = "KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-"
 UPDATES = {
     8: (TR + "002", -1.585429, 103.586436),  # shot 04
     5: (TR + "003", -1.584465, 103.586506),  # shot 07
+    6: (TR + "006", -1.584913, 103.586530),  # shot 06
     4: (TR + "007", -1.584248, 103.586442),  # shot 08
     3: (TR + "008", -1.584118, 103.585904),  # shot 09
     2: (TR + "009", -1.583805, 103.585995),  # shot 10
 }
-EXPECTED_LABEL = {8: "04", 5: "07", 4: "08", 3: "09", 2: "10"}
+EXPECTED_LABEL = {8: "04", 5: "07", 6: "06", 4: "08", 3: "09", 2: "10"}
 MAX_MOVE_M = 400
 
 
