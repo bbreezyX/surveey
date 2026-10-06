@@ -1306,6 +1306,7 @@
       }
     });
     scroller.scrollTop = keep;
+    syncScrolled();
 
     var placeholder = R.placeholder(model);
     if (searchInput.placeholder !== placeholder) {
@@ -1527,6 +1528,14 @@
 
   // The peek shows the sheet down to its search field; the site's map
   // controls sit on the same line, so it learns the height too.
+  // A list scrolled under its header gets a soft shadow at the cut, so a
+  // partly hidden row reads as passing under the header, not as a gap.
+  function syncScrolled() {
+    panel.classList.toggle("is-scrolled", regions.list.scrollTop > 2);
+  }
+
+  regions.list.addEventListener("scroll", syncScrolled, { passive: true });
+
   function measurePeek() {
     if (!isMobile() || !appDoc) {
       return;

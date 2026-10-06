@@ -2355,3 +2355,34 @@ body.is-mobile .mk-switcher button {
     transition: none !important;
   }
 }
+
+/* B's overview grid, scrolled: a soft shadow at the top edge of the list,
+   under the header (lists with sticky section heads have their own edge). A partly hidden row (most visible at the end of B's grid, where
+   the list cannot scroll further) then reads as content passing under the
+   header instead of an empty band. Rows of B's grid also settle on their top
+   edge mid-list. */
+.mk-scroll:has(.vb-grid)::before {
+  content: "";
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  display: block;
+  height: 12px;
+  margin-bottom: -12px;
+  background: linear-gradient(rgba(20, 38, 53, 0.16), rgba(20, 38, 53, 0));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease-out);
+}
+
+.mk-panel.is-scrolled .mk-scroll:has(.vb-grid)::before {
+  opacity: 1;
+}
+
+.vb .mk-scroll:has(.vb-grid) {
+  scroll-snap-type: y proximity;
+}
+
+.vb-grid .vb-cell {
+  scroll-snap-align: start;
+}
