@@ -1344,7 +1344,8 @@ body[data-variant="c"] .mk-expand {
   font-variant-numeric: tabular-nums;
 }
 
-/* The landmark every unit of the group shares, once under the heading. */
+/* A line under the heading: the landmark every unit of the group shares,
+   once, or the sheet line of a group headed by its desa (groupHead). */
 .vb-desa__note {
   margin: 2px 0 0;
   color: var(--muted);

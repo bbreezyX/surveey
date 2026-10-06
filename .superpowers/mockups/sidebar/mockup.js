@@ -1213,7 +1213,7 @@
   // because the 3-digit code only runs within one desa: "Distrik Center HKBP
   // Jambi" covers Pelempang 001-003 and Tempino 001-002, and one group read
   // 001 002 003 001 002. Only a place name that spans two desa gets the desa
-  // after it, on each of its groups (three places as of Oct 2026, the others
+  // named on its groups (groupHead; three places as of Oct 2026, the others
   // being Kec. Tanah Tumbuh and Muara Siau). Naming the desa wherever the
   // place name didn't contain it flagged 16 groups, mostly spelling drift
   // ("Sei. Kayu Aro" against SUNGAI KAYU ARO) that only added noise.
@@ -1254,6 +1254,46 @@
 
   function desaOf(nomor) {
     return nomorPart(nomor, 1);
+  }
+
+  // A sheet line that names nothing below the kecamatan only repeats the
+  // section header: "Kec. Tanah Tumbuh" (seven Bungo units in two desa) read
+  // "Kec. Tanah Tumbuh · Lubuk Niur" under a "Kec. Tanah Tumbuh" header, and
+  // "Muara Siau, Kec. Muara Siau" read "Muara Siau · Muara Siau". Such a group
+  // is headed by its desa instead, Desa or Kel. as its Alamat says; the sheet
+  // line stays the point card's title. Three groups as of Oct 2026. Nor does a
+  // split place repeat a desa its line already names ("…, Desa Pelempang ·
+  // Pelempang").
+  //
+  // The HKBP line also covers two units whose photo stamps put them in
+  // Tempino, next to Pelempang, and "Distrik Center HKBP Jambi, Desa
+  // Pelempang · Tempino" named two desa at once. That group is headed by
+  // where its units are, with the sheet line under it. Review (Oct 2026)
+  // chose this for the HKBP line alone; four other lines that name a
+  // different desa than their units keep the heading (Desa Muara Siau over
+  // Sungai Ulas, Desa Tenam over Simpang Terusan, Kel. Rengas Condong over
+  // Teratai, Kel. Pematang Sulur over Telanaipura).
+  var LINE_ELSEWHERE = ["Distrik Center HKBP Jambi, Desa Pelempang, Kec. Mestong"];
+
+  function desaTitle(nomor) {
+    var f = indexFeatures().byNomor[nomor];
+    return (/^\s*kel(\.|urahan)/i.test(f ? f.get("Alamat") : "") ? "Kel. " : "Desa ") + desaOf(nomor);
+  }
+
+  // { title, line }: line is the sheet line to show under a title that
+  // isn't it.
+  function groupHead(grp, section) {
+    var label = underSection(grp.label, section);
+    var nomor = grp.items[0].nomor;
+    var area = function (text) { return words(text).join(" ").replace(/^kec(amatan)? /, ""); };
+    if (area(label) === area(section)) {
+      return { title: desaTitle(nomor), line: "" };
+    }
+    var named = (" " + words(label).join(" ") + " ").indexOf(" " + words(desaOf(nomor)).join(" ") + " ") !== -1;
+    if (!named && LINE_ELSEWHERE.indexOf(grp.label) !== -1) {
+      return { title: desaTitle(nomor), line: label };
+    }
+    return { title: label + (grp.desa && !named ? " · " + grp.desa : ""), line: "" };
   }
 
   // ---------- B · where each unit is ---------------------------------------
@@ -1495,9 +1535,10 @@
               : "") +
             desaGroups(s.items)
               .map(function (grp) {
-                var title = underSection(grp.label, s.title) + (grp.desa ? " · " + grp.desa : "");
+                var head = groupHead(grp, s.title);
+                var title = head.title;
                 var marks = grp.items.map(function (it) {
-                  return landmarkFor(it, title + " " + s.title);
+                  return landmarkFor(it, title + " " + head.line + " " + s.title);
                 });
                 // A landmark every unit shares goes under the heading once,
                 // not on each tile: "Dusun Teluk Bengkah" five times over, or
@@ -1506,6 +1547,7 @@
                 return (
                   '<div class="vb-desa"><div class="vb-desa__head"><span class="vb-desa__title">' + esc(title) +
                   '</span><span class="vb-desa__count">' + fmt(grp.items.length) + " titik</span></div>" +
+                  (head.line ? '<p class="vb-desa__note">Rekapan: ' + esc(head.line) + "</p>" : "") +
                   (shared ? '<p class="vb-desa__note">' + esc(shared) + "</p>" : "") +
                   '<div class="vb-units">' +
                   grp.items
