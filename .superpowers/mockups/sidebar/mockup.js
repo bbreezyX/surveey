@@ -598,14 +598,6 @@
     return null;
   }
 
-  function unitStateClass(item) {
-    return (
-      (item.classList.contains("is-duplikat") ? " is-duplikat" : "") +
-      (item.classList.contains("is-belum") ? " is-belum" : "") +
-      (item.classList.contains("is-cadangan") ? " is-cadangan" : "")
-    );
-  }
-
   function decoratePopup(root) {
     var card = root.querySelector(".feature-popup");
     if (!card || card.hasAttribute("data-mk")) {
@@ -655,46 +647,6 @@
         media.appendChild(inset);
       } else {
         body.insertBefore(inset, body.firstChild);
-      }
-    }
-
-    // B: the other units at the same spot, as the sidebar's tiles.
-    if (active) {
-      var label = txt(active.querySelector(".item-label"));
-      var siblings = Array.prototype.filter.call(d.querySelectorAll("#list-data .item"), function (item) {
-        // Same place name, as the sidebar's groups (see desaGroups).
-        return plain(txt(item.querySelector(".item-label"))) === plain(label);
-      });
-      if (siblings.length > 1) {
-        var units = d.createElement("div");
-        units.className = "mk-pop-units mk-only-b";
-        units.innerHTML =
-          '<p class="mk-pop-units__label">' + fmt(siblings.length) + ' titik di lokasi ini</p><div class="mk-pop-units__row">' +
-          siblings
-            .map(function (item) {
-              var code = txt(item.querySelector(".item-code"));
-              var current = item === active;
-              return (
-                '<button type="button" class="mk-pop-unit' + unitStateClass(item) + '" data-item-id="' +
-                esc(item.getAttribute("data-item-id")) + '"' + (current ? ' aria-current="true"' : "") +
-                ' aria-label="Titik ' + esc(code) + (current ? ", sedang dibuka" : "") + '">' + esc(code) + "</button>"
-              );
-            })
-            .join("") +
-          "</div>";
-        units.addEventListener("click", function (event) {
-          var tile = event.target.closest(".mk-pop-unit");
-          if (!tile || tile.getAttribute("aria-current") === "true") {
-            return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          appClick(d.querySelector('#list-data .item[data-item-id="' + cssValue(tile.getAttribute("data-item-id")) + '"]'));
-        });
-        // After the route button: getting to this pole stays the first
-        // thing the card offers; the neighbours are the next step.
-        var anchor = card.querySelector(".feature-popup__actions") || meta || title;
-        anchor.insertAdjacentElement("afterend", units);
       }
     }
 

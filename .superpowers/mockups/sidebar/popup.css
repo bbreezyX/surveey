@@ -3,7 +3,7 @@
    mockup.js also adds a few pieces to each card as it opens, tagged
    mk-only-a|b|c so only the chosen variant shows them:
      A  .mk-pop-rule, .mk-pop-nomor   kop rule under the title, registry number
-     B  .mk-pop-inset, .mk-pop-units  locator inset on the photo, sibling units
+     B  .mk-pop-inset                 locator inset on the photo
      C  .mk-pop-figs                  navy band figures (koordinat, dokumentasi) */
 
 .mk-only-a,
@@ -215,72 +215,6 @@ html.mk-pop-b .mk-pop-inset--block {
     stroke: var(--ink);
     stroke-width: 1.4;
     vector-effect: non-scaling-stroke;
-}
-
-html.mk-pop-b .mk-pop-units {
-    display: block;
-    margin-top: 12px;
-}
-
-.mk-pop-units__label {
-    margin: 0 0 7px;
-    color: var(--muted);
-    font: 600 12.5px/1.3 var(--font-ui);
-}
-
-.mk-pop-units__row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-}
-
-.mk-pop-unit {
-    min-width: 40px;
-    height: 30px;
-    padding: 0 6px;
-    border: 1px solid #c6d3df;
-    border-radius: 7px;
-    background: #fff;
-    color: var(--ink);
-    font: 700 12.5px/1 var(--font-ui);
-    font-variant-numeric: tabular-nums;
-    cursor: pointer;
-    transition:
-        background-color 0.16s ease,
-        border-color 0.16s ease;
-}
-
-.mk-pop-unit:hover {
-    border-color: var(--blue);
-    background: var(--blue-tint);
-}
-
-.mk-pop-unit:focus-visible {
-    outline: 2px solid var(--blue);
-    outline-offset: 2px;
-}
-
-.mk-pop-unit.is-duplikat {
-    border: 2px solid var(--orange);
-    background: var(--orange-tint);
-    color: var(--orange-deep);
-}
-
-.mk-pop-unit.is-belum {
-    border: 1.5px dashed var(--muted-2);
-    color: var(--muted);
-}
-
-.mk-pop-unit.is-cadangan {
-    background: repeating-linear-gradient(135deg, #e9eef3 0 4px, #fff 4px 8px);
-    color: var(--muted);
-}
-
-.mk-pop-unit[aria-current="true"] {
-    border-color: var(--ink);
-    background: var(--ink);
-    color: var(--yellow);
-    cursor: default;
 }
 
 html.mk-pop-b .feature-popup__meta {

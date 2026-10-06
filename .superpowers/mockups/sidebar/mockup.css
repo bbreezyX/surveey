@@ -23,6 +23,11 @@
   --frost: #f4f7fa;
   --row-hover: #f3f8fd;
   --paper: #ffffff;
+  /* Cadangan (arsir): the same diagonal hatch everywhere, dark enough to read
+     at a glance next to plain units, with the code kept legible on top. */
+  --hatch-edge: #7d90a1;
+  --hatch: repeating-linear-gradient(-45deg, #7d90a1 0 1.5px, #fff 1.5px 5px);
+  --hatch-halo: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff;
   --float-shadow: 0 1px 2px rgba(20, 38, 53, 0.14), 0 18px 48px rgba(20, 38, 53, 0.3);
   --font: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
   --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
@@ -550,8 +555,8 @@ body[data-variant="c"] .mk-expand {
 }
 
 .mk-flag--cadangan::before {
-  border: 1.5px solid var(--muted-2);
-  background: repeating-linear-gradient(135deg, #cfd8e1 0 2px, #fff 2px 4px);
+  border: 1.5px solid var(--hatch-edge);
+  background: var(--hatch);
 }
 
 /* ========================================================================
@@ -923,6 +928,20 @@ body[data-variant="c"] .mk-expand {
 
 .va-point .mk-flag {
   margin-top: 5px;
+}
+
+.va-point.is-cadangan {
+  background-color: #f4f6f8;
+  background-image: repeating-linear-gradient(-45deg, rgba(41, 61, 80, 0.16) 0 1.5px, transparent 1.5px 7px);
+  box-shadow: inset 3px 0 var(--hatch-edge);
+}
+
+.va-point.is-cadangan:hover {
+  background-color: #e9eef3;
+}
+
+.va-point.is-cadangan.is-active {
+  background-color: #fffbd9;
 }
 
 .va-point.is-cadangan .va-point__title {
@@ -1393,14 +1412,18 @@ body[data-variant="c"] .mk-expand {
 }
 
 .vb-unit.is-cadangan {
-  background: repeating-linear-gradient(135deg, #e9eef3 0 4px, #fff 4px 8px);
-  color: var(--muted);
+  border: 1.5px solid var(--hatch-edge);
+  background: var(--hatch);
+  color: var(--ink);
+  font-weight: 800;
+  text-shadow: var(--hatch-halo);
 }
 
 .vb-unit.is-active {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--yellow);
+  text-shadow: none;
 }
 
 .vb-foot {
@@ -1799,9 +1822,11 @@ body[data-variant="c"] .mk-expand {
 }
 
 .vc-pin-row.is-cadangan .vc-pin {
-  background: repeating-linear-gradient(135deg, #dfe6ec 0 3px, #fff 3px 6px);
-  box-shadow: inset 0 0 0 1.5px var(--muted-2);
-  color: var(--muted);
+  background: var(--hatch);
+  box-shadow: inset 0 0 0 1.5px var(--hatch-edge);
+  color: var(--ink);
+  font-weight: 800;
+  text-shadow: var(--hatch-halo);
 }
 
 .vc-pin-row.is-active {
@@ -1812,6 +1837,7 @@ body[data-variant="c"] .mk-expand {
   background: var(--ink);
   box-shadow: 0 0 0 3px var(--yellow);
   color: var(--yellow);
+  text-shadow: none;
 }
 
 .vc-pin-row__title {
