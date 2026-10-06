@@ -108,7 +108,7 @@
 
   function emptyModel() {
     return {
-      screen: "overview", group: "", summary: "", footer: "", query: "",
+      screen: "overview", group: "", summary: "", footer: "", footerTitle: "", footerMeta: "", query: "",
       loading: true, error: "", filters: [], groups: [], sections: [], empty: ""
     };
   }
@@ -123,6 +123,8 @@
     m.group = ctx ? txt(ctx.querySelector(".panel-context__title")) : "";
     m.summary = txt(d.getElementById("list-summary"));
     m.footer = txt(d.querySelector(".sidebar-footer"));
+    m.footerTitle = txt(d.querySelector(".sidebar-footer__title"));
+    m.footerMeta = txt(d.querySelector(".sidebar-footer__meta"));
     m.query = input ? input.value : "";
     if (!list) {
       return m;
@@ -219,9 +221,14 @@
     return t;
   }
 
-  function sourceLine(m) {
-    var match = /s\.d\.\s+(.+?)(?:\s+·|$)/.exec(m.footer);
-    return "Sumber: survey lapangan" + (match ? " s.d. " + match[1] : "");
+  // The site's own footer, word for word: "Survey lapangan & pelaksanaan"
+  // over "s.d. <newest survey date> · Dinas ESDM Jambi".
+  function footLines(m) {
+    var title = m.footerTitle || "Survey lapangan & pelaksanaan";
+    return (
+      '<span class="mk-foot__title">' + esc(title) + "</span>" +
+      (m.footerMeta ? '<span class="mk-foot__meta">' + esc(m.footerMeta) + "</span>" : "")
+    );
   }
 
   function cleanSummary(text) {
@@ -957,7 +964,7 @@
       );
     },
     foot: function (m) {
-      return '<p class="va-foot">' + esc(sourceLine(m)) + "</p>";
+      return '<p class="va-foot mk-foot">' + footLines(m) + "</p>";
     }
   };
 
@@ -1003,20 +1010,6 @@
     return ["Titik " + it.code]
       .concat(itemFlags(it).map(function (f) { return f[1].toLowerCase(); }))
       .join(", ");
-  }
-
-  function legendB() {
-    function dot(kind) {
-      return (
-        '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle class="dot dot--' + kind +
-        '" cx="6" cy="6" r="4"/></svg>'
-      );
-    }
-    return (
-      '<div class="vb-key"><span class="vb-key__item">' + dot("sk") + "Titik PUTS</span>" +
-      '<span class="vb-key__item">' + dot("duplikat") + "Perlu verifikasi</span>" +
-      '<span class="vb-key__item">' + dot("belum") + "Belum ditetapkan</span></div>"
-    );
   }
 
   RENDER.b = {
@@ -1083,7 +1076,7 @@
               );
             })
             .join("") +
-          "</div>" + legendB()
+          "</div>"
         );
       }
       return m.sections
@@ -1116,7 +1109,7 @@
         .join("");
     },
     foot: function (m) {
-      return '<p class="vb-foot">' + esc(sourceLine(m)) + "</p>";
+      return '<p class="vb-foot mk-foot">' + footLines(m) + "</p>";
     }
   };
 
@@ -1236,7 +1229,7 @@
         .join("");
     },
     foot: function (m) {
-      return '<p class="vc-foot">' + esc(sourceLine(m)) + "</p>";
+      return '<p class="vc-foot mk-foot">' + footLines(m) + "</p>";
     }
   };
 

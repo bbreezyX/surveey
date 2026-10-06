@@ -1138,25 +1138,6 @@ body[data-variant="c"] .mk-expand {
   font-size: 12px;
 }
 
-.vb-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  padding: 12px 18px 16px;
-  color: var(--muted);
-  font-size: 12.5px;
-}
-
-.vb-key__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.vb-key__item svg {
-  overflow: visible;
-}
-
 .vb-detail {
   padding: 14px 12px 12px 18px;
 }
@@ -2385,4 +2366,22 @@ body.is-mobile .mk-switcher button {
 
 .vb-grid .vb-cell {
   scroll-snap-align: start;
+}
+
+/* Footer: the site's two lines, "Survey lapangan & pelaksanaan" over the
+   newest survey date and the agency. */
+.mk-foot__title {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.mk-foot__meta {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
 }
