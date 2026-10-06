@@ -184,6 +184,8 @@
       section.items.push({
         id: node.getAttribute("data-item-id"),
         code: txt(node.querySelector(".item-code")),
+        // The live row's title is the full Nomor (KAB-KEC-DESA-NNN).
+        nomor: node.getAttribute("title") || "",
         label: txt(node.querySelector(".item-label")),
         coord: txt(node.querySelector(".item-coord")),
         sub: txt(node.querySelector(".item-subline")),
@@ -970,23 +972,50 @@
 
   // ---------- B · Atlas Wilayah -------------------------------------------
 
-  // One group per place name. The per-point note (it.sub) is left out: the
-  // point card shows it, and keying on it split a place in two whenever only
-  // some of its points had one (RT 04 Tanjung Raden). Each unit carries its
-  // coordinate instead.
+  // One group per place name and desa. The per-point note (it.sub) is left
+  // out: the point card shows it, and keying on it split a place in two
+  // whenever only some of its points had one (RT 04 Tanjung Raden). Each unit
+  // carries its coordinate instead. The desa from Nomor stays in the key
+  // because the 3-digit code only runs within one desa: "Distrik Center HKBP
+  // Jambi" covers Pelempang 001-003 and Tempino 001-002, and one group read
+  // 001 002 003 001 002. Only a place name that spans two desa gets the desa
+  // after it, on each of its groups (three places as of Oct 2026, the others
+  // being Kec. Tanah Tumbuh and Muara Siau). Naming the desa wherever the
+  // place name didn't contain it flagged 16 groups, mostly spelling drift
+  // ("Sei. Kayu Aro" against SUNGAI KAYU ARO) that only added noise.
   function desaGroups(items) {
+    var desaPerPlace = {};
+    items.forEach(function (it) {
+      var place = plain(it.label);
+      (desaPerPlace[place] = desaPerPlace[place] || {})[desaOf(it.nomor)] = true;
+    });
     var out = [];
     var byKey = {};
     items.forEach(function (it) {
-      var key = plain(it.label);
+      var place = plain(it.label);
+      var desa = desaOf(it.nomor);
+      var key = place + "|" + desa.toLowerCase();
       var group = byKey[key];
       if (!group) {
-        group = byKey[key] = { label: it.label, items: [] };
+        var split = Object.keys(desaPerPlace[place]).length > 1;
+        group = byKey[key] = { label: it.label, desa: split ? desa : "", items: [] };
         out.push(group);
       }
       group.items.push(it);
     });
     return out;
+  }
+
+  // "MUARO JAMBI-MESTONG-TEMPINO-001" -> "Tempino".
+  function desaOf(nomor) {
+    var parts = String(nomor || "").split("-");
+    if (parts.length < 3 || !/^\d+$/.test(parts[parts.length - 1].trim())) {
+      return "";
+    }
+    return parts[parts.length - 2]
+      .trim()
+      .toLowerCase()
+      .replace(/(^|\s)\S/g, function (c) { return c.toUpperCase(); });
   }
 
   // The unit tile with its coordinate beside it, lat over lon.
@@ -1088,7 +1117,7 @@
             desaGroups(s.items)
               .map(function (grp) {
                 return (
-                  '<div class="vb-desa"><div class="vb-desa__head"><span class="vb-desa__title">' + esc(underSection(grp.label, s.title)) +
+                  '<div class="vb-desa"><div class="vb-desa__head"><span class="vb-desa__title">' + esc(underSection(grp.label, s.title) + (grp.desa ? " · " + grp.desa : "")) +
                   '</span><span class="vb-desa__count">' + fmt(grp.items.length) + " titik</span></div>" +
                   '<div class="vb-units">' +
                   grp.items
