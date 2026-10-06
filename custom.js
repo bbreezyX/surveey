@@ -2817,6 +2817,9 @@
 
     // Sections are { title, items }: a kecamatan head when a kabupaten spans
     // several, untitled otherwise (and for search results across kabupaten).
+    // Each section is its own .atlas-group so its sticky head is held to its
+    // own rows: the next kecamatan pushes it out of the top instead of
+    // stacking over it.
     function sectionsHtml(sections) {
       return sections
         .map(function (s) {

@@ -846,16 +846,6 @@ body.is-sidebar-collapsed #sidebar {
         color 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* A strip of frost between two kecamatan, so the break reads from the
-   whitespace alone, even at a quick scroll. On the group, outside the box
-   its sticky head is held to, so it scrolls away and never thickens a head
-   stuck at the top. Each kecamatan is its own group so its head is held to
-   its own rows: the next kecamatan pushes it out of the top instead of
-   stacking over it. */
-.atlas-group + .atlas-group {
-    border-top: 8px solid var(--frost);
-}
-
 /* The head of the kecamatan in view (custom.js, syncStuck) turns navy: it is
    the only dark bar in the list, where navy on every head gave each the same
    weight. */
