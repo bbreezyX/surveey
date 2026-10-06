@@ -661,9 +661,9 @@
     // B: the other units at the same spot, as the sidebar's tiles.
     if (active) {
       var label = txt(active.querySelector(".item-label"));
-      var sub = txt(active.querySelector(".item-subline"));
       var siblings = Array.prototype.filter.call(d.querySelectorAll("#list-data .item"), function (item) {
-        return txt(item.querySelector(".item-label")) === label && txt(item.querySelector(".item-subline")) === sub;
+        // Same place name, as the sidebar's groups (see desaGroups).
+        return plain(txt(item.querySelector(".item-label"))) === plain(label);
       });
       if (siblings.length > 1) {
         var units = d.createElement("div");
@@ -1011,19 +1011,64 @@
 
   // ---------- B · Atlas Wilayah -------------------------------------------
 
+  // One group per place name. The per-point note (it.sub) used to be part of
+  // the key, so a place split in two whenever only some of its points had a
+  // note (RT 04 Tanjung Raden: 001-004 "Pesantren Seberang", 005-010 none).
+  // The notes now ride under the group, each with the codes it belongs to.
   function desaGroups(items) {
     var out = [];
     var byKey = {};
     items.forEach(function (it) {
-      var key = it.label + "\u0000" + it.sub;
+      var key = plain(it.label);
       var group = byKey[key];
       if (!group) {
-        group = byKey[key] = { label: it.label, sub: it.sub, items: [] };
+        group = byKey[key] = { label: it.label, items: [], notes: [] };
         out.push(group);
       }
       group.items.push(it);
+      var sub = it.sub && plain(it.label).indexOf(plain(it.sub)) === -1 ? it.sub : "";
+      var note = null;
+      group.notes.some(function (n) {
+        if (n.text === sub) {
+          note = n;
+          return true;
+        }
+        return false;
+      });
+      if (!note) {
+        note = { text: sub, codes: [] };
+        group.notes.push(note);
+      }
+      note.codes.push(it.code);
     });
     return out;
+  }
+
+  // "001–004" for a run of consecutive numbers, else "001, 003, 007".
+  function codeSpan(codes) {
+    var nums = codes.map(function (c) { return parseInt(c, 10); });
+    var run = nums.every(function (n, i) { return !isNaN(n) && (i === 0 || n === nums[i - 1] + 1); });
+    if (run && codes.length > 2) {
+      return codes[0] + "\u2013" + codes[codes.length - 1];
+    }
+    return codes.join(", ");
+  }
+
+  // A note shared by every point shows as before; notes that cover only some
+  // of the points name the codes they belong to.
+  function desaNotes(grp) {
+    var named = grp.notes.filter(function (n) { return n.text; });
+    if (!named.length) {
+      return "";
+    }
+    if (grp.notes.length === 1) {
+      return '<p class="vb-desa__sub">' + esc(named[0].text) + "</p>";
+    }
+    return named
+      .map(function (n) {
+        return '<p class="vb-desa__sub">' + esc(n.text) + ' <span class="vb-desa__codes">\u00b7 ' + esc(codeSpan(n.codes)) + "</span></p>";
+      })
+      .join("");
   }
 
   function plain(value) {
@@ -1129,11 +1174,10 @@
               : "") +
             desaGroups(s.items)
               .map(function (grp) {
-                var showSub = grp.sub && plain(grp.label).indexOf(plain(grp.sub)) === -1;
                 return (
                   '<div class="vb-desa"><div class="vb-desa__head"><span class="vb-desa__title">' + esc(underSection(grp.label, s.title)) +
                   '</span><span class="vb-desa__count">' + fmt(grp.items.length) + " titik</span></div>" +
-                  (showSub ? '<p class="vb-desa__sub">' + esc(grp.sub) + "</p>" : "") +
+                  desaNotes(grp) +
                   '<div class="vb-units">' +
                   grp.items
                     .map(function (it) {

@@ -2147,3 +2147,9 @@ body.is-mobile .mk-switcher button {
     transition: none !important;
   }
 }
+
+/* Which units a note belongs to, when it covers only some of them. */
+.vb-desa__codes {
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
