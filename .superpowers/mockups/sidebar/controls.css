@@ -9,7 +9,7 @@
      B  Atlas Wilayah — a touch tool in the atlas sheet's slate. A round
                         layer chip, switches for the layers, a segmented capsule
                         for the base map, a horizontal − | + capsule and the
-                        legend as loose chips; "on" is ink with yellow.
+                        legend as one key plate; "on" is ink with yellow.
      C  Dasbor Navy   — a dashboard frame. A navy rail down the right edge
                         holding the controls, a navy status bar along the
                         foot with counts per symbol, the layer drawer opening
@@ -526,26 +526,29 @@ html.mk-pop-b .ol-zoom button:active {
     }
 }
 
-/* ---- legend: loose chips, one per symbol ---- */
+/* ---- legend: one key plate, read-only ---- */
 
+/* One plate, not a chip per symbol: loose rounded chips took the shape of
+   the sidebar's filter pills (Semua / Perlu verifikasi), which are buttons,
+   so the key read as three toggles. Squared to the info box's 14px beside
+   it and split by hairlines, it reads as a caption for the map. */
 html.mk-pop-b .map-legend__pill {
-    gap: 8px;
-    padding: 0;
-    border: 0;
-    background: none;
-    box-shadow: none;
-    pointer-events: none;
+    gap: 0;
+    padding: 8px 4px;
+    border: 1px solid var(--mk-b-edge);
+    border-radius: 14px;
+    background: rgba(238, 243, 247, 0.96);
+    box-shadow: 0 4px 12px rgba(20, 38, 53, 0.18);
 }
 
 html.mk-pop-b .map-legend__item {
-    padding: 7px 13px 7px 9px;
-    border: 1px solid var(--mk-b-edge);
-    border-radius: 999px;
-    background: rgba(238, 243, 247, 0.96);
-    box-shadow: 0 4px 12px rgba(20, 38, 53, 0.2);
+    padding: 0 12px;
     color: var(--ink);
     font-weight: 600;
-    pointer-events: auto;
+}
+
+html.mk-pop-b .map-legend__item + .map-legend__item {
+    border-left: 1px solid var(--mk-b-edge);
 }
 
 @media (min-width: 960px) {
