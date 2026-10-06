@@ -3296,7 +3296,7 @@
       }
       setRegion(
         panelMeta,
-        '<div class="atlas-summary"><p class="atlas-total" role="status"><b class="atlas-total__num">' +
+        '<div class="atlas-summary atlas-summary--total"><p class="atlas-total" role="status"><b class="atlas-total__num">' +
         formatCount(items.length) + '</b> <span class="atlas-total__label"><span>titik PUTS</span> ' +
         "<span>di <b>" + formatCount(groupedItems.length) + "</b> kabupaten/kota</span></span></p>" +
         '<button id="fit-map" type="button" data-action="fit" title="Tampilkan semua titik di peta">' +

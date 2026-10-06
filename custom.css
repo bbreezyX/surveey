@@ -559,7 +559,13 @@ body.is-sidebar-collapsed #sidebar {
 
 /* The total is the figure the page exists to report, so it is set as a
    headline number with its unit and spread stacked beside it, not as a
-   word inside a sentence. */
+   word inside a sentence. A headline needs air: the search's 12px margin
+   plus 6px above, 16px below, so it stands apart from both neighbours. */
+.atlas-summary--total {
+    padding-top: 6px;
+    padding-bottom: 16px;
+}
+
 .atlas-total {
     display: flex;
     align-items: center;
