@@ -14,6 +14,8 @@ user chose to move 007 -> shot 08, 008 -> shot 09, 009 -> shot 10.
 TANJUNG RADEN-002's 13 Mei photo is a pose shot beside the pole ("Pesantren
 Sebrang"); shot 04 is the same pole, banana tree and green-railed house with
 the crew marking its base, 4 m away. The user chose to swap 002 to shot 04.
+Likewise 003's 13 Mei photo is a pose in open grass with no landmark; it
+takes shot 07 (crew marking beside the blue-tarp shed), 17 m away.
 
 Entries already applied (same coordinate and photo) are skipped, so the
 script can be re-run after a new entry is added.
@@ -42,11 +44,12 @@ TR = "KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-"
 # "Foto" sheet row -> (Nomor, latitude, longitude) read off the photo stamp.
 UPDATES = {
     8: (TR + "002", -1.585429, 103.586436),  # shot 04
+    5: (TR + "003", -1.584465, 103.586506),  # shot 07
     4: (TR + "007", -1.584248, 103.586442),  # shot 08
     3: (TR + "008", -1.584118, 103.585904),  # shot 09
     2: (TR + "009", -1.583805, 103.585995),  # shot 10
 }
-EXPECTED_LABEL = {8: "04", 4: "08", 3: "09", 2: "10"}
+EXPECTED_LABEL = {8: "04", 5: "07", 4: "08", 3: "09", 2: "10"}
 MAX_MOVE_M = 400
 
 
