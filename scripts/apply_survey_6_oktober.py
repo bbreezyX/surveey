@@ -11,6 +11,13 @@ points south and east of the cluster -- are 165-214 m from every shot, while
 shots 08, 09 and 10 on Jl. K.H. Thoyib (north side) have no atlas point. The
 user chose to move 007 -> shot 08, 008 -> shot 09, 009 -> shot 10.
 
+TANJUNG RADEN-002's 13 Mei photo is a pose shot beside the pole ("Pesantren
+Sebrang"); shot 04 is the same pole, banana tree and green-railed house with
+the crew marking its base, 4 m away. The user chose to swap 002 to shot 04.
+
+Entries already applied (same coordinate and photo) are skipped, so the
+script can be re-run after a new entry is added.
+
 Coordinates are the 6-decimal values off each photo's burned-in stamp (they
 match the sheet's Google Maps hyperlinks). Old photos stay in images/.
 
@@ -34,11 +41,12 @@ TR = "KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-"
 
 # "Foto" sheet row -> (Nomor, latitude, longitude) read off the photo stamp.
 UPDATES = {
+    8: (TR + "002", -1.585429, 103.586436),  # shot 04
     4: (TR + "007", -1.584248, 103.586442),  # shot 08
     3: (TR + "008", -1.584118, 103.585904),  # shot 09
     2: (TR + "009", -1.583805, 103.585995),  # shot 10
 }
-EXPECTED_LABEL = {4: "08", 3: "09", 2: "10"}
+EXPECTED_LABEL = {8: "04", 4: "08", 3: "09", 2: "10"}
 MAX_MOVE_M = 400
 
 
@@ -92,6 +100,9 @@ def main() -> int:
             raise SystemExit(f"Row {row}: {nomor} would move {moved:.0f} m")
         name = photo_name(nomor)
         dst = images_dir / name
+        if (p["Latitude"], p["Longitude"], p["Foto Survey Awal"]) == (lat, lon, name) and dst.is_file():
+            print(f"  shot {EXPECTED_LABEL[row]}  {nomor:<42} already applied")
+            continue
         if dst.exists():
             raise SystemExit(f"Photo already present: {name}")
         print(
