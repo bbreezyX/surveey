@@ -3248,27 +3248,139 @@ body.is-sidebar-collapsed .map-legend {
     flex: 1;
 }
 
-/* A switch drawn on the checkbox itself: the knob is a radial gradient that
-   slides across the track. */
-#top-right-container .layer-switcher .panel li input[type="checkbox"] {
-    appearance: none;
+/* Layer switches, after Arc UI's Switch (uiarc.dev/components/switch): a
+   tactile toggle. Pressing stretches the thumb toward the other side like a
+   held finger, its far edge anchored; releasing sends it across on a spring
+   with no bounce, so it lands on the state it reports, while the track
+   crossfades to ink. custom.js (decorateLayerSwitches) wraps each layer's
+   checkbox in the track and thumb, sets .is-pressed, and replays the travel
+   after ol-layerswitcher rebuilds the panel on every toggle. The checkbox
+   stays the real control, invisible over the track. Travel = 36 - 2 x 3
+   padding - 16 thumb = 14px; the stretch is 4px. */
+#top-right-container .layer-switcher .panel .ctl-switch {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+}
+
+#top-right-container .layer-switcher .panel .ctl-switch > input {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.ctl-switch__track {
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
     width: 36px;
     height: 22px;
-    margin: 0;
+    padding: 3px;
     border-radius: 999px;
-    background: radial-gradient(circle closest-side, #fff calc(100% - 1px), transparent) no-repeat 3px 50% / 16px 16px,
-        #c4d3df;
-    cursor: pointer;
-    transition: background-position var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+    background: #c4d3df;
+    isolation: isolate;
+    transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-#top-right-container .layer-switcher .panel li input[type="checkbox"]:checked {
-    background-image: radial-gradient(circle closest-side, var(--yellow) calc(100% - 1px), transparent);
-    background-color: var(--ink);
-    background-position: calc(100% - 3px) 50%;
+/* The "on" fill crossfades in over the track rather than swapping colour. */
+.ctl-switch__track::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--ink);
+    opacity: 0;
+    transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-#top-right-container .layer-switcher .panel li input[type="checkbox"]:focus-visible {
+.ctl-switch__thumb {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
+    translate: 0;
+    will-change: translate;
+    /* The travel is a critically damped spring (~300ms, no overshoot); the
+       stretch is a snappier one. */
+    transition:
+        translate 300ms cubic-bezier(0.25, 1, 0.5, 1),
+        width 200ms cubic-bezier(0.25, 1, 0.5, 1),
+        background-color 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ctl-switch > input:checked + .ctl-switch__track::before {
+    opacity: 1;
+}
+
+.ctl-switch > input:checked + .ctl-switch__track .ctl-switch__thumb {
+    translate: 14px;
+    background: var(--yellow);
+}
+
+/* Held down: 4px wider toward the side it is about to travel to. */
+.ctl-switch.is-pressed .ctl-switch__thumb {
+    width: 20px;
+}
+
+.ctl-switch.is-pressed > input:checked + .ctl-switch__track .ctl-switch__thumb {
+    translate: 10px;
+}
+
+/* A flip that did not come from a press (custom.js): a brief stretch along
+   the travel, so the thumb reads as moving mass rather than a sliding dot. */
+.ctl-switch__thumb.is-bumping {
+    animation: ctl-switch-bump 340ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes ctl-switch-bump {
+    40% {
+        scale: 1.16 1;
+    }
+}
+
+/* Where the thumb was before ol-layerswitcher rebuilt the panel: the new
+   switch starts here with transitions off, then custom.js lets it go. */
+.ctl-switch.is-from-off > input + .ctl-switch__track::before,
+.ctl-switch.is-from-on > input + .ctl-switch__track::before,
+.ctl-switch.is-from-off > input + .ctl-switch__track .ctl-switch__thumb,
+.ctl-switch.is-from-on > input + .ctl-switch__track .ctl-switch__thumb {
+    transition: none;
+}
+
+.ctl-switch.is-from-off > input + .ctl-switch__track::before {
+    opacity: 0;
+}
+
+.ctl-switch.is-from-off > input + .ctl-switch__track .ctl-switch__thumb {
+    translate: 0;
+    background: #fff;
+}
+
+.ctl-switch.is-from-on > input + .ctl-switch__track::before {
+    opacity: 1;
+}
+
+.ctl-switch.is-from-on > input + .ctl-switch__track .ctl-switch__thumb {
+    translate: 14px;
+    background: var(--yellow);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .ctl-switch > input:not(:checked):hover + .ctl-switch__track {
+        background-color: #b5c6d4;
+    }
+}
+
+.ctl-switch > input:focus-visible + .ctl-switch__track {
     outline: 2px solid var(--blue);
     outline-offset: 2px;
 }

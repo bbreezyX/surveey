@@ -1130,6 +1130,102 @@
     rail.addEventListener("pointerleave", release);
   }
 
+  // Layer switches, after Arc UI's Switch (custom.css, .ctl-switch).
+  // ol-layerswitcher draws each layer as a bare checkbox and rebuilds the
+  // whole panel on every toggle, which would cut any transition off before it
+  // starts. So each checkbox is wrapped in a track and thumb after every
+  // rebuild, and a switch whose state differs from what it showed after the
+  // last rebuild starts where it was and travels. (Read at rebuild time, the
+  // old checkbox already says the new state: the click flips it before the
+  // change handler rebuilds.) A flip that followed a press already showed the
+  // stretch; any other flip gets the brief bump instead, as in Arc UI.
+  function decorateLayerSwitches(panel) {
+    var shown = {};
+    var pressedAt = -Infinity;
+    var reduce =
+      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function layerKey(input) {
+      var label = input.closest("li").querySelector("label");
+      return label ? label.textContent.trim() : "";
+    }
+
+    function release() {
+      panel.querySelectorAll(".ctl-switch.is-pressed").forEach(function (wrap) {
+        wrap.classList.remove("is-pressed");
+      });
+    }
+
+    function wrapSwitches() {
+      var fromPress = performance.now() - pressedAt < 250;
+      panel.querySelectorAll("li.layer > input[type='checkbox']").forEach(function (input) {
+        var wrap = document.createElement("span");
+        var track = document.createElement("span");
+        var thumb = document.createElement("span");
+        wrap.className = "ctl-switch";
+        track.className = "ctl-switch__track";
+        track.setAttribute("aria-hidden", "true");
+        thumb.className = "ctl-switch__thumb";
+        track.appendChild(thumb);
+        input.parentNode.insertBefore(wrap, input);
+        wrap.appendChild(input);
+        wrap.appendChild(track);
+
+        var key = layerKey(input);
+        var was = shown[key];
+        shown[key] = input.checked;
+        if (reduce || was === undefined || was === input.checked) {
+          return;
+        }
+        wrap.classList.add(was ? "is-from-on" : "is-from-off");
+        void wrap.offsetWidth;
+        wrap.classList.remove("is-from-on", "is-from-off");
+        if (!fromPress) {
+          thumb.classList.add("is-bumping");
+          thumb.addEventListener("animationend", function () {
+            thumb.classList.remove("is-bumping");
+          }, { once: true });
+        }
+      });
+    }
+
+    panel.addEventListener("rendercomplete", wrapSwitches);
+
+    // The whole row toggles (the label is the checkbox's), so a press
+    // anywhere on it stretches its thumb.
+    panel.addEventListener("pointerdown", function (event) {
+      var li = event.button === 0 && event.target.closest ? event.target.closest("li.layer") : null;
+      var wrap = li ? li.querySelector(".ctl-switch") : null;
+      if (wrap) {
+        wrap.classList.add("is-pressed");
+      }
+    });
+    panel.addEventListener("pointerup", function () {
+      if (panel.querySelector(".ctl-switch.is-pressed")) {
+        pressedAt = performance.now();
+      }
+      release();
+    });
+    panel.addEventListener("pointercancel", release);
+    panel.addEventListener("pointerleave", release);
+    // Space toggles a checkbox on release; holding it stretches the thumb.
+    panel.addEventListener("keydown", function (event) {
+      var wrap = event.key === " " && event.target.closest ? event.target.closest(".ctl-switch") : null;
+      if (wrap) {
+        wrap.classList.add("is-pressed");
+      }
+    });
+    panel.addEventListener("keyup", function (event) {
+      if (event.key === " " && panel.querySelector(".ctl-switch.is-pressed")) {
+        pressedAt = performance.now();
+      }
+      release();
+    });
+    panel.addEventListener("focusout", release);
+
+    wrapSwitches();
+  }
+
   function enhanceMapControls() {
     var shell = document.querySelector(".app-shell");
     var zoom = document.querySelector(".ol-zoom");
@@ -1210,6 +1306,10 @@
         slot.innerHTML = LAYER_ICON;
         switcherButton.insertAdjacentElement("afterend", slot);
         initPressRipple(switcherButton, slot);
+      }
+      var layerPanel = switcher.querySelector(".panel");
+      if (layerPanel) {
+        decorateLayerSwitches(layerPanel);
       }
     }
 
