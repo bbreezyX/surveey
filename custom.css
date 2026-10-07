@@ -873,38 +873,45 @@ body.is-sidebar-collapsed #sidebar {
     border-top: 1px solid var(--divider);
     border-bottom: 1px solid var(--divider);
     background: var(--frost);
+    color: var(--ink);
     font-size: 13.5px;
     font-weight: 750;
-    /* Slower than the panel's ease-out, and eased both ways: the head
-       changes colour mid-scroll, under the eye, and a quick flip read as a
-       flash. The border fades with it so no hard edge lands before the fill. */
-    transition:
-        background-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
-        border-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
-        color 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* The head of the kecamatan in view (custom.js, syncStuck) turns navy: it is
-   the only dark bar in the list, where navy on every head gave each the same
-   weight. */
-.atlas-section.is-stuck {
-    border-color: var(--ink);
+/* Reveal a matching white label and navy fill together, only where the
+   heading enters the top band. Geometry drives the clip every frame, so
+   sticky push-off stays continuous without fading text through grey. The
+   visual copy is aria-hidden; the heading is announced only once. */
+.atlas-section__active {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: inherit;
+    padding: inherit;
     background: var(--ink);
     color: #fff;
+    clip-path: inset(0 0 max(0px, calc(100% - var(--section-fill, 0px))) 0);
+    pointer-events: none;
 }
 
 /* The count is read with the name, not after it: ink and as heavy as the
    name, so "20 titik" lands at the same glance. */
-.atlas-section span {
-    color: var(--ink);
+.atlas-section__count {
     font-size: 13px;
     font-weight: 750;
     font-variant-numeric: tabular-nums;
-    transition: color 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.atlas-section.is-stuck span {
-    color: #fff;
+@media (prefers-reduced-motion: reduce) {
+    .atlas-section__active {
+        clip-path: inset(0 0 100% 0);
+    }
+
+    .atlas-section.is-stuck .atlas-section__active {
+        clip-path: inset(0);
+    }
 }
 
 .atlas-desa {

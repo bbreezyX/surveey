@@ -2922,14 +2922,19 @@
     // stacking over it.
     function sectionsHtml(sections) {
       return sections
-        .map(function (s) {
+        .map(function (s, index) {
           var count = s.items.filter(function (item) { return !item.cadangan; }).length;
+          var heading = "";
+          if (s.title) {
+            var label = '<span class="atlas-section__title">' + escapeHtml(s.title) + '</span>' +
+              '<span class="atlas-section__count">' + formatCount(count) + ' titik</span>';
+            heading = '<div class="atlas-section' + (index === 0 ? ' is-stuck' : '') +
+              '" role="heading" aria-level="3"' + (index === 0 ? ' style="--section-fill:100%"' : '') + '>' +
+              label + '<div class="atlas-section__active" aria-hidden="true">' + label + '</div></div>';
+          }
           return (
             '<div class="atlas-group">' +
-            (s.title
-              ? '<div class="atlas-section" role="heading" aria-level="3">' + escapeHtml(s.title) +
-                "<span>" + formatCount(count) + " titik</span></div>"
-              : "") +
+            heading +
             desaGroups(s.items)
               .map(function (grp) {
                 var head = groupHead(grp, s.title);
@@ -3037,6 +3042,7 @@
         : "Cari lokasi atau kabupaten…";
 
       listContainer.innerHTML = screen.html;
+      sectionHeads = listContainer.querySelectorAll(".atlas-section");
       renderMeta(screen.count, Boolean(normalizedQuery));
       markScreenChange();
       redrawPoints();
@@ -3273,6 +3279,7 @@
       clearSelection();
       renderList(searchInput.value);
       listScroller.scrollTop = 0;
+      syncScrolled();
       focusWithoutScroll(
         panelMeta.querySelector('.atlas-pill[data-flag="' + (statusFilter || "") + '"]')
       );
@@ -3325,43 +3332,84 @@
       setRegionHover(regionHoverKey);
     }
 
-    // A list scrolled under the header gets a soft shadow at the cut (the
-    // grid's ::before), and the kecamatan head in view turns navy.
-    function syncScrolled() {
-      panelEl.classList.toggle("is-scrolled", listScroller.scrollTop > 2);
-      syncStuck();
-    }
+    var sectionHeads = [];
+    var scrollFrame = null;
 
-    // The kecamatan head in view turns navy (.is-stuck) so the kecamatan the
-    // rows belong to is spotted at a glance. Measured here because CSS only
-    // learns "stuck" from scroll-state container queries, which only Chromium
-    // has. One head at a time: the head stuck at the top with its rows passing
-    // under it, or the next head once it starts pushing that one out, so the
-    // colour moves to the incoming kecamatan as it takes the top instead of
-    // flipping when it lands. Nothing is navy at rest: a head that merely sits
-    // at the top with no rows under it yet stays plain.
-    function syncStuck() {
-      var heads = listContainer.querySelectorAll(".atlas-section");
-      if (!heads.length) {
-        return;
-      }
+    // Read all header geometry before changing any styles. The navy band
+    // stays at the top of the list; each heading reveals only the part that
+    // enters that band. Outgoing and incoming labels keep their contrast
+    // while the sticky groups push each other, in either scroll direction.
+    function syncScrolled() {
+      var scrollTop = listScroller.scrollTop;
+      var scrolled = scrollTop > 2;
+      var maxScroll = Math.max(0, listScroller.scrollHeight - listScroller.clientHeight);
+      var remaining = Math.max(0, maxScroll - scrollTop);
       var top = listScroller.getBoundingClientRect().top;
       var current = null;
-      Array.prototype.forEach.call(heads, function (head) {
-        var box = head.getBoundingClientRect();
-        var next = head.nextElementSibling;
-        var stuck = box.top <= top + 1 && !!next && next.getBoundingClientRect().top < box.bottom - 1;
-        var pushing = !!current && box.top > top + 1 && box.top < top + box.height - 1;
-        if (stuck || pushing) {
-          current = head;
-        }
+      var boxes = Array.prototype.map.call(sectionHeads, function (head) {
+        return head.getBoundingClientRect();
       });
-      Array.prototype.forEach.call(heads, function (head) {
+      var fills = boxes.map(function (box, index) {
+        if (box.top <= top + 1 && box.bottom > top + 1) {
+          current = sectionHeads[index];
+        }
+        return box.bottom > top
+          ? Math.min(box.height, Math.max(0, top + box.height - box.top))
+          : 0;
+      });
+
+      // A short final kecamatan cannot reach the sticky edge: the list runs
+      // out of scroll first. Transfer navy to its own heading over the final
+      // header-height of travel, then give it the full band at the end. The
+      // same progress runs backwards when scrolling up; no extra blank rows
+      // are needed. Allow 1px for rounded scrollHeight/clientHeight values.
+      var lastIndex = boxes.length - 1;
+      var lastBox = boxes[lastIndex];
+      if (lastIndex > 0 && maxScroll > 1 && scrollTop > 0 &&
+          lastBox.top - top - remaining > 1 && lastBox.height > 0) {
+        var endProgress = remaining <= 1
+          ? 1
+          : Math.max(0, 1 - remaining / lastBox.height);
+        if (endProgress > 0) {
+          fills = fills.map(function (fill, index) {
+            return index === lastIndex
+              ? lastBox.height * endProgress
+              : fill * (1 - endProgress);
+          });
+          if (endProgress >= 0.5) {
+            current = sectionHeads[lastIndex];
+          }
+        }
+      }
+
+      panelEl.classList.toggle("is-scrolled", scrolled);
+      Array.prototype.forEach.call(sectionHeads, function (head, index) {
+        var fill = fills[index].toFixed(3) + "px";
+        if (head.style.getPropertyValue("--section-fill") !== fill) {
+          head.style.setProperty("--section-fill", fill);
+        }
         head.classList.toggle("is-stuck", head === current);
       });
     }
 
-    listScroller.addEventListener("scroll", syncScrolled, { passive: true });
+    // Coalesce wheel, touch and keyboard scroll events into one update per
+    // frame. There is no timed colour transition to restart or lag behind
+    // the reader when scrolling quickly or reversing direction.
+    function scheduleScrollSync() {
+      if (scrollFrame !== null) {
+        return;
+      }
+      scrollFrame = requestAnimationFrame(function () {
+        scrollFrame = null;
+        syncScrolled();
+      });
+    }
+
+    listScroller.addEventListener("scroll", scheduleScrollSync, { passive: true });
+    window.addEventListener("resize", scheduleScrollSync);
+    if (window.ResizeObserver) {
+      new ResizeObserver(scheduleScrollSync).observe(listScroller);
+    }
 
     // Phones: the closed sheet peeks down to its search field, whatever the
     // header above it holds on this screen, so the fit padding and the
@@ -4229,6 +4277,7 @@
       var scroller = document.querySelector(".sidebar-scroll");
       if (scroller && activeGroup) {
         scroller.scrollTop = 0;
+        syncScrolled();
       }
       moveFocusForScreen();
       if (config.fit !== false) {
