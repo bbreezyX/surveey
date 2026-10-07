@@ -1444,6 +1444,8 @@
     var popupContent = document.getElementById("popup-content");
 
     var activeItemId = null;
+    var restorePanelAfterPopup = false;
+    var panelScrollBeforePopup = 0;
 
     // Selected pin: enlarged with a white ring, drawn on the feature overlay
     // above the layer's yellow pin.
@@ -2194,6 +2196,7 @@
 
     function clearSelection() {
       activeItemId = null;
+      restorePanelAfterPopup = false;
       updateHighlight(activeItemId);
 
       if (window.collection && typeof window.collection.clear === "function") {
@@ -2205,6 +2208,20 @@
       }
 
       hidePopup();
+    }
+
+    function dismissPopup() {
+      var reopenPanel = isMobileViewport() && restorePanelAfterPopup;
+      var selectedUnit = listContainer.querySelector(".atlas-unit.is-active");
+      var returnRow = selectedUnit ? selectedUnit.closest(".atlas-pt") : null;
+      clearSelection();
+      if (reopenPanel) {
+        setPanelOpen(true);
+        // Hiding the sheet's footer can clamp its scroll position while the
+        // detail is open. Restore it after the expanded layout is back.
+        listScroller.scrollTop = panelScrollBeforePopup;
+        focusWithoutScroll(returnRow || document.getElementById("sheet-handle"));
+      }
     }
 
     var FOCUS_EASING = ol.easing.inAndOut;
@@ -2246,6 +2263,10 @@
         var pinFloor = size[1] - 40;
         pinTargetY = Math.min(cardTop + (popupHeight || 300) + markerGap, pinFloor);
       } else {
+        // The sidebar overlays the map. Centre the pin and its card in the
+        // remaining map area, rather than the full canvas underneath it.
+        animateCenter[0] -= (panelInset() / 2) * targetResolution;
+
         // Desktop: popup docks above the pin (bottom: 48px). Guarantee the
         // card top clears the masthead at every desktop height.
         var mastheadBottom = getMastheadBottomOffset();
@@ -2269,6 +2290,27 @@
       var offsetPxDown = pinTargetY - size[1] / 2;
       animateCenter[1] = featureCenter[1] + offsetPxDown * targetResolution;
       return animateCenter;
+    }
+
+    var popupReframeTimer = null;
+
+    function schedulePopupReframe(delay) {
+      clearTimeout(popupReframeTimer);
+      popupReframeTimer = setTimeout(function () {
+        var item = itemsById[activeItemId];
+        if (!item || !document.body.classList.contains("is-popup-open")) {
+          return;
+        }
+        window.map.updateSize();
+        var view = window.map.getView();
+        view.cancelAnimations();
+        markMapFocusAnimation(260);
+        view.animate({
+          center: getFocusTargetCenter(view, itemCenter(item), view.getZoom(), popup.offsetHeight),
+          duration: 260,
+          easing: FOCUS_EASING
+        });
+      }, delay);
     }
 
     function getFocusAnimationDuration(view, featureCenter, targetZoom) {
@@ -2357,8 +2399,18 @@
       var ext = item.feature.getGeometry().getExtent();
       var featureCenter = [(ext[0] + ext[2]) / 2, (ext[1] + ext[3]) / 2];
 
+      // Remember the list's state for this detail session. Selecting another
+      // pin while the popup is open must not overwrite the return state.
+      if (!document.body.classList.contains("is-popup-open")) {
+        restorePanelAfterPopup = isMobileViewport() &&
+          document.body.classList.contains("is-panel-open");
+      }
+
       activeItemId = item.id;
       updateHighlight(activeItemId);
+      if (restorePanelAfterPopup && !document.body.classList.contains("is-popup-open")) {
+        panelScrollBeforePopup = listScroller.scrollTop;
+      }
 
       if (window.collection && typeof window.collection.clear === "function") {
         window.collection.clear();
@@ -4356,7 +4408,7 @@
       );
 
       if (!clickedFeature) {
-        clearSelection();
+        dismissPopup();
         return;
       }
 
@@ -4446,6 +4498,7 @@
         panelToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
       }
       refreshMapSizeDuring(380);
+      schedulePopupReframe(400);
     }
 
     if (panelToggle) {
@@ -4611,7 +4664,7 @@
         window.layerSwitcher.hidePanel();
       }
       if (document.body.classList.contains("is-popup-open")) {
-        clearSelection();
+        dismissPopup();
       } else {
         setPanelOpen(false);
       }
@@ -4624,6 +4677,7 @@
       } else {
         document.body.classList.remove("is-sidebar-collapsed");
       }
+      schedulePopupReframe(160);
     });
 
     configurePopupOverlayForViewport();
@@ -4633,8 +4687,8 @@
     if (popupCloser) {
       popupCloser.onclick = function (e) {
         e.preventDefault();
-        clearSelection();
         popupCloser.blur();
+        dismissPopup();
         return false;
       };
     }
