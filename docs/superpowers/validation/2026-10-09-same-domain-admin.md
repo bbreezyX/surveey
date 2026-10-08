@@ -1,6 +1,6 @@
 # Same-domain admin routing validation
 
-User approved the latest local admin UI and the original public-map domain with `/admin` on 2026-10-09. No commits/pushes were made. Implementation remains in the isolated modernization worktree.
+User approved the latest local admin UI and the original public-map domain with `/admin` on 2026-10-09. Initial activation used local uploads from the isolated modernization worktree. The subsequent Git-backed release is recorded below.
 
 ## Preparation checks
 
@@ -33,4 +33,12 @@ Broader role/upload/concurrency/session-revocation testing, full responsive visu
 
 The user explicitly requested all changes pushed to production. Distinct source changes from the primary checkout and implementation worktree were combined, including the admin mockups and portable local launcher. Credentials, local databases, generated builds and OCR crops remain ignored. Shell scripts use LF through .gitattributes. Current documentation and operator smoke routes now match the deployed architecture.
 
-Fresh public/admin builds and Svelte checks passed, along with 14 public unit tests and 11 Django tests. Cross-browser checks passed 54 tests across Chromium, WebKit and Firefox; three serving-header cases were skipped in the local preview and are reserved for production verification. The raw drag test now waits for fonts, suppresses incidental startup motion and keeps its target in the viewport; product behavior/UI was not changed. Known credential values were checked against all staged files, Python source compiled, and git diff --check passed.
+Fresh public/admin builds and Svelte checks passed, along with 14 public unit tests and 11 Django tests. Cross-browser checks passed 54 tests across Chromium, WebKit and Firefox; three serving-header cases were skipped in the local preview and then all three passed against production. The raw drag test now waits for fonts, suppresses incidental startup motion and keeps its target in the viewport; product behavior/UI was not changed. Known credential values were checked against all staged files, Python source compiled, and git diff --check passed.
+
+## Git-backed production release
+
+- User authorized all changes pushed to production. All 174 publishable source paths were committed and pushed to `bbreezyX/surveey@master` as `8dc5af743a06a50e90d9d2d09c0b49b8c1d77597`; direct remote SHA matched the tested commit. The primary checkout was fast-forwarded and clean. Its previous pending source was preserved in a recoverable stash; the 33 ignored OCR crops remain local. The implementation worktree and private local credentials/database remain available.
+- All application services were attached to the master branch with their existing Dockerfiles/healthchecks retained. All reported SUCCESS and commit metadata `8dc5af743a06a50e90d9d2d09c0b49b8c1d77597`: admin `06e77eff-476a-45a3-8871-513483fa0d26`, private delivery `ef3f183e-922c-4746-a9e6-08eb651e282c`, public map `c3f2e4bd-8fe1-4c0d-b905-9ac061a01ed5`.
+- Post-deployment HTTPS checks passed approved-owner login/logout, CSRF rejection, cookie flags/path, anonymous access denial, all 550 points/map positions, admin photo delivery, publication/snapshot preservation, ETag 304 and public derivative delivery. Public JavaScript/CSS bytes matched the pre-release assets. Cross-platform emitted HTML differed only by a blank line; nonblank HTML content matched. No public layout/product behavior changed.
+- Actual Chromium admin browser check passed login, point/photo selection, five read-only tabs, logout and mobile login overflow checks with zero page exceptions/admin HTTP errors. All three production cache/CSP/artifact checks passed on Chromium, WebKit and Firefox. Together with the 54 local browser cases, all 57 browser cases were exercised successfully across the appropriate local/production environments.
+- This documentation update is a subsequent master push to exercise the newly connected GitHub autodeploy workflow. Running services still have private networking, separate database roles, and no publicly exposed admin-service/delivery domains or database TCP proxies. Existing broad backend checks and the shared-IP login-throttle concern remain recorded above.
