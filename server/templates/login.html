@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Masuk · Administrasi survei</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+{% for name in assets.css %}<link rel="stylesheet" href="/admin/assets/{{ name }}">
+{% endfor %}{% for name in assets.js %}<script type="module" src="/admin/assets/{{ name }}"></script>
+{% endfor %}
+</head>
+<body>
+<div id="backdrop" class="backdrop" aria-hidden="true"></div>
+<main class="sheet login" aria-labelledby="login-title">
+  <div class="login-org"><span class="emblem" aria-hidden="true"></span><span>Dinas ESDM<br>Provinsi Jambi</span></div>
+  <h1 id="login-title">Administrasi survei PUTS 2026</h1>
+  <p class="login-lede">Ruang kerja pembaruan titik dan foto survei. Setiap perubahan tersimpan sebagai draf hingga diterbitkan.</p>
+  <form method="post" action="/admin/login">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf }}">
+    <label class="field" for="username">Nama akun<input id="username" name="username" autocomplete="username" maxlength="150" required autofocus></label>
+    <label class="field" for="password">Kata sandi<input id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" required></label>
+    {% if error %}<p class="notice-error" role="alert">{{ error }}</p>{% endif %}
+    <button class="btn-primary" type="submit">Masuk</button>
+  </form>
+  <p class="login-foot">Akses terbatas untuk akun yang telah disetujui. Kata sandi yang terlupa diatur ulang oleh pemilik akun.</p>
+</main>
+</body>
+</html>

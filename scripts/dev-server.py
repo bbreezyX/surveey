@@ -14,6 +14,7 @@ flagged points go live; the buttons do not.
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import socket
 import sys
 import threading
 from pathlib import Path
@@ -24,6 +25,20 @@ ROOT = Path(__file__).resolve().parent.parent
 GEOJSON = ROOT / "data" / "points.geojson"
 HOST = "127.0.0.1"
 PORT = 8123
+# macOS EADDRINUSE, Linux EADDRINUSE, Windows WSAEADDRINUSE
+PORT_IN_USE = frozenset((48, 98, 10048))
+
+
+class AtlasServer(ThreadingHTTPServer):
+    # Python defaults this to True. On Windows, SO_REUSEADDR lets a second
+    # `npm run dev` bind 8123, print "Local atlas", then answer browsers
+    # with an empty reply.
+    allow_reuse_address = False
+
+    def server_bind(self):
+        if os.name == "nt":
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -141,12 +156,14 @@ def set_flag(nomor, flag, value):
 def main():
     os.chdir(ROOT)
     try:
-        httpd = ThreadingHTTPServer((HOST, PORT), Handler)
+        httpd = AtlasServer((HOST, PORT), Handler)
     except OSError as exc:
-        if getattr(exc, "errno", None) in (48, 98):
+        codes = {getattr(exc, "errno", None), getattr(exc, "winerror", None)}
+        if codes & PORT_IN_USE:
             sys.stderr.write(
                 "Port %s already in use. Stop the other server "
-                "(often `http-server`) and run `npm start`.\n" % PORT
+                "and open http://%s:%s/ if it is already running.\n"
+                % (PORT, HOST, PORT)
             )
             sys.exit(1)
         raise

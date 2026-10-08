@@ -1,0 +1,65 @@
+{
+    admin off
+    auto_https off
+}
+
+:{$PORT:80} {
+    root * /srv
+    encode zstd gzip
+
+    header / Cache-Control "no-cache, must-revalidate"
+    header /index.html Cache-Control "no-cache, must-revalidate"
+    # The root icons get asked for without going through the HTML at all —
+    # crawlers take /favicon.ico, iOS takes /apple-touch-icon.png — so the
+    # unversioned URL is the one many clients use. That rules out immutable;
+    # a week is the compromise.
+    header /favicon.png Cache-Control "public, max-age=604800"
+    header /favicon.ico Cache-Control "public, max-age=604800"
+    header /apple-touch-icon.png Cache-Control "public, max-age=604800"
+    header /manifest.json Cache-Control "public, max-age=86400"
+    header /data/* Cache-Control "no-cache, must-revalidate"
+    header /images/* Cache-Control "public, max-age=2592000"
+    header /assets/* Cache-Control "public, max-age=604800"
+    @hashed path_regexp hashed ^/assets/.+-[A-Za-z0-9_-]{8}\.(js|css|json|png|ico)$
+    header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+    @public not path /admin /admin/*
+    header @public {
+        Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https://mt1.google.com https://*.google.com https://*.gstatic.com https://services.arcgisonline.com; connect-src 'self' https://mt1.google.com https://*.google.com; frame-ancestors 'self'; form-action 'self'"
+        Strict-Transport-Security "max-age=31536000"
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+        Cross-Origin-Opener-Policy "same-origin"
+        X-Permitted-Cross-Domain-Policies "none"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Frame-Options "SAMEORIGIN"
+        -Server
+    }
+
+    handle /admin {
+        redir /admin/ 308
+    }
+    handle /admin/* {
+        request_body {
+            max_size 21MB
+        }
+        reverse_proxy http://{$PUBLIC_ADMIN_HOST}:{$PUBLIC_ADMIN_PORT:8080} {
+            header_up Host {http.request.host}
+        }
+    }
+
+    @publishedPoints path /data/points.geojson
+    handle @publishedPoints {
+        reverse_proxy http://{$PUBLIC_DATA_HOST}:{$PUBLIC_DATA_PORT:8080} {
+            header_up Host {http.request.host}
+        }
+    }
+    handle /media/* {
+        reverse_proxy http://{$PUBLIC_DATA_HOST}:{$PUBLIC_DATA_PORT:8080} {
+            header_up Host {http.request.host}
+        }
+    }
+    handle {
+        file_server
+    }
+}

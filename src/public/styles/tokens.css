@@ -1,0 +1,85 @@
+:root {
+    --ink: #293d50;
+    --ink-soft: #3d5165;
+    --blue: #0072bc;
+    --blue-deep: #00458f;
+    --yellow: #fee50f;
+    /* Duplikat accent: warm so it reads as "check this", not as an error. */
+    --orange: #e8731a;
+    --orange-deep: #8f4200;
+    --orange-tint: #fff3e8;
+    --blue-tint: #ecf5ff;
+    --hairline: #dce8f1;
+    --hairline-strong: #d4dee6;
+    --divider: #e9eef2;
+    --frost: #f4f7fa;
+    --row-hover: #f3f8fd;
+    /* Cadangan (arsir): the same diagonal hatch everywhere, dark enough to read
+       at a glance next to plain units, with the code kept legible on top. */
+    --hatch-edge: #7d90a1;
+    --hatch: repeating-linear-gradient(-45deg, #7d90a1 0 1.5px, #fff 1.5px 5px);
+    --hatch-halo: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff;
+    /* Text ramp, all measured on --surface. The audience skews older, so the
+       target moved from AA (4.5) to AAA (7) for the body tier. Three tiers all
+       above 7:1 would be visually indistinguishable — grays run out of room —
+       so --muted-2 sits just under it and carries only labels and metadata. */
+    /* 7.7:1 on white */
+    --muted: #445565;
+    /* 6.4:1 on white — keep >=4.5 (AA) if adjusting */
+    --muted-2: #4f6173;
+    /* Disabled is exempt from contrast minimums and must stay legibly weaker
+       than --muted-2, or a dead control reads as a live one. */
+    --disabled-ink: #8a99a9;
+    --surface: #ffffff;
+    --surface-glass: rgba(248, 250, 252, 0.98);
+    --shadow-lg: 0 2px 5px rgba(20, 38, 53, 0.16),
+        0 24px 64px rgba(20, 38, 53, 0.28);
+    --shadow-sm: 0 6px 18px rgba(41, 61, 80, 0.14);
+    --radius-lg: 22px;
+    --radius-md: 12px;
+    --radius-sm: 10px;
+    --radius-xs: 6px;
+    /* Wide enough for the atlas grid's two kabupaten cells and two columns of
+       unit tiles side by side. */
+    --panel-width: 392px;
+    --panel-left: 20px;
+    --panel-top: 20px;
+    /* Figtree carries both titles and data rows: a friendly geometric voice
+       that stays legible at small sizes and keeps tabular numbers. */
+    --font-display: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    /* Map control chrome, in the atlas sheet's colours rather than the site's
+       blue: the pale slate of the kabupaten silhouettes for surfaces, their
+       outline (--atlas-edge) for edges, ink for type, and ink with yellow for
+       "on". One contact shadow plus one soft ambient one; hover is a border
+       colour change, never a lift. */
+    --atlas-paper: #eef3f7;
+    --atlas-edge: #b6c4d1;
+    --ctl-surface: rgba(238, 243, 247, 0.96);
+    --ctl-surface-near: #f4f7fa;
+    --ctl-surface-hover: #ffffff;
+    --ctl-border: var(--atlas-edge);
+    --ctl-border-hover: var(--ink);
+    --ctl-shadow: 0 1px 2px rgba(20, 38, 53, 0.1), 0 6px 16px rgba(20, 38, 53, 0.14);
+    --ctl-shadow-near: 0 1px 2px rgba(20, 38, 53, 0.1),
+        0 8px 20px rgba(20, 38, 53, 0.16);
+    --ctl-shadow-hover: 0 1px 2px rgba(20, 38, 53, 0.1),
+        0 8px 20px rgba(20, 38, 53, 0.16);
+    --ctl-shadow-press: 0 1px 2px rgba(20, 38, 53, 0.12);
+    --ctl-blur: saturate(170%) blur(10px);
+    /* Layer chip footprint. The icon overlay is sized from the same token —
+       see .ctl-layers-slot for why the icon cannot live inside the button. */
+    --ctl-chip: 44px;
+    /* Ripple + pressed-state tint, in ink to match the slate chrome. */
+    --ctl-ripple: rgba(41, 61, 80, 0.18);
+    --ctl-press-scale: 0.92;
+
+    --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
+    /* Slight overshoot — this is what makes icon motion read as alive
+       rather than as a property animating. Only for icons, never layout. */
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+    --dur-press: 90ms;
+    --dur: 190ms;
+    --dur-state: 320ms;
+}

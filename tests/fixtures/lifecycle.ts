@@ -1,0 +1,14 @@
+import { mount, unmount } from 'svelte';
+import App from '../../src/public/App.svelte';
+import 'ol/ol.css';
+import '../../src/public/styles/tokens.css';
+import '../../src/public/styles/layout.css';
+import '../../src/public/styles/sidebar.css';
+import '../../src/public/styles/controls.css';
+import '../../src/public/styles/popup.css';
+import '../../src/public/styles/responsive.css';
+import '../../src/public/styles/modern.css';
+const target = document.getElementById('app')!;
+let current: ReturnType<typeof mount> | null = mount(App, { target });
+document.getElementById('unmount')!.addEventListener('click', async () => { if (current) { const previous = current; current = null; await unmount(previous); } });
+document.getElementById('mount')!.addEventListener('click', () => { if (!current) current = mount(App, { target }); });

@@ -1,0 +1,7 @@
+/* Component mount and error-state adapters; established UI comes from the original styles. */
+#app { width: 100%; height: 100%; }
+.panel-search__icon > svg { display: block; }
+.ol-popup-closer { padding: 0; cursor: pointer; font-family: cursive; font-weight: bold; }
+#top-right-container .layer-switcher .panel li.group > .layer-group-title { display: block; padding: 0 0 2px; font: 700 13px var(--font-ui); color: var(--ink); }
+.data-state { padding: 24px; }.data-state h2 { font-size: 18px; }.data-state button,.list-empty button { padding: 10px 16px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--frost); font: inherit; cursor: pointer; }
+.loading-panel > .atlas-head { padding: 18px; }

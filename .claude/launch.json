@@ -4,8 +4,19 @@
     {
       "name": "pjuts-static",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
+      "runtimeArgs": [
+        "start"
+      ],
       "port": 8123
+    },
+    {
+      "name": "pjuts-admin-local",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/admin-local.mjs"
+      ],
+      "port": 8130,
+      "autoPort": false
     }
   ]
 }

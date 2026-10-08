@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Peta sebaran Penerangan Umum Tenaga Surya Provinsi Jambi Tahun 2026 hasil survey lapangan."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:site_name" content="Dinas ESDM Provinsi Jambi" />
+    <meta property="og:title" content="Peta Sebaran PUTS 2026 — Provinsi Jambi" />
+    <meta
+      property="og:description"
+      content="Peta sebaran Penerangan Umum Tenaga Surya Provinsi Jambi Tahun 2026 hasil survey lapangan."
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="theme-color" content="#293d50" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- Browser, iOS and Android icons share the PJUTS solar-location mark.
+         The root ICO includes 16/32/48/64 px; PNG is the explicit modern icon.
+         Rebuild all sizes from the artwork with scripts/build-icons.py. -->
+    <link rel="icon" href="./assets/pjuts-favicon-99490f304b67.ico" sizes="16x16 32x32 48x48 64x64" />
+    <link rel="icon" href="./assets/pjuts-favicon-be521abcfb99.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="./assets/pjuts-apple-touch-icon-09766f8ae04c.png" sizes="180x180" />
+    <link rel="manifest" href="./manifest.json?v=202610011230" />
+    <meta name="apple-mobile-web-app-title" content="PUTS 2026" />
+    <meta name="application-name" content="PUTS 2026" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://mt1.google.com" />
+    <!-- Esri World Imagery is the alternative basemap (layers/layers.js).
+         dns-prefetch, not preconnect: nobody loads its tiles unless they pick
+         it in the layer panel, so warming a whole TLS connection on every
+         visit would cost the default path to save a click nobody made. -->
+    <link rel="dns-prefetch" href="https://services.arcgisonline.com" />
+    <!-- The survey points are the whole point of the page and only 18KB gzipped,
+         but OpenLayers cannot ask for them until ol.js and the layer scripts have
+         all landed — which put the request at ~5.9s on a mid-range phone over
+         Slow 4G. Preloading starts it immediately, in parallel with the scripts.
+         The href must stay byte-identical to the url in layers/layers.js or the
+         file gets fetched twice. -->
+    <link rel="preload" href="./data/points.geojson" as="fetch" crossorigin />
+    <!-- The province mask (Fokus Provinsi) renders from first paint and reads
+         this file; same byte-identical-href rule as above. -->
+    <link rel="preload" href="./data/dissolved.geojson" as="fetch" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./resources/ol.css?v=202610011230" />
+    <link rel="stylesheet" href="resources/fontawesome-all.min.css?v=202610011230" />
+    <link rel="stylesheet" type="text/css" href="resources/horsey.min.css?v=202610011230" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="resources/ol-search-layer.min.css?v=202610011230"
+    />
+    <link
+      href="resources/photon-geocoder-autocomplete.min.css?v=202610011230"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./resources/ol-layerswitcher.css?v=202610011230" />
+    <link rel="stylesheet" href="./resources/qgis2web.css?v=202610011230" />
+    <link rel="preload" href="./custom.css?v=202610011230" as="style" />
+    <link rel="stylesheet" href="./custom.css?v=202610011230" />
+    <title>Peta Sebaran PUTS 2026 · Penerangan Umum Tenaga Surya Provinsi Jambi</title>
+  </head>
+  <body>
+    <noscript>
+      <p class="noscript-note">
+        Peta ini membutuhkan JavaScript. Aktifkan JavaScript di browser Anda,
+        lalu muat ulang halaman.
+      </p>
+    </noscript>
+    <div class="app-shell">
+      <header class="masthead">
+        <img
+          class="masthead-lambang"
+          src="./assets/lambang-jambi.png?v=202610011230"
+          alt="Lambang Provinsi Jambi"
+          width="34"
+          height="35"
+          decoding="async"
+        />
+        <div class="masthead-copy">
+          <p class="masthead-kicker">Dinas ESDM Provinsi Jambi</p>
+          <h1 class="masthead-title">Sebaran PUTS 2026</h1>
+        </div>
+      </header>
+
+      <aside id="sidebar" aria-label="Daftar titik PUTS">
+        <!-- A grabber bar and a small caption: custom.js swaps both with the
+             sheet state. The caption is hidden from screen readers, which
+             hear the same words through aria-label. -->
+        <button
+          id="sheet-handle"
+          type="button"
+          aria-controls="sidebar"
+          aria-expanded="false"
+          aria-label="Lihat daftar titik"
+          title="Ketuk atau geser ke atas untuk lihat daftar"
+        >
+          <span class="sheet-handle__grabber" aria-hidden="true"></span>
+          <span class="sheet-handle__text" aria-hidden="true">Lihat daftar titik</span>
+        </button>
+        <button id="sidebar-close" type="button" aria-label="Tutup panel data">
+          &times;
+        </button>
+
+        <!-- Header, counts line and list are written by custom.js (renderTop,
+             renderMeta, renderList); the header below is the first paint.
+             Pengusul grouping removed: the list is per kabupaten only. The
+             version that still offered the Pengusul tab lives on the
+             backup/tampil-pengusul branch (tag backup-tampil-pengusul). -->
+        <div class="panel-top" id="panel-top">
+          <div class="atlas-head">
+            <img
+              src="./assets/lambang-jambi.png?v=202610011230"
+              alt="Lambang Provinsi Jambi"
+              width="38"
+              height="39"
+              decoding="async"
+            />
+            <div>
+              <p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p>
+              <h1 class="atlas-head__title">Sebaran PUTS 2026</h1>
+            </div>
+          </div>
+        </div>
+
+        <label class="panel-search" for="list-search">
+          <span class="visually-hidden">Cari titik PUTS</span>
+          <svg class="panel-search__icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="m20 20-4.2-4.2" />
+          </svg>
+          <input
+            id="list-search"
+            type="search"
+            placeholder="Cari lokasi atau kabupaten…"
+            title="Cari titik, lokasi, kabupaten, atau koordinat"
+            autocomplete="off"
+          />
+          <button id="list-search-clear" class="panel-search__clear" type="button" aria-label="Hapus pencarian">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+              <path d="M17 7 7 17M7 7l10 10" />
+            </svg>
+          </button>
+        </label>
+
+        <div class="panel-meta" id="panel-meta"></div>
+
+        <div class="sidebar-scroll">
+          <div id="list-data" aria-live="polite"></div>
+        </div>
+
+        <p class="sidebar-footer">
+          <span class="sidebar-footer__title">Survey lapangan &amp; pelaksanaan</span>
+          <span class="sidebar-footer__meta"><span class="sidebar-footer__date">2026</span> <span aria-hidden="true">&middot;</span> Dinas ESDM Jambi</span>
+        </p>
+      </aside>
+
+      <button
+        id="panel-toggle"
+        class="panel-toggle"
+        type="button"
+        aria-controls="sidebar"
+        aria-expanded="false"
+        aria-label="Tampilkan daftar"
+        data-tooltip="Tampilkan daftar"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+          <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+          <path d="M9.5 4.5v15M14 10l2 2-2 2" />
+        </svg>
+      </button>
+
+      <main class="map-frame">
+        <div id="map" aria-label="Peta sebaran PUTS">
+          <div id="popup" class="ol-popup">
+            <a href="#" id="popup-closer" class="ol-popup-closer" aria-label="Tutup info titik"></a>
+            <div id="popup-content"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="resources/qgis2web_expressions.js?v=202610011230"></script>
+    <script src="./resources/functions.js?v=202610011230"></script>
+    <script src="./resources/ol.js?v=202610011230"></script>
+    <script src="resources/horsey.min.js?v=202610011230"></script>
+    <script src="resources/ol-search-layer.js?v=202610011230"></script>
+    <script src="./resources/ol-layerswitcher.js?v=202610011230"></script>
+    <script src="resources/photon-geocoder-autocomplete.min.js?v=202610011230"></script>
+    <script src="layers/BatasKabupaten_1.js?v=202610011230"></script>
+    <script src="styles/BatasKabupaten_1_style.js?v=202610011230"></script>
+    <script src="styles/Dissolved_2_style.js?v=202610011230"></script>
+    <script src="styles/260331_4_style.js?v=202610011230"></script>
+    <script src="./layers/layers.js?v=202610011230" type="text/javascript"></script>
+    <script src="./resources/Autolinker.min.js?v=202610011230"></script>
+    <script src="./resources/qgis2web.js?v=202610011230"></script>
+    <script src="./custom.js?v=202610011230"></script>
+  </body>
+</html>

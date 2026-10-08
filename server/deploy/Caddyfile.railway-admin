@@ -1,0 +1,17 @@
+{
+    admin off
+    auto_https off
+}
+:{$PORT:8080} {
+    request_body {
+        max_size 21MB
+    }
+    reverse_proxy 127.0.0.1:9000 {
+        # Railway's public edge requires HTTPS; replace any caller-provided scheme assertion.
+        header_up X-Survey-Proto https
+        header_up -X-Forwarded-Proto
+        header_up -X-Forwarded-SSL
+        header_up -X-Forwarded-Protocol
+        header_up Host {http.request.host}
+    }
+}

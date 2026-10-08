@@ -7,3 +7,17 @@
 # Generated Python bytecode
 __pycache__/
 *.py[cod]
+
+# Frontend dependencies, builds and browser artifacts
+node_modules/
+dist/
+test-results/
+playwright-report/
+.env
+.env.*
+.venv/
+.local/
+*.sqlite3
+
+# Temporary OCR crops; original evidence is kept in source/private storage.
+tmp_ocr_sample/

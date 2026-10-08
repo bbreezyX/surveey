@@ -2,7 +2,34 @@
   "name": "surveypjuts",
   "private": true,
   "scripts": {
-    "start": "python3 scripts/dev-server.py",
-    "dev": "python3 scripts/dev-server.py"
+    "check:admin": "svelte-check --tsconfig ./admin/tsconfig.json",
+    "build:admin": "npm run check:admin && vite build --config vite.admin.config.mts",
+    "admin:local": "node scripts/admin-local.mjs",
+    "start": "vite --config vite.public.config.mts",
+    "dev": "vite --config vite.public.config.mts",
+    "dev:legacy": "node scripts/run-python.js scripts/dev-server.py",
+    "start:legacy": "node scripts/run-python.js scripts/dev-server.py",
+    "test": "vitest run",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "build": "npm run check && vite build --config vite.public.config.mts && node scripts/build-public-assets.mjs",
+    "preview": "vite preview --config vite.public.config.mts",
+    "test:e2e": "playwright test",
+    "prestart": "node scripts/build-public-assets.mjs --dev",
+    "predev": "node scripts/build-public-assets.mjs --dev",
+    "prebuild": "node scripts/build-public-assets.mjs --dev"
+  },
+  "dependencies": {
+    "ol": "10.7.0",
+    "svelte": "5.57.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@types/geojson": "7946.0.16",
+    "@types/node": "24.19.1",
+    "svelte-check": "4.7.6",
+    "typescript": "6.0.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.3"
   }
 }

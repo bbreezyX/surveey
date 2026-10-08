@@ -1,0 +1,95 @@
+# CLAUDE.md
+
+## Current application and deployment
+
+This repository now uses Svelte 5, TypeScript, Vite and OpenLayers for the public map and separate admin build. The approved public-map UI is preserved. Admin uses Django, PostgreSQL and private object storage, with password-only approved accounts. Production map is https://survey.esdm.cloud/ and administration is https://survey.esdm.cloud/admin/.
+
+- `npm ci`, `npm run build`, `npm test`: public build and unit checks.
+- `npm run build:admin`: admin type check and build.
+- `npm run test:e2e`: browser checks.
+- `npm run admin:local`: local admin on 127.0.0.1:8130/admin/; local data stays separate.
+- `node scripts/admin-local.mjs test survey delivery --noinput`: backend checks after installing the local virtual environment.
+
+Railway production follows the `master` branch. Keep the service-specific Dockerfile settings: `server/deploy/Dockerfile.railway-public-map`, `server/deploy/Dockerfile.admin`, and `server/deploy/Dockerfile.public-data`. The public-map service reverse-proxies admin and published data to private services. Never substitute the legacy static image for this production topology. See README.md, docs/railway-deployment.md and docs/admin-operations.md for current commands and boundaries.
+
+Private `.local/`, environment files, credentials, SQLite databases, generated builds and OCR crops are ignored. Do not commit them. Preserve the original public controls and other approved UI. Text remains Indonesian; comments explain reasoning, and commit subjects are plain imperative sentences.
+
+## Historical legacy implementation
+
+The notes below describe `legacy.html`, `custom.js`, the original static data and the Python legacy preview. Commands/deployment instructions in this historical section do not replace the current workflow above.
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+A static, single-page web map ("Peta Sebaran PUTS 2026") of solar street-light survey points (Penerangan Umum Tenaga Surya) for Dinas ESDM Provinsi Jambi. It started as a QGIS **qgis2web** export (OpenLayers) and has since been heavily hand-customised. UI copy is Indonesian; code comments are English and explain *why* at length. Match that comment style: they record measured decisions, so don't strip or shorten them.
+
+There is no build step, bundler, linter, or test suite. Files are served as-is.
+
+## Commands
+
+```bash
+npm run dev        # = npm start; runs scripts/dev-server.py via scripts/run-python.js (finds Python 3)
+```
+
+- Dev server: `http://127.0.0.1:8123/`. `.claude/launch.json` defines it as `pjuts-static` for `preview_start`.
+- It sends `Cache-Control: no-store` for everything, so edits show on reload without touching `?v=` tokens.
+- It also exposes `POST /api/flag` (localhost only), which writes the `cadangan` / `duplikat` flags straight into `data/points.geojson`. In the UI, the flag buttons only render when `isLocalEditor()` (hostname localhost/127.0.0.1) is true. Production has no such endpoint.
+- Python helpers in `scripts/` are run directly (`python scripts/<name>.py`). Their dependencies are not pinned: `openpyxl` (xlsx imports/exports), `Pillow` (icons, embedded photos), `shapely>=2.1` + `pyproj` (`import_big_boundaries.py`).
+
+## Deploy
+
+Push to `master` → Railway builds the `Dockerfile` (Caddy 2.8, static `file_server`). There's no separate release step.
+
+- **Cache-busting is automatic.** The Dockerfile rewrites every `?v=…` token in `index.html` and `manifest.json` to the commit SHA. The `Caddyfile` serves `custom.*`, `layers/`, `resources/`, `styles/`, `assets/` and `webfonts/` as `immutable` for a year. Any new asset reference in `index.html` therefore **must** carry a `?v=` token, or browsers will hold onto the old copy forever. `scripts/bump-version.sh` still exists for manual bumps but isn't required.
+- `/data/*` is `no-cache`, and data URLs deliberately carry **no** `?v=` token. `index.html` preloads `./data/points.geojson` and `./data/dissolved.geojson`, so those `href`s must stay byte-identical to the URLs in `layers/layers.js`; if they drift, the file gets fetched twice.
+- The CSP in the `Caddyfile` is strict (`script-src 'self'`, no inline scripts; images/tiles only from Google and Esri hosts). A new external host or an inline `<script>` will break in production while still working locally.
+- `.dockerignore` keeps `scripts/`, `*.py` and tooling dirs out of the image.
+
+## Architecture
+
+Script load order in `index.html` is the dependency graph. Everything shares globals; there are no modules.
+
+1. `resources/*`: vendored libraries (OpenLayers `ol.js`, layerswitcher, Autolinker, qgis2web helpers). Treat them as third-party, except `qgis2web.js`, which creates `map`, the initial view fit, the popup overlay and the click/hover handlers, and has been patched.
+2. `layers/BatasKabupaten_1.js`: kabupaten boundaries inlined as a JS global (`json_BatasKabupaten_1`). Generated by `scripts/import_big_boundaries.py` from BIG's June 2026 service; provenance lives in `data/boundaries-source.json` and `docs/boundary-data.md`.
+3. `styles/*_style.js`: OpenLayers style functions per layer. `260331_4` is the survey-points layer, a leftover qgis2web name.
+4. `layers/layers.js`: defines every layer and `layersList`:
+   - Basemaps: Google Satellite (default, z21) and Esri World Imagery (fallback, capped at z18). The reasoning is in `docs/basemaps.md`.
+   - `Fokus Provinsi` mask and `Area Cakupan` outline, both from `data/dissolved.geojson` (fetched by URL).
+   - **One** vector source, `data/points.geojson`, shared by three layers: `lyr_260331_4` (SK points), `lyr_Cadangan_5` (hidden by default) and `lyr_BelumDitetapkan_6`. The latter two have `style: null` until `custom.js` installs style functions that draw only their own subset.
+   - `declutter` stays **off** on purpose: this is a coverage map, and decluttering silently hid about 22% of the pins.
+   - `layers/Dissolved_2.js` and `layers/Lines_3.js` are not loaded anywhere.
+5. `custom.js` (~4.2k lines, one IIFE) is the actual application:
+   - Sidebar/bottom-sheet list grouped by kabupaten, then kecamatan sections. Kabupaten comes from a point-in-polygon join against the boundary layer at runtime (`resolveKabupaten`), not from attributes.
+   - Search, including coordinate-pair search with tolerance.
+   - Status filters, popup HTML, the Google Maps directions link, map-focus animation, mobile sheet gestures/hints, and the local-only flag editor.
+6. `custom.css` (~4k lines) holds all styling. The Figtree font comes from Google Fonts, and colour/spacing tokens sit at the top. The design history is in `docs/superpowers/specs/`.
+
+### Point data model (`data/points.geojson`)
+
+- Written as compact JSON on a single line (`separators=(",", ":")`, `ensure_ascii=False`). Scripts that write it must keep that format.
+- Key properties:
+  - `Nomor`: unique ID, formatted `KABUPATEN-KECAMATAN-DESA-NNN`.
+  - `Nama Anggota`: the pengusul (proposing official).
+  - `Jalur`, `Alamat`, `Longitude`/`Latitude`: the popup's coordinate row reads these, not the geometry.
+  - `Tanggal Dokumentasi` (`DD/MM/YYYY`).
+  - `Keterangan`.
+  - `Lokasi Rekapan`: the allocation-sheet line, shown verbatim as the title. Don't tidy its abbreviations; field crews search by that exact text.
+  - `Catatan`.
+  - `Foto Survey Awal`: an original Windows path, e.g. `D:/011. ESDM/.../X.jpg`.
+- **Statuses:**
+  - `Status: "Cadangan"`: reserve rows, excluded from every count, drawn on their own hidden layer.
+  - `Status: "Belum Ditetapkan"`: a unit is allocated but not yet sited. It counts, and its pin is only an estimate.
+  - `Duplikat: true`: shown in the UI as "Perlu verifikasi". It counts, but the GPS pin is shared with another unit and needs a field check.
+  - The official total is every point that isn't Cadangan (currently 500).
+- **Photos:** each photo's filename in `images/` is `Foto Survey Awal` with every `/`, `\` and `:` replaced by `_` (`sanitizeMediaPath` in `custom.js`, and `sanitize_media_path` in the scripts). Changing a photo means changing both the path and the file.
+- The burned-in GPS/time stamp on the survey photos (Timemark, GPS Map Camera) is the source of record for coordinates and dates; QGIS exports truncate or misassign them. Coordinates are kept at up to 6 decimals.
+
+### Data update workflow
+
+New survey batches arrive as qgis2web exports, Timemark "Lembar Foto" xlsx files, or WhatsApp photos. Each batch gets its own one-off script in `scripts/`, named `append_*.py` / `place_*.py` / `apply_*.py`. It merges into `points.geojson`, copies the photos into `images/` under the sanitized name, and asserts expectations: counts, no duplicate `Nomor`, photo exists. The script's docstring documents the source files and every judgment call. Follow that pattern for new batches rather than hand-editing large amounts of JSON. Small corrections (one point's coordinates or photo) are done by direct edit, and the commit message states the new coordinates and the evidence.
+
+## Conventions
+
+- Commit subjects are plain imperative sentences describing the user-visible change; there's no conventional-commit prefix. Bodies explain the reasoning.
+- Rendered strings stay in Indonesian. Labels for statuses are centralised in `STATUS_LABEL` in `custom.js`.

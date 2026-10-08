@@ -1,0 +1,18 @@
+# Add these two handlers to the public Caddy site at cutover, before its static file_server.
+# Keep the existing public appearance/static asset allowlist. NEVER proxy admin requests here.
+handle /data/points.geojson {
+    reverse_proxy https://{$PUBLIC_DATA_PRIVATE_HOST}:8443 {
+        header_up Host {http.request.host}
+        transport http {
+            tls_trust_pool file {$ORIGIN_CA_FILE}
+        }
+    }
+}
+handle /media/* {
+    reverse_proxy https://{$PUBLIC_DATA_PRIVATE_HOST}:8443 {
+        header_up Host {http.request.host}
+        transport http {
+            tls_trust_pool file {$ORIGIN_CA_FILE}
+        }
+    }
+}

@@ -1,0 +1,442 @@
+/* Dashboard (layout C, "Lipat"). sheet.css holds the tokens and the sheet
+   box shared with the login page. Here the sheet grows to full height and
+   the point list and the photo/location panel hang off its two edges as
+   wings, hinged on the sheet so they fold in and out. */
+:root { --wing-l: 330px; --wing-r: 360px; --sheet-h: min(800px, calc(100vh - 48px)); }
+@media (max-width: 1200px) { :root { --sheet-w: 420px; --wing-l: 290px; --wing-r: 310px; } }
+
+/* ---------- Sheet geometry and the login <-> dashboard motion ---------- */
+.app-sheet {
+  display: flex; flex-direction: column;
+  height: var(--sheet-h);
+  transition: height 0.38s var(--ease-out) 0.08s, width 0.38s var(--ease-out);
+}
+.app-sheet.is-wide { width: min(900px, calc(100vw - 32px)); }
+.app-sheet[data-phase="login"], .app-sheet[data-phase="closing"] { height: var(--login-h); }
+.app-sheet[data-phase="closing"] { transition-delay: 0.24s; }
+.app-sheet > :not(.wing) { transition: opacity 0.2s 0.34s; }
+.app-sheet[data-phase="login"] > :not(.wing),
+.app-sheet[data-phase="closing"] > :not(.wing) { opacity: 0; transition: opacity 0.12s; }
+@media (prefers-reduced-motion: reduce) {
+  .app-sheet, .app-sheet > * { transition: none !important; }
+}
+/* The wings butt against the sheet's edges and cover its own box-shadow
+   there, so the three panels read as one flat strip. This layer repeats a
+   shorter shadow above the wings (it comes after them in paint order) so the
+   centre sheet sits visibly on top. An outer shadow never paints inside the
+   box, and the clip keeps it to the two sides, where the wings are. */
+.app-sheet:not(.is-wide)::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(20, 38, 53, 0.08), 0 0 3px rgba(20, 38, 53, 0.12), 0 0 18px rgba(20, 38, 53, 0.2);
+  clip-path: inset(0 -40px);
+}
+
+/* ---------- Header and tabs ---------- */
+.sheet-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 0 18px; }
+.sheet-head .emblem { width: 30px; height: 31px; }
+.sheet-title { min-width: 0; }
+.sheet-title h1 { margin: 0; font-size: 15px; font-weight: 750; line-height: 1.2; }
+.sheet-title p { margin: 2px 0 0; font-size: 12px; color: var(--muted-2); }
+.account-menu { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.account-menu form { margin: 0; }
+.who { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; }
+.link-button { padding: 0; font-size: 12px; font-weight: 600; color: var(--blue); background: none; border: 0; }
+.link-button:hover, .link-button[aria-current] { text-decoration: underline; }
+.tabs { display: flex; gap: 2px; padding: 10px 12px 0; border-bottom: 1px solid var(--divider); overflow-x: auto; scrollbar-width: none; }
+.tabs button {
+  padding: 8px 10px 10px; white-space: nowrap;
+  font-size: 14px; font-weight: 600; color: var(--muted);
+  background: none; border: 0; border-bottom: 2px solid transparent;
+}
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-current] { color: var(--ink); border-bottom-color: var(--ink); }
+/* Tabs already have an underline; focus recolours it instead of adding a ring. */
+.tabs button:focus-visible { outline: none; color: var(--ink); background: var(--atlas-paper); border-bottom-color: var(--blue); border-radius: 6px 6px 0 0; }
+.panes { display: none; }
+.notices { padding: 12px 20px 0; }
+.notices p { margin: 0 0 6px; }
+.notice-success { padding: 10px 12px; font-size: 13.5px; line-height: 1.45; color: #185646; background: #edf7f1; border-radius: 6px; }
+.sheet-body { flex: 1; min-height: 0; }
+.loading { padding: 20px; color: var(--muted); }
+
+/* ---------- Editor (centre sheet) ---------- */
+.editor { display: flex; flex-direction: column; }
+.edit-head { display: flex; align-items: flex-start; gap: 12px; padding: 16px 20px 12px; }
+.edit-title { flex: 1; min-width: 0; }
+.edit-head h2 { margin: 0 0 4px; font-size: 21px; line-height: 1.22; font-weight: 750; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.edit-id { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted-2); overflow-wrap: anywhere; }
+.edit-meta { display: flex; align-items: center; gap: 10px; margin: 8px 0 0; font-size: 12.5px; color: var(--muted-2); }
+.edit-notice { margin: 0 20px 10px; }
+.edit-form { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0; }
+.edit-scroll { flex: 1; min-height: 0; overflow: auto; padding: 4px 20px 8px; border-top: 1px solid var(--divider); }
+.edit-foot { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--divider); }
+.edit-foot p { margin: 0 auto 0 0; font-size: 12.5px; color: var(--muted-2); }
+.editor-empty { margin: auto; padding: 32px 36px; text-align: center; }
+.editor-empty h2 { margin: 0 0 8px; font-size: 19px; font-weight: 750; }
+.editor-empty p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
+fieldset { margin: 14px 0 6px; padding: 0; border: 0; min-width: 0; }
+fieldset:disabled .coordinate-map { pointer-events: none; }
+legend { padding: 0; margin-bottom: 10px; font-size: 14.5px; font-weight: 750; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.check { display: flex; align-items: center; gap: 9px; margin: 0 0 12px; font-size: 14px; }
+.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ink); }
+.hint { margin: 0 0 12px; font-size: 13px; line-height: 1.5; color: var(--muted-2); }
+.table-wrap { overflow: auto; margin-bottom: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--divider); overflow-wrap: anywhere; }
+th { font-weight: 650; }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 6px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 18px; white-space: nowrap; }
+.badge::before { content: ""; width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.badge--sk { background: #fffbd6; color: var(--ink); }
+.badge--sk::before { background: var(--yellow); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.badge--duplikat { background: var(--orange-tint); color: var(--orange-deep); }
+.badge--duplikat::before { background: var(--orange); }
+.badge--belum { background: #fff; color: var(--muted); box-shadow: inset 0 0 0 1px var(--atlas-edge); }
+.badge--belum::before { background: #fff; box-shadow: inset 0 0 0 2px var(--ink); }
+.badge--cadangan, .badge--arsip { background: var(--atlas-paper); color: var(--muted); }
+.badge--cadangan::before { background: repeating-linear-gradient(-45deg, #7d90a1 0 1.5px, #fff 1.5px 5px); box-shadow: inset 0 0 0 1px #7d90a1; }
+.badge--arsip::before { background: var(--muted-2); }
+
+/* ---------- Wings ----------
+   White panels like the public map's #sidebar. Only the centre sheet's
+   outer shadow falls across the hinge; the wings carry no inner shading. */
+.wing {
+  position: absolute; top: 14px; bottom: 14px; z-index: -1;
+  display: flex; flex-direction: column; min-height: 0;
+  background: #fff;
+  backface-visibility: hidden;
+}
+.wing::after {
+  /* Light falling off the fold while it opens; driven by --shade from the
+     fold transition in unfold.ts. */
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  opacity: var(--shade, 0);
+}
+.wing-l {
+  right: 100%; width: var(--wing-l); transform-origin: right center; overflow: hidden;
+  border-radius: var(--sheet-radius) 0 0 var(--sheet-radius);
+  box-shadow: var(--sheet-shadow);
+}
+.wing-l::after { background: linear-gradient(to left, #14202c, rgba(20, 32, 44, 0.2)); }
+/* The wings paint over the sheet's white background (they sit at z-index
+   -1 inside it), so their outer shadow used to fall into the centre sheet
+   as a dark band along both its edges. Clip each wing's shadow off its
+   hinge side: it falls on the map only. */
+.wing-l { clip-path: inset(-80px 0 -80px -80px); }
+.wing-r { clip-path: inset(-80px -80px -80px 0); }
+.wing-r {
+  left: 100%; width: var(--wing-r); transform-origin: left center; overflow: hidden;
+  border-radius: 0 var(--sheet-radius) var(--sheet-radius) 0;
+  box-shadow: var(--sheet-shadow);
+}
+.wing-r::after { background: linear-gradient(to right, #14202c, rgba(20, 32, 44, 0.2)); }
+/* The panel itself never scrolls: a scrollbar on a rounded box runs
+   straight through its corners. The inner scroller stops 10px short of the
+   top and bottom, clear of the 20px corner curve. */
+.wing-scroll { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 10px 0; overflow-y: auto; overscroll-behavior: contain; }
+.wing-scroll > .wing-section:first-child, .wing-scroll > .wing-notice + .wing-section { padding-top: 8px; }
+
+/* ---------- Point list: the public panel's components ----------
+   Values copied from src/public/styles/sidebar.css (.panel-search,
+   .atlas-summary, .atlas-section, .atlas-desa, .atlas-pt, .atlas-unit) so
+   the list reads exactly like the public map's. */
+.list-filter { padding-top: 16px; }
+.panel-search {
+  position: relative; display: flex; flex: none; align-items: center;
+  height: 44px; margin: 0 16px 10px;
+  border: 1px solid var(--hairline); border-radius: 999px; background: var(--frost);
+  transition: border-color var(--dur), background-color var(--dur);
+}
+.panel-search:focus-within { border-color: var(--blue); background: #fff; }
+.panel-search__icon { position: absolute; left: 15px; fill: none; stroke: var(--muted-2); stroke-width: 2; stroke-linecap: round; pointer-events: none; }
+.panel-search input {
+  flex: 1; min-width: 0; height: 100%; padding: 0 42px;
+  border: 0; outline: none; background: transparent; color: var(--ink);
+  font: 500 15px/1 var(--font);
+}
+.panel-search input::placeholder { color: var(--muted-2); opacity: 1; }
+.panel-search input::-webkit-search-cancel-button { display: none; -webkit-appearance: none; }
+.panel-search__clear {
+  position: absolute; right: 6px; display: grid; place-items: center;
+  width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px;
+  background: transparent; color: var(--muted);
+}
+.panel-search input:placeholder-shown ~ .panel-search__clear { display: none; }
+.panel-search__clear:hover { background: var(--divider); }
+.panel-search__clear svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 16px 6px; }
+.filter-row .select { flex: 1 1 150px; width: auto; }
+.page .select--field { font-weight: 500; }
+.atlas-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 0 18px 10px; color: var(--muted); font-size: 13.5px; }
+.atlas-summary p { margin: 0; }
+.atlas-summary b { color: var(--ink); font-weight: 750; font-variant-numeric: tabular-nums; }
+.atlas-summary--total { flex-wrap: wrap; padding-top: 10px; padding-bottom: 14px; }
+.atlas-total { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.atlas-total__num { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.atlas-total__label { display: flex; flex-direction: column; font-size: 13px; line-height: 1.3; }
+.atlas-total__label > span:first-child { color: var(--ink); font-weight: 650; }
+.atlas-flags { display: flex; flex-wrap: wrap; gap: 4px 14px; width: 100%; }
+.status-flag { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+.status-flag::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; }
+.status-flag--duplikat { color: var(--orange-deep); }
+.status-flag--duplikat::before { border: 2px solid var(--orange); background: var(--yellow); }
+.status-flag--belum { color: var(--muted); }
+.status-flag--belum::before { border: 1.5px dashed var(--muted-2); background: #fff; }
+/* Text actions are the public panel's blue links ("Semua wilayah", "Lihat semua"). */
+.text-action {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  padding: 5px 8px; margin: 0 -8px 0 0; border: 0; border-radius: 8px;
+  background: none; color: var(--blue); font-size: 13.5px; font-weight: 650;
+}
+.text-action svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.text-action:hover:not(:disabled) { background: var(--blue-tint); color: var(--blue-deep); }
+
+.sidebar-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--divider); }
+.atlas-section {
+  position: sticky; z-index: 1; top: 0;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 8px 18px; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider);
+  background: var(--frost); font-size: 13.5px; font-weight: 750;
+  transition: background-color 320ms cubic-bezier(0.4, 0, 0.2, 1), border-color 320ms cubic-bezier(0.4, 0, 0.2, 1), color 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.atlas-group:first-child .atlas-section { border-top: 0; }
+.atlas-section.is-stuck { border-color: var(--ink); background: var(--ink); color: #fff; }
+.atlas-section span { color: var(--muted); font-size: 12.5px; font-weight: 650; transition: color 320ms cubic-bezier(0.4, 0, 0.2, 1); }
+.atlas-section.is-stuck span { color: rgba(255, 255, 255, 0.82); }
+.atlas-desa { padding: 12px 18px 14px; border-bottom: 1px solid var(--divider); }
+.atlas-desa:last-child { border-bottom: 0; }
+.atlas-desa__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.atlas-desa__title { font-size: 14.5px; font-weight: 650; line-height: 1.3; }
+.atlas-desa__count { flex: none; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.atlas-desa__note { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.35; text-wrap: pretty; }
+.atlas-units { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 4px 10px; margin-top: 10px; }
+.atlas-pt {
+  display: flex; align-items: center; gap: 9px; min-width: 0; margin: 0; padding: 3px;
+  border: 0; border-radius: 10px; background: none; text-align: left;
+  transition: background-color var(--dur);
+}
+.atlas-pt:hover { background: var(--row-hover); }
+.atlas-pt__info { display: flex; flex-direction: column; gap: 1px; min-width: 0; line-height: 1.3; }
+.atlas-pt__note {
+  display: -webkit-box; overflow: hidden; color: var(--ink); font-size: 12.5px; font-weight: 600;
+  -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; text-wrap: pretty;
+}
+.atlas-pt__coord { min-width: 0; color: var(--muted); font-size: 12px; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.atlas-pt__coord--none { color: var(--muted-2); font-style: italic; }
+.atlas-unit {
+  display: grid; place-items: center; flex: none; min-width: 46px; height: 34px; padding: 0 8px;
+  border: 1px solid #c6d3df; border-radius: 8px; background: #fff; color: var(--ink);
+  font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+  transition: background-color var(--dur), border-color var(--dur);
+}
+.atlas-pt:hover .atlas-unit:not(.is-active) { border-color: var(--blue); background-color: var(--blue-tint); }
+.atlas-unit.is-duplikat { border: 2px solid var(--orange); background: var(--orange-tint); color: var(--orange-deep); }
+.atlas-unit.is-belum { border: 1.5px dashed var(--muted-2); color: var(--muted); }
+.atlas-unit.is-cadangan { border: 1.5px solid var(--hatch-edge); background: var(--hatch); color: var(--ink); font-weight: 800; text-shadow: var(--hatch-halo); }
+/* Archived points are out of every count and off the public map. */
+.atlas-unit.is-arsip { border: 1.5px dashed var(--atlas-edge); background: var(--frost); color: var(--muted-2); }
+.atlas-unit.is-active { border-color: var(--ink); background: var(--ink); color: var(--yellow); text-shadow: none; }
+.atlas-pt:focus-visible { outline-offset: 0; }
+.panel-empty { padding: 32px 24px; color: var(--muted); font-size: 14px; text-align: center; }
+.panel-empty p { max-width: 34ch; margin: 0 auto 14px; }
+.panel-empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.panel-empty button { height: 38px; padding: 0 16px; border: 1px solid var(--hairline-strong); border-radius: 999px; background: #fff; color: var(--ink); font-weight: 650; }
+.panel-empty button:hover { border-color: var(--blue); color: var(--blue-deep); }
+.panel-empty button:focus-visible { outline: none; border-color: var(--blue); }
+.list-pager {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none;
+  padding: 8px 18px 10px; border-top: 1px solid var(--divider);
+  color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums;
+}
+.list-pager .text-action { margin: 0 -8px; font-size: 13px; white-space: nowrap; }
+/* "Halaman 11 dari 11" wrapped onto two lines in the 290-330px wing; the
+   bare count fits at any page number and never breaks. */
+.list-pager__count { white-space: nowrap; }
+.list-pager__count b { color: var(--ink); font-weight: 700; }
+.list-pager .text-action:disabled { color: var(--muted-2); opacity: 0.6; }
+
+/* ---------- Switch: the public layer panel's (.ctl-switch) ---------- */
+.switch-row { display: inline-flex; align-items: center; gap: 9px; flex: none; margin: 0 0 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.filter-row .switch-row { margin: 0; font-size: 13px; }
+.ctl-switch { position: relative; display: inline-flex; flex: none; }
+.ctl-switch > input { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.ctl-switch__track {
+  position: relative; display: flex; align-items: center; width: 36px; height: 22px; padding: 3px;
+  border-radius: 999px; background: #c4d3df; isolation: isolate;
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ctl-switch__track::before {
+  content: ""; position: absolute; z-index: -1; inset: 0; border-radius: inherit;
+  background: var(--ink); opacity: 0; transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ctl-switch__thumb {
+  flex: none; width: 16px; height: 16px; border-radius: 999px; background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
+  translate: 0;
+  transition: translate 300ms cubic-bezier(0.25, 1, 0.5, 1), width 200ms cubic-bezier(0.25, 1, 0.5, 1), background-color 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ctl-switch > input:checked + .ctl-switch__track::before { opacity: 1; }
+.ctl-switch > input:checked + .ctl-switch__track .ctl-switch__thumb { translate: 14px; background: var(--yellow); }
+.ctl-switch > input:active + .ctl-switch__track .ctl-switch__thumb { width: 20px; }
+.ctl-switch > input:checked:active + .ctl-switch__track .ctl-switch__thumb { translate: 10px; }
+/* The track has no border, so the focus ring is its only edge. */
+.ctl-switch > input:focus-visible { outline: none; }
+.ctl-switch > input:focus-visible + .ctl-switch__track { outline: 2px solid var(--blue); outline-offset: 2px; }
+.ctl-switch > input:disabled + .ctl-switch__track { opacity: 0.55; }
+
+/* ---------- Right wing: photos, location, history ---------- */
+.wing-section { padding: 18px 18px 6px; }
+.wing-section + .wing-section { border-top: 1px solid var(--divider); }
+.wing h3 { margin: 0 0 10px; font-size: 14.5px; font-weight: 750; }
+.wing h4 { margin: 16px 0 8px; font-size: 13.5px; font-weight: 700; }
+.wing-empty { margin: auto; padding: 32px 24px; text-align: center; }
+.wing-empty p { max-width: 34ch; margin: 0 auto; font-size: 14px; line-height: 1.55; color: var(--muted); }
+.wing-notice { display: none; }
+.photo-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photo-compare figure { margin: 0 0 12px; min-width: 0; }
+.photo-compare figcaption { margin-bottom: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted-2); }
+.photo-compare img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: var(--frost); }
+.photo-empty { display: grid; place-items: center; aspect-ratio: 3 / 4; margin: 0; font-size: 12.5px; color: var(--muted-2); background: var(--frost); border: 1.5px dashed var(--hairline-strong); border-radius: 12px; }
+/* Upload: the native input is stretched invisibly over the whole zone, so
+   clicking and dropping a file both work; the zone is what shows. */
+.dropzone {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  margin: 2px 0 8px; padding: 12px 14px;
+  border: 1.5px dashed var(--atlas-edge); border-radius: 12px; background: var(--frost);
+  cursor: pointer; transition: border-color var(--dur), background-color var(--dur);
+}
+.dropzone input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.dropzone:hover, .dropzone:focus-within { border-color: var(--blue); border-style: solid; background: var(--blue-tint); }
+.dropzone input:focus-visible { outline: none; }
+.dropzone.is-busy { cursor: progress; opacity: 0.7; }
+.dropzone__icon { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 9px; background: #fff; color: var(--blue-deep); box-shadow: 0 1px 2px rgba(20, 38, 53, 0.12); }
+.dropzone__icon svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dropzone__text { display: grid; gap: 2px; min-width: 0; }
+.dropzone__text strong { font-size: 14px; font-weight: 700; color: var(--ink); }
+.dropzone__text small { font-size: 12px; line-height: 1.35; color: var(--muted); }
+.coordinate-map { height: 240px; margin-bottom: 10px; overflow: hidden; border-radius: 12px; background: #1d2a36; }
+.coordinate-map + button {
+  min-height: 36px; padding: 0 14px; font-size: 13.5px; font-weight: 650; color: var(--ink);
+  background: #fff; border: 1px solid var(--hairline-strong); border-radius: 999px;
+}
+.coordinate-map + button:hover:not(:disabled) { border-color: var(--blue); color: var(--blue-deep); }
+.coordinate-map + button:focus-visible { outline: none; border-color: var(--blue); }
+.coordinate-map + button + .hint { margin-top: 10px; }
+details { margin: 0 0 8px; padding: 10px 12px; background: var(--frost); border: 1px solid var(--divider); border-radius: 10px; }
+summary { cursor: pointer; font-size: 13px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+details p { font-size: 13px; line-height: 1.5; }
+pre { margin: 8px 0; padding: 10px; font-size: 11.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; background: #fff; border-radius: 6px; }
+.history-photos { display: grid; gap: 10px; }
+.history-photos figure { display: grid; gap: 8px; margin: 0; }
+.history-photos img { width: 100%; border-radius: 8px; }
+details .btn-ghost { margin-top: 6px; }
+
+/* ---------- Wide pages (wings folded, sheet widened) ----------
+   Built from the public panel's parts: a panel head, frost section bars
+   that stick while scrolling (.atlas-section), and full-width rows split
+   by dividers (.atlas-desa). Ends 12px above the sheet's rounded bottom so
+   its scrollbar stays inside the corners. */
+.page { overflow: auto; overscroll-behavior: contain; padding: 0; margin-bottom: 12px; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 24px 16px; }
+.page-head h2 { margin: 0 0 4px; font-size: 21px; line-height: 1.22; font-weight: 750; letter-spacing: -0.01em; }
+.page-head p { max-width: 62ch; margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.page-head__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; flex: none; }
+.page-notice { margin: 0 24px 14px; }
+a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; }
+.page .atlas-section { border-top: 1px solid var(--divider); }
+.page-row { margin: 0; padding: 14px 24px 16px; border-bottom: 1px solid var(--divider); }
+.page-row:last-child { border-bottom: 0; }
+.page-row fieldset { margin: 0; }
+.page-row--compact { padding-top: 12px; padding-bottom: 12px; }
+.page-row__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.page-row h3 { margin: 0; font-size: 14.5px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+.page-row__meta { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.page-row__text { margin: 10px 0 0; color: var(--ink); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.page-row__aside { display: flex; align-items: center; gap: 12px; flex: none; }
+.page-row__figure { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.page-row__figure b { color: var(--ink); font-weight: 750; }
+.page-row__actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; }
+.page-row__actions .hint { margin: 0 auto 0 0; }
+.page-row .switch-row { margin: 0; }
+.page-row .notice-error { margin: 10px 0 0; }
+.page .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; margin-top: 4px; }
+.page .form-grid .wide { grid-column: 1 / -1; }
+.page .form-grid .field { margin-bottom: 12px; }
+.page-row > .field { margin: 0; }
+.stats-line { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 12px 0 0; }
+.stats-line div { display: flex; flex-direction: column; }
+.stats-line dt { color: var(--muted); font-size: 12px; }
+.stats-line dd { margin: 0; color: var(--ink); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Disclosures read as the public panel's blue text actions. */
+.disclosure { margin: 10px 0 0; padding: 0; background: none; border: 0; border-radius: 0; }
+.disclosure > summary { display: inline-flex; align-items: center; gap: 4px; padding: 5px 8px; margin-left: -8px; border-radius: 8px; color: var(--blue); font-size: 13.5px; font-weight: 650; list-style: none; }
+.disclosure > summary::-webkit-details-marker, .disclosure-row > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::after, .disclosure-row > summary::after {
+  content: ""; width: 7px; height: 7px; margin-left: 4px; flex: none;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  rotate: 45deg; translate: 0 -2px; transition: rotate var(--dur) var(--ease-out);
+}
+.disclosure[open] > summary::after, .disclosure-row[open] > summary::after { rotate: 225deg; translate: 0 2px; }
+.disclosure > summary:hover { background: var(--blue-tint); color: var(--blue-deep); }
+.disclosure[open] > .table-wrap { margin-top: 8px; }
+/* Whole-row disclosures (audit, evidence): the row itself opens. */
+.disclosure-row { background: none; border: 0; border-bottom: 1px solid var(--divider); border-radius: 0; }
+.disclosure-row > summary { display: flex; align-items: baseline; gap: 12px; list-style: none; cursor: pointer; font-size: 14px; font-weight: 400; }
+.disclosure-row > summary::after { margin-left: auto; color: var(--muted-2); align-self: center; }
+.disclosure-row > summary:hover .page-row__title { color: var(--blue-deep); }
+.disclosure-row > summary .page-row__meta { margin: 0; }
+.disclosure-row > summary .status-flag { margin-left: auto; flex: none; white-space: nowrap; }
+.disclosure-row > summary .status-flag + * { margin-left: 0; }
+.page-row__time { flex: none; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.page-row__title { min-width: 0; color: var(--ink); font-weight: 650; overflow-wrap: anywhere; }
+.status-flag--ready { color: var(--ink); }
+.status-flag--ready::before { border: 1.6px solid var(--ink); background: var(--yellow); }
+.page .table-wrap table { background: #fff; }
+.page pre { background: var(--frost); }
+.page .photo-compare { margin-top: 12px; }
+.page .photo-compare img, .page .photo-empty { aspect-ratio: 4 / 3; }
+.page-foot { position: sticky; bottom: 0; z-index: 2; padding: 14px 24px 4px; border-top: 1px solid var(--divider); background: #fff; }
+.page-foot .field { margin-bottom: 10px; }
+.page-foot__bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.page-foot__bar p { margin: 0; color: var(--muted); font-size: 13px; }
+.evidence-image { display: block; max-width: 100%; max-height: 340px; margin-top: 10px; border-radius: 12px; }
+
+/* ---------- Narrow screens: wings become panes ---------- */
+@media (max-width: 1060px) {
+  .app-sheet, .app-sheet.is-wide { width: calc(100vw - 16px); --sheet-h: calc(100dvh - 16px); }
+  .panes { display: flex; gap: 4px; margin: 10px 12px 0; padding: 3px; background: var(--atlas-paper); border-radius: 10px; }
+  .panes button { flex: 1; padding: 7px 4px; font-size: 13.5px; font-weight: 600; color: var(--muted); background: none; border: 0; border-radius: 8px; }
+  .panes button[aria-pressed="true"] { color: var(--ink); background: #fff; box-shadow: 0 1px 2px rgba(20, 38, 53, 0.14); }
+  .wing {
+    position: static; z-index: auto; width: auto; flex: 1; min-height: 0;
+    background: #fff; box-shadow: none; border-radius: 0 0 var(--sheet-radius) var(--sheet-radius);
+  }
+  .wing::after { display: none; }
+  .wing-l, .wing-r { clip-path: none; }
+  .app-sheet:not(.is-wide)::after { content: none; }
+  .wing-notice { display: block; margin: 12px 16px 0; }
+  .app-sheet[data-pane="list"] .editor, .app-sheet[data-pane="list"] .wing-r,
+  .app-sheet[data-pane="edit"] .wing-l, .app-sheet[data-pane="edit"] .wing-r,
+  .app-sheet[data-pane="photo"] .wing-l, .app-sheet[data-pane="photo"] .editor { display: none; }
+  .sheet-title p { display: none; }
+  .edit-head, .edit-scroll, .edit-foot { padding-left: 16px; padding-right: 16px; }
+  .edit-foot p { display: none; }
+  .edit-foot .btn-primary { flex: 1; }
+  .page-head, .page-row, .page-foot { padding-left: 16px; padding-right: 16px; }
+  .page-head { flex-direction: column; }
+  .page-head__actions { justify-content: flex-start; }
+  .page-notice { margin-left: 16px; margin-right: 16px; }
+  .page-foot__bar { flex-direction: column; align-items: stretch; }
+  .page .form-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 420px) {
+  /* The emblem and tabs carry the identity; the account needs the room. */
+  .sheet-title { display: none; }
+  .link-button { white-space: nowrap; }
+  /* An owner's six tabs overflow a phone; fade the edge so the row reads as
+     scrollable rather than cut off. */
+  .tabs { padding-right: 24px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+  .tabs button { padding-left: 8px; padding-right: 8px; }
+  .sheet-head { padding: 12px 12px 0 14px; }
+}

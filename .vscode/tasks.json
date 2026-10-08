@@ -5,7 +5,7 @@
     {
     "label": "Dev Server",
     "type": "shell",
-    "command": "python3 scripts/dev-server.py",
+    "command": "npm run dev",
     "options": {
         "cwd": "${workspaceFolder}"
     },

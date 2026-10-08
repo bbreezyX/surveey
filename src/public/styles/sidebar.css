@@ -1,0 +1,974 @@
+/* ---------- Data panel: the atlas ----------
+   An atlas index: each kabupaten drawn as its own outline with its poles
+   dotted in, read like the region pages of an atlas. The header stays quiet
+   so the shapes carry the page. One white panel, top to bottom: the header
+   (identity, or the open kabupaten with its locator), the search, a line of
+   counts or filters, the list, and the footer. custom.js writes the header,
+   the counts line and the list (renderTop, renderMeta, renderList). */
+
+#sidebar {
+    position: absolute;
+    top: var(--panel-top);
+    bottom: var(--panel-top);
+    left: var(--panel-left);
+    /* Above OpenLayers' .ol-overlaycontainer-stopevent, which ships z-index 21.
+       Below 21 the map's own furniture — attribution, layer chip, zoom, scale —
+       painted straight through the panel. Invisible on desktop, where they never
+       overlap; obvious on mobile, where the sheet covers the whole screen. */
+    z-index: 22;
+    width: var(--panel-width);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.14), 0 18px 48px rgba(20, 38, 53, 0.3);
+    font-size: 14px;
+    line-height: 1.45;
+    transition:
+        transform 340ms var(--ease-out),
+        opacity 240ms var(--ease-out);
+}
+
+body.is-sidebar-collapsed #sidebar {
+    transform: translateX(calc(-100% - 2 * var(--panel-left)));
+    opacity: 0;
+    pointer-events: none;
+}
+
+:where(#sidebar) button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+#sheet-handle {
+    display: none;
+}
+
+/* The mobile sheet closes by its drag handle, which is the bottom-sheet idiom
+   and spans the full width. A second X button in the same 40px band duplicated
+   it, so this stays hidden at every size. The element is kept in the markup:
+   custom.js binds a listener to it. */
+#sidebar-close {
+    display: none;
+}
+
+.panel-top,
+.panel-meta {
+    flex: none;
+    min-width: 0;
+}
+
+.panel-meta:empty {
+    display: none;
+}
+
+.panel-icon {
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Screen changes answer a click: the new content slides in from the side
+   the reader is travelling toward (custom.js sets data-enter). Nothing
+   animates on its own. */
+#sidebar[data-enter="fwd"] :is(.panel-meta, .sidebar-scroll) {
+    animation: panel-in-fwd 260ms var(--ease-out);
+}
+
+#sidebar[data-enter="back"] :is(.panel-meta, .sidebar-scroll) {
+    animation: panel-in-back 260ms var(--ease-out);
+}
+
+#sidebar[data-enter] .panel-top > * {
+    animation: panel-fade 220ms var(--ease-out);
+}
+
+@keyframes panel-in-fwd {
+    from {
+        opacity: 0;
+        transform: translateX(16px);
+    }
+}
+
+@keyframes panel-in-back {
+    from {
+        opacity: 0;
+        transform: translateX(-16px);
+    }
+}
+
+@keyframes panel-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+/* Header, overview: the office and the map's name beside the lambang. */
+.atlas-head {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 12px 14px 18px;
+}
+
+.atlas-head img {
+    display: block;
+    width: 38px;
+    height: auto;
+}
+
+.atlas-head__org {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.atlas-head__title {
+    margin: 1px 0 0;
+    font-size: 19px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+/* Collapse: a plain round button in the header. The panel's re-open control
+   (#panel-toggle) lives outside the panel, which slides away with it. */
+.panel-collapse {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+}
+
+.panel-collapse:hover {
+    background: var(--frost);
+    color: var(--ink);
+}
+
+/* Header, one kabupaten: back, its name and counts, and where it sits in
+   the province. */
+.atlas-detail {
+    padding: 14px 12px 12px 18px;
+}
+
+.atlas-detail__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.atlas-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin: 0 0 0 -6px;
+    padding: 5px 10px 5px 4px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--blue);
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.atlas-back:hover {
+    background: var(--blue-tint);
+    color: var(--blue-deep);
+}
+
+.atlas-detail__main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 112px;
+    align-items: center;
+    gap: 14px;
+    margin-top: 6px;
+    padding-right: 6px;
+}
+
+.atlas-detail h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.atlas-detail p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 13.5px;
+}
+
+.atlas-detail p b {
+    color: var(--ink);
+    font-weight: 750;
+}
+
+.atlas-locator {
+    height: 84px;
+}
+
+.atlas-locator svg,
+.atlas-cell__shape svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.atlas-loc {
+    fill: #e5ecf2;
+    stroke: #fff;
+    stroke-width: 0.9;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.atlas-loc.is-on {
+    fill: var(--ink);
+    stroke: var(--ink);
+}
+
+/* Search: one element on both screens, so typing never loses focus while
+   the list re-renders. */
+.panel-search {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: 44px;
+    margin: 0 16px 12px;
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    background: var(--frost);
+    transition:
+        border-color var(--dur),
+        background-color var(--dur);
+}
+
+.panel-search:focus-within {
+    border-color: var(--blue);
+    background: #fff;
+}
+
+.panel-search__icon {
+    position: absolute;
+    left: 15px;
+    fill: none;
+    stroke: var(--muted-2);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+}
+
+.panel-search input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0 42px;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--ink);
+    font: 500 15px/1 var(--font-ui);
+}
+
+.panel-search input::placeholder {
+    color: var(--muted-2);
+    opacity: 1;
+}
+
+/* The native cancel button is WebKit-only and takes almost no styling; the
+   panel has its own. */
+.panel-search input::-webkit-search-cancel-button {
+    display: none;
+    -webkit-appearance: none;
+}
+
+.panel-search__clear {
+    position: absolute;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+}
+
+/* Nothing typed, nothing to clear. :placeholder-shown tracks programmatic
+   value changes too, so custom.js never has to toggle it. */
+.panel-search input:placeholder-shown ~ .panel-search__clear {
+    display: none;
+}
+
+.panel-search__clear:hover {
+    background: var(--divider);
+}
+
+.panel-search__clear svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+}
+
+/* Counts line, overview: the total and "Lihat semua". */
+.atlas-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 0 18px 10px;
+    color: var(--muted);
+    font-size: 13.5px;
+}
+
+.atlas-summary p {
+    margin: 0;
+}
+
+.atlas-summary b {
+    color: var(--ink);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The total is the figure the page exists to report, so it is set as a
+   headline number with its unit and spread stacked beside it, not as a
+   word inside a sentence. A headline needs air: the search's 12px margin
+   plus 6px above, 16px below, so it stands apart from both neighbours. */
+.atlas-summary--total {
+    padding-top: 6px;
+    padding-bottom: 16px;
+}
+
+.atlas-total {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.atlas-summary .atlas-total__num {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.atlas-total__label {
+    display: flex;
+    flex-direction: column;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.atlas-total__label > span:first-child {
+    color: var(--ink);
+    font-weight: 650;
+}
+
+#fit-map {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    padding: 6px 2px;
+    border: 0;
+    background: none;
+    color: var(--blue);
+    font-size: 13.5px;
+    font-weight: 650;
+}
+
+#fit-map:hover {
+    color: var(--blue-deep);
+}
+
+#fit-map:hover span {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* Counts line, one kabupaten: the status filters and a hint. */
+.atlas-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 16px 8px;
+}
+
+.atlas-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 650;
+    transition:
+        background-color var(--dur),
+        border-color var(--dur),
+        color var(--dur);
+}
+
+.atlas-pill:hover {
+    border-color: var(--blue);
+}
+
+.atlas-pill b {
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+.atlas-pill[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #fff;
+}
+
+/* The pill's swatch is a miniature unit tile, so the filter doubles as the
+   legend for the tiles below it. */
+.atlas-pill__swatch {
+    width: 14px;
+    height: 11px;
+    border-radius: 3px;
+}
+
+.atlas-pill__swatch--duplikat {
+    border: 2px solid var(--orange);
+    background: var(--orange-tint);
+}
+
+.atlas-pill__swatch--belum {
+    border: 1.5px dashed var(--muted-2);
+    background: #fff;
+}
+
+.atlas-hint {
+    margin: 0;
+    padding: 2px 18px 12px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* The list. */
+.sidebar-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #c3cfda transparent;
+}
+
+/* The overview grid, scrolled: a soft shadow at the top edge of the list,
+   under the header (lists with sticky kecamatan heads have their own edge).
+   A partly hidden row (most visible at the end of the grid, where the list
+   cannot scroll further) then reads as content passing under the header
+   instead of an empty band. Rows of the grid also settle on their top edge
+   mid-list. */
+/* The hairline over the grid belongs to the scroller, not the grid: on the
+   grid it sat 1px above the first row's snap point, so proximity snapping
+   scrolled to 1px on load and hid the line until the list was scrolled. */
+.sidebar-scroll:has(.atlas-grid) {
+    border-top: 1px solid var(--divider);
+    scroll-snap-type: y proximity;
+}
+
+.sidebar-scroll:has(.atlas-grid)::before {
+    content: "";
+    position: sticky;
+    z-index: 3;
+    top: 0;
+    display: block;
+    height: 12px;
+    margin-bottom: -12px;
+    background: linear-gradient(rgba(20, 38, 53, 0.16), rgba(20, 38, 53, 0));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur) var(--ease-out);
+}
+
+#sidebar.is-scrolled .sidebar-scroll:has(.atlas-grid)::before {
+    opacity: 1;
+}
+
+/* Overview: every kabupaten as a cell with its outline and its poles. */
+.atlas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.atlas-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--divider);
+    background: #fff;
+    text-align: left;
+    scroll-snap-align: start;
+    transition: background-color var(--dur);
+}
+
+.atlas-cell:nth-child(odd) {
+    border-right: 1px solid var(--divider);
+}
+
+.atlas-cell:hover {
+    background: var(--row-hover);
+}
+
+.atlas-cell__shape {
+    display: block;
+    height: 54px;
+    margin-bottom: 6px;
+}
+
+.atlas-shape {
+    fill: #e5ecf2;
+    stroke: #8ea2b5;
+    stroke-width: 0.9;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    transition:
+        fill var(--dur),
+        stroke var(--dur);
+}
+
+.atlas-cell:hover .atlas-shape,
+.atlas-cell:focus-visible .atlas-shape {
+    fill: #d9e9f7;
+    stroke: var(--blue);
+}
+
+.atlas-dot {
+    fill: var(--yellow);
+    stroke: var(--ink);
+    stroke-width: 0.8;
+    vector-effect: non-scaling-stroke;
+}
+
+.atlas-dot--duplikat {
+    stroke: var(--orange);
+    stroke-width: 1.6;
+}
+
+.atlas-dot--belum {
+    fill: #fff;
+    stroke: var(--ink);
+    stroke-dasharray: 1.6 1.2;
+}
+
+.atlas-cell__name {
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.atlas-cell__meta {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.atlas-cell__meta b {
+    color: var(--ink);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+.atlas-cell .status-flag {
+    margin-top: 3px;
+    font-size: 12px;
+}
+
+/* Status words keep the map's own symbols: a yellow disc with an orange ring
+   for "perlu verifikasi", a dashed outline for "belum ditetapkan". On a cell
+   each is also a shortcut into the kabupaten, filtered (custom.js reads which
+   part of the cell was hit). */
+.status-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.status-flag::before {
+    content: "";
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-flag--duplikat {
+    color: var(--orange-deep);
+}
+
+.status-flag--duplikat::before {
+    border: 2px solid var(--orange);
+    background: var(--yellow);
+}
+
+.status-flag--belum {
+    color: var(--muted);
+}
+
+.status-flag--belum::before {
+    border: 1.5px dashed var(--muted-2);
+    background: #fff;
+}
+
+@media (hover: hover) {
+    .atlas-cell .status-flag:hover {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+}
+
+/* One kabupaten: kecamatan groups, desa groups inside, unit tiles inside. */
+.atlas-section {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 18px;
+    border-top: 1px solid var(--divider);
+    border-bottom: 1px solid var(--divider);
+    background: var(--frost);
+    font-size: 13.5px;
+    font-weight: 750;
+    /* Slower than the panel's ease-out, and eased both ways: the head
+       changes colour mid-scroll, under the eye, and a quick flip read as a
+       flash. The border fades with it so no hard edge lands before the fill. */
+    transition:
+        background-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
+        color 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* The head of the kecamatan in view (custom.js, syncStuck) turns navy: it is
+   the only dark bar in the list, where navy on every head gave each the same
+   weight. */
+.atlas-section.is-stuck {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #fff;
+}
+
+/* The count is read with the name, not after it: ink and as heavy as the
+   name, so "20 titik" lands at the same glance. */
+.atlas-section span {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    transition: color 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.atlas-section.is-stuck span {
+    color: #fff;
+}
+
+.atlas-desa {
+    padding: 12px 18px 14px;
+    border-bottom: 1px solid var(--divider);
+}
+
+.atlas-desa:last-child {
+    border-bottom: 0;
+}
+
+.atlas-desa__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.atlas-desa__title {
+    font-size: 14.5px;
+    font-weight: 650;
+    line-height: 1.3;
+}
+
+.atlas-desa__count {
+    flex: none;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* A line under the heading: the landmark every unit of the group shares,
+   once, or the sheet line of a group headed by its desa (groupHead). */
+.atlas-desa__note {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.35;
+    text-wrap: pretty;
+}
+
+/* Units in two columns: the numbered tile with its coordinate beside it,
+   under the survey landmark where there is one. */
+.atlas-units {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 4px 10px;
+    margin-top: 10px;
+}
+
+.atlas-pt {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    margin: 0;
+    padding: 3px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    text-align: left;
+    transition: background-color var(--dur);
+}
+
+.atlas-pt:hover {
+    background: var(--row-hover);
+}
+
+.atlas-pt__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+/* Two lines at most: "Depan Rumah Kepala Kampung Rt.02" is the long end. */
+.atlas-pt__note {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 12.5px;
+    font-weight: 600;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+    /* No word left alone on the last line. */
+    text-wrap: pretty;
+}
+
+.atlas-pt__coord {
+    min-width: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+}
+
+.atlas-pt__coord--none {
+    color: var(--muted-2);
+    font-style: italic;
+}
+
+.atlas-unit {
+    display: grid;
+    place-items: center;
+    flex: none;
+    min-width: 46px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid #c6d3df;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition:
+        background-color var(--dur),
+        border-color var(--dur);
+}
+
+/* Colour only: the background shorthand also wiped the cadangan hatch, so a
+   reserve tile went plain blue under the pointer. */
+.atlas-pt:hover .atlas-unit:not(.is-active) {
+    border-color: var(--blue);
+    background-color: var(--blue-tint);
+}
+
+.atlas-unit.is-duplikat {
+    border: 2px solid var(--orange);
+    background: var(--orange-tint);
+    color: var(--orange-deep);
+}
+
+.atlas-unit.is-belum {
+    border: 1.5px dashed var(--muted-2);
+    color: var(--muted);
+}
+
+.atlas-unit.is-cadangan {
+    border: 1.5px solid var(--hatch-edge);
+    background: var(--hatch);
+    color: var(--ink);
+    font-weight: 800;
+    text-shadow: var(--hatch-halo);
+}
+
+/* Yellow means "this point on the map" — same as the marker and the legend. */
+.atlas-unit.is-active {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--yellow);
+    text-shadow: none;
+}
+
+/* Loading, empty and error states. */
+.panel-loading {
+    display: grid;
+    gap: 18px;
+    padding: 18px 20px;
+}
+
+.panel-loading__note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.panel-skel-row {
+    display: grid;
+    gap: 8px;
+}
+
+.panel-skel {
+    display: block;
+    height: 14px;
+    border-radius: 7px;
+    background: linear-gradient(90deg, #eef2f6 25%, #f7f9fb 50%, #eef2f6 75%);
+    background-size: 200% 100%;
+    animation: panel-shimmer 1.3s linear infinite;
+}
+
+.panel-skel--sub {
+    height: 11px;
+}
+
+@keyframes panel-shimmer {
+    to {
+        background-position: -200% 0;
+    }
+}
+
+.panel-empty {
+    padding: 32px 24px;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+.panel-empty__title {
+    margin: 0 auto 6px;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.panel-empty p {
+    max-width: 34ch;
+    margin: 0 auto 14px;
+}
+
+.panel-empty__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.panel-empty button {
+    height: 38px;
+    padding: 0 16px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-weight: 650;
+}
+
+.panel-empty button:hover {
+    border-color: var(--blue);
+    color: var(--blue-deep);
+}
+
+/* Unavailable data: disabled looks disabled, and unknown counts must not
+   look like a claim of zero. */
+.panel-search input:disabled,
+#fit-map:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+body.is-data-unavailable .atlas-summary {
+    color: var(--muted-2);
+    font-style: italic;
+}
+
+/* Footer: "Survey lapangan & pelaksanaan" over the newest survey date and
+   the agency, centred under the list. */
+.sidebar-footer {
+    flex: none;
+    margin: 0;
+    padding: 10px 18px 14px;
+    border-top: 1px solid var(--divider);
+    color: var(--muted);
+    font-size: 12.5px;
+    text-align: center;
+}
+
+.sidebar-footer__title {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.sidebar-footer__meta {
+    display: block;
+    margin-top: 1px;
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.45;
+}

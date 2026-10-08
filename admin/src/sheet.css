@@ -1,0 +1,182 @@
+/* Shared by the login page and the dashboard. Tokens are the public map's
+   (custom.css), so administration reads as the same product. The login card
+   and the dashboard's centre sheet are the same box at the same position:
+   that is what lets the dashboard grow out of the login page in place. */
+:root {
+  --ink: #293d50;
+  --ink-soft: #3d5165;
+  --muted: #445565;
+  --muted-2: #4f6173;
+  --blue: #0072bc;
+  --blue-deep: #00458f;
+  --blue-tint: #ecf5ff;
+  --yellow: #fee50f;
+  --orange: #e8731a;
+  --orange-deep: #8f4200;
+  --orange-tint: #fff3e8;
+  --atlas-paper: #eef3f7;
+  --atlas-edge: #b6c4d1;
+  --hairline: #dce8f1;
+  --hairline-strong: #d4dee6;
+  --divider: #e9eef2;
+  --frost: #f4f7fa;
+  --row-hover: #f3f8fd;
+  --hatch-edge: #7d90a1;
+  --hatch: repeating-linear-gradient(-45deg, #7d90a1 0 1.5px, #fff 1.5px 5px);
+  --hatch-halo: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff;
+  --dur: 190ms;
+  --danger: #8a1f1f;
+  --danger-tint: #fff1f0;
+  --night: #14202c;
+  --sheet-w: 440px;
+  /* The public map's panel (#sidebar): radius and shadow. */
+  --sheet-radius: 20px;
+  --sheet-shadow: 0 1px 2px rgba(20, 38, 53, 0.14), 0 18px 48px rgba(20, 38, 53, 0.3);
+  /* The centre sheet and the login card: the public panel's shadow, kept
+     subtle. It reads as a sheet lying on the map, not floating above it. */
+  --sheet-lift: 0 1px 2px rgba(20, 38, 53, 0.14), 0 12px 32px rgba(20, 38, 53, 0.24);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --font: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font);
+  color: var(--ink);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+/* Every scroller uses the public list's thin bar (.sidebar-scroll). */
+* { scrollbar-width: thin; scrollbar-color: #c3cfda transparent; }
+/* With a pointer, a bar shows only on the scroller under it (or one holding
+   keyboard focus). The bar keeps its width while transparent, so content
+   never shifts when it appears. Touch screens keep the default overlay bars. */
+@media (hover: hover) {
+  * { scrollbar-color: transparent transparent; }
+  *:hover, *:has(:focus-visible) { scrollbar-color: #c3cfda transparent; }
+}
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: 0.55; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+a { color: var(--blue); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- Map backdrop ---------- */
+.backdrop { position: fixed; inset: 0; }
+.backdrop::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: rgba(20, 32, 44, 0.14);
+}
+.backdrop .ol-attribution {
+  position: absolute; right: 8px; bottom: 8px; z-index: 1;
+  padding: 2px 8px; border-radius: 6px;
+  font-size: 11px; color: var(--muted); background: rgba(238, 243, 247, 0.86);
+}
+.backdrop .ol-attribution ul { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.backdrop .ol-attribution button { display: none; }
+
+/* ---------- The sheet ---------- */
+.sheet {
+  position: fixed; top: 50%; left: 50%; z-index: 2;
+  translate: -50% -50%;
+  width: min(var(--sheet-w), calc(100vw - 32px));
+  background: #fff;
+  border-radius: var(--sheet-radius);
+  box-shadow: var(--sheet-lift);
+}
+
+.emblem {
+  display: inline-block; flex: none;
+  width: 44px; height: 46px;
+  background: url("../../assets/lambang-jambi.png") center / contain no-repeat;
+}
+
+/* ---------- Form controls ----------
+   Fields take the public search box's materials: frost fill, hairline
+   edge, white with a blue edge on focus. One border only: focus recolours
+   the control's own border instead of adding the global outline ring. */
+.field { display: block; margin: 0 0 14px; font-size: 13.5px; font-weight: 600; }
+.field input:not([type="checkbox"]), .field textarea, .input {
+  display: block; width: 100%; margin-top: 6px; padding: 10px 13px;
+  font-size: 15px; font-weight: 500; color: var(--ink);
+  background: var(--frost); border: 1px solid var(--hairline); border-radius: var(--radius-sm, 10px);
+  transition: border-color var(--dur), background-color var(--dur);
+}
+.field input:not([type="checkbox"]):hover, .field textarea:hover, .input:hover { border-color: var(--atlas-edge); }
+.field input:focus-visible, .field textarea:focus-visible, .input:focus-visible,
+.field input:focus, .field textarea:focus, .input:focus {
+  outline: none; border-color: var(--blue); background: #fff;
+}
+.field textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
+.field input::placeholder, .field textarea::placeholder { color: var(--muted-2); opacity: 1; }
+input[type="checkbox"]:focus-visible { outline-offset: 0; }
+
+/* The filled button is the public popup's route button: deep blue, 12px. */
+.btn-primary {
+  min-height: 44px; padding: 10px 18px;
+  font-size: 14.5px; font-weight: 700; color: #fff;
+  background: var(--blue-deep); border: 0; border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 69, 143, 0.2), 0 6px 16px rgba(0, 69, 143, 0.22);
+  transition: background-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.btn-primary:hover:not(:disabled) { background: #003a78; box-shadow: 0 1px 2px rgba(0, 69, 143, 0.24), 0 10px 22px rgba(0, 69, 143, 0.28); }
+.btn-primary:active:not(:disabled) { transform: scale(0.97); background: #003a78; box-shadow: inset 0 1px 3px rgba(0, 20, 50, 0.3); transition-duration: 0.07s; }
+.btn-primary:disabled { box-shadow: none; }
+/* Secondary buttons are the public panel's pill buttons (.panel-empty). */
+.btn-ghost {
+  min-height: 36px; padding: 0 14px;
+  font-size: 13.5px; font-weight: 650; color: var(--ink);
+  background: #fff; border: 1px solid var(--hairline-strong); border-radius: 999px;
+  transition: border-color var(--dur), color var(--dur);
+}
+.btn-ghost:hover:not(:disabled) { border-color: var(--blue); color: var(--blue-deep); }
+.btn-ghost:focus-visible { outline: none; border-color: var(--blue); color: var(--blue-deep); }
+.notice-error { padding: 10px 12px; font-size: 13.5px; line-height: 1.45; color: var(--danger); background: var(--danger-tint); border-radius: 6px; overflow-wrap: anywhere; }
+
+/* ---------- Dropdown (Select.svelte) ----------
+   Field variant matches the text fields; pill variant matches the public
+   search pill. The open list is the public layer panel's card. */
+.select {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0;
+  text-align: left; color: var(--ink); background: var(--frost);
+  border: 1px solid var(--hairline);
+  transition: border-color var(--dur), background-color var(--dur);
+}
+.select:hover:not(:disabled) { border-color: var(--atlas-edge); }
+.select:focus-visible, .select[aria-expanded="true"] { outline: none; border-color: var(--blue); background: #fff; }
+.select__value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select__chevron { flex: none; fill: none; stroke: var(--muted-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: rotate var(--dur) var(--ease-out); }
+.select[aria-expanded="true"] .select__chevron { rotate: 180deg; stroke: var(--blue); }
+.select--field { margin-top: 6px; min-height: 44px; padding: 10px 13px; font-size: 15px; font-weight: 500; border-radius: 10px; }
+.select--pill { height: 36px; padding: 0 12px 0 14px; font-size: 13.5px; font-weight: 600; border-radius: 999px; }
+.select-menu {
+  inset: auto; margin: 0; position: fixed;
+  max-width: min(420px, calc(100vw - 16px)); max-height: min(320px, calc(100vh - 16px)); overflow: auto;
+  padding: 6px; border: 0; border-radius: 12px; background: #fff; color: var(--ink);
+  box-shadow: 0 0 0 1px rgba(20, 38, 53, 0.06), 0 1px 2px rgba(20, 38, 53, 0.1), 0 10px 28px rgba(20, 38, 53, 0.2);
+  font-family: var(--font);
+}
+.select-menu:popover-open { animation: select-in 140ms var(--ease-out); }
+@keyframes select-in { from { opacity: 0; translate: 0 -4px; } }
+@media (prefers-reduced-motion: reduce) { .select-menu:popover-open { animation: none; } }
+.select-option {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 10px 9px 12px; border-radius: 8px;
+  font-size: 14px; font-weight: 500; line-height: 1.35; cursor: pointer;
+}
+.select-option.is-active { background: var(--row-hover); }
+.select-option[aria-selected="true"] { font-weight: 700; }
+.select-option__check { flex: none; fill: none; stroke: var(--blue-deep); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; visibility: hidden; }
+.select-option[aria-selected="true"] .select-option__check { visibility: visible; }
+
+/* ---------- Login ---------- */
+.login { padding: 30px 32px 26px; }
+.login-org { display: flex; align-items: center; gap: 12px; font-size: 13px; line-height: 1.35; color: var(--muted-2); }
+.login h1 { margin: 24px 0 8px; font-size: 26px; line-height: 1.15; font-weight: 750; letter-spacing: -0.015em; text-wrap: balance; }
+.login-lede { margin: 0 0 24px; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+.login .notice-error { margin: 0 0 14px; }
+.login .btn-primary { width: 100%; }
+.login-foot { margin: 20px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted-2); }
+@media (max-width: 420px) {
+  .login { padding: 24px 22px 22px; }
+  .login h1 { font-size: 23px; }
+}

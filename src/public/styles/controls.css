@@ -1,0 +1,278 @@
+/* ---------- Map control state ladder ---------- */
+
+/* One ladder for every floating control: rest -> near -> hover -> press.
+   `.is-near` is set from custom.js when the pointer comes within ~90px. It
+   is not a CSS-only effect on purpose: widening a pseudo-element to catch
+   the pointer early also steals pan/drag from the map in that band, and 14px
+   of reach would not reproduce the "heading over there" feel anyway. */
+.ol-zoom,
+.layer-switcher > button,
+.panel-toggle {
+    /* `scale` rides a spring so the release overshoots a hair and settles —
+       that bounce-back is most of what makes the press feel physical. The
+       press itself (below) overrides to a fast ease-out. */
+    transition: background-color var(--dur) var(--ease-out),
+        border-color var(--dur) var(--ease-out),
+        box-shadow var(--dur) var(--ease-out),
+        transform var(--dur) var(--ease-out),
+        scale var(--dur-state) var(--ease-spring);
+}
+
+.ol-zoom.is-near,
+.layer-switcher.is-near > button,
+body.is-sidebar-collapsed .panel-toggle.is-near {
+    background-color: var(--ctl-surface-near);
+    box-shadow: var(--ctl-shadow-near);
+}
+
+/* Touch screens hold :hover after a tap, so hover styling is gated to
+   devices that really hover. */
+@media (hover: hover) {
+    .ol-zoom:hover,
+    .layer-switcher > button:hover,
+    body.is-sidebar-collapsed .panel-toggle:hover {
+        background-color: var(--ctl-surface-hover);
+        border-color: var(--ctl-border-hover);
+        box-shadow: var(--ctl-shadow-hover);
+    }
+}
+
+.layer-switcher > button:active,
+.panel-toggle:active,
+.ol-zoom.is-pressed {
+    background-color: var(--ctl-surface-hover);
+    box-shadow: var(--ctl-shadow-press);
+    /* Sinks under the pointer; the shadow collapsing with it sells the
+       depth. Fast on the way down — the spring is for the way back up. */
+    scale: var(--ctl-press-scale);
+    transition-duration: var(--dur-press);
+    transition-timing-function: var(--ease-out);
+}
+
+/* The zoom rail is two buttons, so the whole pill dips as one object rather
+   than one half shrinking inside the other. Slightly less travel than a lone
+   chip — it is a bigger thing to move. */
+.ol-zoom.is-pressed {
+    scale: 0.96;
+}
+
+/* The layer icon is a sibling overlay, not a child of the button (see the
+   layer switcher section), so it has to be sunk in lockstep by hand. */
+.layer-switcher > button:active ~ .ctl-layers-slot {
+    scale: var(--ctl-press-scale);
+    transition-duration: var(--dur-press);
+    transition-timing-function: var(--ease-out);
+}
+
+/* ---------- Press ripple ---------- */
+
+/* Material-style wave from the pointer-down point (custom.js spawns one
+   `.ctl-ripple__wave` per press). The clip layer carries its own
+   overflow:hidden so the host button can keep overflow visible for its
+   tooltip. `border-radius: inherit` makes it follow whatever shape the host
+   is — full circle on the chip, half-pill on each zoom button. */
+.ctl-ripple {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+    /* Safari otherwise lets the wave leak past a rounded overflow clip. */
+    -webkit-mask-image: radial-gradient(#fff, #000);
+    mask-image: radial-gradient(#fff, #000);
+}
+
+.ctl-ripple__wave {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--ctl-ripple);
+    /* Invisible at rest so a reduced-motion `animation: none` leaves nothing
+       behind — the node is removed on animationend or a fallback timer. */
+    opacity: 0;
+    scale: 0;
+    animation: ctl-ripple 520ms var(--ease-out) forwards;
+}
+
+@keyframes ctl-ripple {
+    0% {
+        opacity: 1;
+        scale: 0;
+    }
+    /* The wave reaches the edge well before it is gone, so the fade reads as
+       the surface settling rather than the wave being cut off. */
+    55% {
+        opacity: 0.75;
+    }
+    100% {
+        opacity: 0;
+        scale: 1;
+    }
+}
+
+/* ol.css paints `.ol-control button:focus` dark blue (rgba(0,60,136,.7)), and
+   a mouse click leaves focus on the button — so that colour stayed behind
+   after every zoom or layer click. Reset the pointer case only; :focus-visible
+   still gets the keyboard state, and :not(:hover) keeps the hover tint from
+   being outranked while the button is both focused and hovered. */
+.ol-zoom button:focus:not(:focus-visible):not(:hover) {
+    background-color: transparent;
+    color: var(--ink);
+}
+
+/* Touch screens keep :hover on the last-tapped element until the next tap
+   elsewhere, so the :not(:hover) escape above would hand the button straight
+   back to ol.css's blue focus fill. With no real hover to protect, reset
+   unconditionally. */
+@media (hover: none) {
+    .ol-zoom button:focus:not(:focus-visible),
+    .ol-zoom button:hover {
+        background-color: transparent;
+        color: var(--ink);
+    }
+}
+
+/* Excluded while the panel is open: the shown state owns the chip's surface
+   there and must not be reset back to rest. */
+.layer-switcher:not(.shown) > button:focus:not(:focus-visible):not(:hover) {
+    background-color: var(--ctl-surface);
+}
+
+@media (hover: none) {
+    .layer-switcher:not(.shown) > button:focus:not(:focus-visible),
+    .layer-switcher:not(.shown) > button:hover {
+        background-color: var(--ctl-surface);
+    }
+}
+
+/* ---------- Control tooltips ---------- */
+
+/* Pointer devices only — on touch these would fire on tap and linger. */
+@media (hover: hover) and (pointer: fine) {
+    [data-tooltip] {
+        position: relative;
+    }
+
+    [data-tooltip]::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        top: 50%;
+        right: calc(100% + 10px);
+        z-index: 30;
+        translate: 4px -50%;
+        padding: 5px 9px;
+        border-radius: var(--radius-xs);
+        background: var(--ink);
+        color: #fff;
+        font: 500 12px/1 var(--font-ui);
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: var(--ctl-shadow);
+        transition: opacity var(--dur) var(--ease-out),
+            translate var(--dur) var(--ease-out);
+    }
+
+    [data-tooltip]:hover::after,
+    [data-tooltip]:focus-visible::after {
+        opacity: 1;
+        translate: 0 -50%;
+        /* Delay on the way in only — instant on the way out, so sweeping
+           across the stack does not trail a queue of labels. */
+        transition-delay: 350ms;
+    }
+
+    /* The panel toggle sits at the map's left edge, so its tooltip opens to
+       the right, onto the map. */
+    .panel-toggle[data-tooltip]::after {
+        right: auto;
+        left: calc(100% + 10px);
+        translate: -4px -50%;
+    }
+
+    .panel-toggle[data-tooltip]:hover::after,
+    .panel-toggle[data-tooltip]:focus-visible::after {
+        translate: 0 -50%;
+    }
+}
+
+/* ---------- Pin hover tip ---------- */
+
+/* Same pill as the control tooltips, positioned by an ol.Overlay above the
+   hovered symbol (custom.js). It is one element reused for every pin, so the
+   transition only runs opacity/translate — no per-pin nodes. */
+.pin-tip {
+    position: relative;
+    padding: 5px 9px;
+    border-radius: var(--radius-xs);
+    background: var(--ink);
+    color: #fff;
+    font: 500 12px/1 var(--font-ui);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: var(--ctl-shadow);
+    opacity: 0;
+    translate: 0 4px;
+    transition: opacity var(--dur) var(--ease-out),
+        translate var(--dur) var(--ease-out);
+}
+
+/* Caret toward the pin, so the label reads as belonging to it. */
+.pin-tip::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -4px;
+    width: 8px;
+    height: 8px;
+    background: var(--ink);
+    translate: -50% 0;
+    rotate: 45deg;
+    border-radius: 1px;
+}
+
+.pin-tip.is-visible {
+    opacity: 1;
+    translate: 0;
+}
+
+/* ---------- Panel toggle (desktop) ---------- */
+
+/* The panel closes from the round button in its own header; this is the way
+   back. It cannot live in the panel — collapsing slides the panel off screen
+   and would take its own re-open control with it — so it waits where the
+   panel's corner was, in the control-chip chrome, and only while the panel
+   is away. */
+.panel-toggle {
+    position: absolute;
+    top: var(--panel-top);
+    left: var(--panel-left);
+    z-index: 23;
+    display: none;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 1px solid var(--ctl-border);
+    border-radius: 14px;
+    background: var(--ctl-surface);
+    box-shadow: var(--ctl-shadow);
+    color: var(--ink);
+    cursor: pointer;
+}
+
+body.is-sidebar-collapsed .panel-toggle {
+    display: grid;
+}
+
+.panel-toggle svg {
+    position: relative;
+    z-index: 1;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}

@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup A: Jendela</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+/* A: Jendela. One atlas-paper card, anchored at the viewport centre. Login
+   is its small state; the dashboard is the same card grown in place. */
+.scrim {
+  position: fixed; inset: 0;
+  background: rgba(20, 32, 44, 0.16);
+  transition: background 0.5s var(--ease-out);
+  pointer-events: none;
+}
+[data-state="dash"] .scrim { background: rgba(20, 32, 44, 0.52); }
+
+.shell {
+  position: fixed;
+  top: 50%; left: 50%;
+  translate: -50% -50%;
+  overflow: hidden;
+  background: var(--atlas-paper);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 5px rgba(20, 38, 53, 0.16), 0 24px 64px rgba(20, 38, 53, 0.34);
+}
+[data-state="login"] .shell {
+  width: min(388px, calc(100vw - 32px));
+  height: var(--login-h, 520px);
+  transition: width 0.38s var(--ease-out) 0.14s, height 0.38s var(--ease-out) 0.14s;
+}
+[data-state="dash"] .shell {
+  width: min(1220px, calc(100vw - 48px));
+  height: min(800px, calc(100vh - 48px));
+  transition: width 0.42s var(--ease-out) 0.1s, height 0.42s var(--ease-out) 0.1s;
+}
+
+/* Crossfade: the outgoing face leaves first, the incoming one waits for
+   the card to finish resizing. */
+.login, .dash { position: absolute; }
+[data-state="login"] .login { opacity: 1; visibility: visible; transition: opacity 0.22s 0.5s; }
+[data-state="dash"] .login { opacity: 0; visibility: hidden; transition: opacity 0.12s, visibility 0s 0.12s; }
+[data-state="dash"] .dash { opacity: 1; visibility: visible; transition: opacity 0.26s 0.46s; }
+[data-state="login"] .dash { opacity: 0; visibility: hidden; transition: opacity 0.12s, visibility 0s 0.12s; }
+
+/* ---------- Login ---------- */
+.login {
+  top: 0; left: 50%;
+  width: min(388px, calc(100vw - 32px));
+  translate: -50% 0;
+  padding: 30px 30px 26px;
+}
+.login-org {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13px; line-height: 1.35; color: var(--muted-2);
+}
+.login-org img { height: 44px; width: auto; }
+.login h1 {
+  margin: 22px 0 8px;
+  font-size: 25px; line-height: 1.15; font-weight: 750; letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.login-lede { margin: 0 0 22px; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+.field { display: block; margin-bottom: 14px; font-size: 13.5px; font-weight: 600; }
+.field input, .field textarea, .field select {
+  display: block; width: 100%; margin-top: 6px;
+  padding: 11px 13px;
+  font-size: 15px; font-weight: 500;
+  background: #fff;
+  border: 1px solid var(--atlas-edge);
+  border-radius: var(--radius-sm);
+}
+.field input:hover, .field textarea:hover, .field select:hover { border-color: var(--ink-soft); }
+.login-error {
+  margin: 4px 0 14px; padding: 10px 12px;
+  font-size: 13.5px; line-height: 1.45;
+  color: #8a1f1f; background: #fff1f0; border-radius: var(--radius-xs);
+}
+.btn-primary {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px; font-weight: 700;
+  color: #fff; background: var(--ink);
+  border: 0; border-radius: var(--radius-sm);
+}
+.btn-primary:hover { background: #1d2e3e; }
+.login-foot {
+  margin: 18px 0 0; padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12.5px; line-height: 1.5; color: var(--muted-2);
+}
+
+/* ---------- Dashboard ---------- */
+.dash { inset: 0; display: grid; grid-template-rows: auto 1fr; }
+.dash-head {
+  display: flex; align-items: center; gap: 20px;
+  padding: 14px 18px 14px 20px;
+  border-bottom: 1px solid var(--atlas-edge);
+}
+.brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.brand img { height: 34px; }
+.brand strong { display: block; font-size: 15.5px; font-weight: 750; }
+.brand span { display: block; font-size: 12px; color: var(--muted-2); }
+.tabs { display: flex; gap: 2px; margin-left: 18px; }
+.tabs button {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  font-size: 14px; font-weight: 600; color: var(--muted);
+  background: none; border: 0; border-radius: 999px;
+}
+.tabs button:hover { color: var(--ink); background: rgba(255, 255, 255, 0.7); }
+.tabs button[aria-current] { color: var(--ink); background: #fff; box-shadow: 0 1px 2px rgba(20, 38, 53, 0.12); }
+.tabs .count {
+  min-width: 18px; padding: 0 5px;
+  font-size: 11.5px; line-height: 18px; text-align: center;
+  color: var(--ink); background: var(--yellow); border-radius: 999px;
+}
+.who { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.who-name { font-weight: 700; }
+.who-role { color: var(--muted-2); }
+.btn-ghost {
+  padding: 7px 12px;
+  font-size: 13.5px; font-weight: 600;
+  background: transparent; border: 1px solid var(--atlas-edge); border-radius: 999px;
+}
+.btn-ghost:hover { border-color: var(--ink); background: #fff; }
+
+.dash-body { display: grid; grid-template-columns: 340px minmax(0, 1fr); min-height: 0; }
+.pane-list {
+  display: flex; flex-direction: column; min-height: 0;
+  border-right: 1px solid var(--atlas-edge);
+}
+.stats { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; padding: 18px 20px 14px; }
+.stats-total { grid-row: span 3; font-size: 38px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stats-total small { display: block; margin-top: 6px; font-size: 12.5px; font-weight: 600; letter-spacing: 0; color: var(--muted-2); }
+.stats-line { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats-line b { color: var(--ink); }
+.search { padding: 0 14px 10px; }
+.search input {
+  width: 100%; padding: 10px 13px 10px 36px;
+  font-size: 14.5px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%234f6173' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m11 11 3.5 3.5'/%3E%3C/svg%3E") 12px 50% no-repeat;
+  border: 1px solid var(--atlas-edge); border-radius: 999px;
+}
+.rows { list-style: none; margin: 0; padding: 0 8px 12px; overflow: auto; flex: 1; }
+.rows .group {
+  position: sticky; top: 0; z-index: 1;
+  padding: 10px 12px 6px;
+  font-size: 12.5px; font-weight: 700; color: var(--muted-2);
+  background: var(--atlas-paper);
+}
+.row {
+  display: grid; gap: 3px; width: 100%;
+  padding: 10px 12px; text-align: left;
+  background: none; border: 0; border-radius: var(--radius-sm);
+}
+.row:hover { background: rgba(255, 255, 255, 0.75); }
+.row[aria-current] { background: #fff; box-shadow: inset 3px 0 0 var(--ink), 0 1px 2px rgba(20, 38, 53, 0.1); }
+.row-title { font-size: 14px; font-weight: 600; line-height: 1.35; }
+.row-id { font-size: 11.5px; color: var(--muted-2); overflow-wrap: anywhere; }
+.row .badge { margin-top: 3px; }
+.empty { padding: 20px 12px; font-size: 13.5px; color: var(--muted); }
+
+.pane-edit { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; background: #fff; }
+.edit-head { display: flex; align-items: flex-start; gap: 16px; padding: 20px 26px 16px; border-bottom: 1px solid var(--divider); }
+.edit-head > div { flex: 1; min-width: 0; }
+.back { display: none; }
+.edit-kab { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted-2); }
+.edit-head h2 { margin: 4px 0 4px; font-size: 22px; line-height: 1.2; font-weight: 750; letter-spacing: -0.01em; }
+.edit-id { margin: 0; font-size: 12.5px; color: var(--muted-2); overflow-wrap: anywhere; }
+.edit-scroll { overflow: auto; padding: 18px 26px 24px; }
+.edit-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 26px; }
+fieldset { margin: 0 0 18px; padding: 0; border: 0; min-width: 0; }
+legend { padding: 0; margin-bottom: 10px; font-size: 14.5px; font-weight: 750; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.check { display: flex; align-items: center; gap: 9px; margin: 2px 0 14px; font-size: 14px; font-weight: 500; }
+.check input { width: 18px; height: 18px; accent-color: var(--ink); }
+.field textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
+.minimap {
+  position: relative; overflow: hidden;
+  height: 210px; border-radius: var(--radius-md);
+  background: #1d2a36;
+}
+.minimap [data-tiles] { position: absolute; inset: 0; }
+.minimap .pin {
+  position: absolute; left: 50%; top: 50%;
+  width: 22px; height: 28px; translate: -50% -100%;
+}
+.minimap-note { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--muted-2); }
+.photo { margin: 0 0 12px; }
+.photo img {
+  display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+  border-radius: var(--radius-md); background: var(--atlas-paper);
+}
+.photo figcaption { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.edit-foot {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 26px;
+  border-top: 1px solid var(--divider);
+  background: #fbfcfd;
+}
+.edit-foot p { margin: 0 auto 0 0; font-size: 13px; color: var(--muted-2); }
+.edit-foot .btn-primary { width: auto; padding: 10px 20px; }
+
+@media (max-width: 1100px) {
+  .tabs { margin-left: 0; overflow-x: auto; }
+  .brand span { display: none; }
+  .edit-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  [data-state="dash"] .shell { width: calc(100vw - 16px); height: calc(100dvh - 16px); border-radius: 18px; }
+  .dash-head { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+  .tabs { order: 3; width: 100%; }
+  .who-role { display: none; }
+  .dash-body { grid-template-columns: 1fr; }
+  .pane-list { border-right: 0; }
+  body[data-pane="edit"] .pane-list { display: none; }
+  body:not([data-pane="edit"]) .pane-edit { display: none; }
+  .back {
+    display: inline-flex; margin: -4px 0 8px -6px; padding: 6px 8px;
+    font-size: 13.5px; font-weight: 600; background: none; border: 0; border-radius: var(--radius-xs);
+  }
+  .edit-head, .edit-scroll, .edit-foot { padding-left: 16px; padding-right: 16px; }
+  .edit-head { flex-direction: column; gap: 8px; }
+  .edit-foot p { display: none; }
+  .edit-foot .btn-primary { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell, .login, .dash, .scrim { transition-duration: 0s !important; transition-delay: 0s !important; }
+}
+</style>
+</head>
+<body data-state="login">
+<iframe class="backdrop" src="/" title="Peta sebaran PUTS 2026" tabindex="-1" aria-hidden="true"></iframe>
+<div class="scrim"></div>
+
+<div class="shell">
+  <section class="login" data-login aria-labelledby="login-title">
+    <div class="login-org"><img src="/assets/lambang-jambi.png" alt=""><span>Dinas ESDM<br>Provinsi Jambi</span></div>
+    <h1 id="login-title">Administrasi survei PUTS 2026</h1>
+    <p class="login-lede">Sunting titik dan foto survei. Perubahan disimpan sebagai draf sampai diterbitkan.</p>
+    <form data-login-form>
+      <label class="field">Nama akun<input name="username" autocomplete="username" required autofocus></label>
+      <label class="field">Kata sandi<input name="password" type="password" autocomplete="current-password" required></label>
+      <p class="login-error" data-error role="alert" hidden>Nama akun atau kata sandi tidak cocok. Periksa ejaan lalu coba lagi.</p>
+      <button class="btn-primary" type="submit">Masuk</button>
+    </form>
+    <p class="login-foot">Hanya untuk akun yang telah disetujui. Lupa kata sandi? Hubungi pemilik akun.</p>
+  </section>
+
+  <section class="dash" aria-label="Administrasi survei">
+    <header class="dash-head">
+      <div class="brand"><img src="/assets/lambang-jambi.png" alt=""><div><strong>Administrasi survei</strong><span>PUTS 2026, Dinas ESDM Provinsi Jambi</span></div></div>
+      <nav class="tabs" aria-label="Navigasi administrasi">
+        <button aria-current="page">Titik</button>
+        <button>Draf <span class="count">2</span></button>
+        <button>Penerbitan</button>
+        <button>Audit</button>
+        <button>Akun</button>
+      </nav>
+      <div class="who"><span class="who-name" data-who>danny</span><span class="who-role">Pemilik</span><button class="btn-ghost" data-logout>Keluar</button></div>
+    </header>
+
+    <div class="dash-body">
+      <aside class="pane-list">
+        <div class="stats" data-stats></div>
+        <label class="search"><span class="visually-hidden">Cari titik</span><input type="search" data-search placeholder="Cari nomor, desa, atau pengusul"></label>
+        <ul class="rows" data-list></ul>
+      </aside>
+
+      <article class="pane-edit" data-editor>
+        <div class="edit-head">
+          <div>
+            <button class="back" type="button" data-back>Daftar titik</button>
+            <p class="edit-kab" data-f="kab"></p>
+            <h2 data-f="rekapan"></h2>
+            <p class="edit-id" data-f="nomor"></p>
+          </div>
+          <span class="badge" data-badge></span>
+        </div>
+        <div class="edit-scroll">
+          <div class="edit-grid">
+            <div>
+              <fieldset>
+                <legend>Data alokasi</legend>
+                <label class="field">Alamat lengkap<textarea rows="2" data-f="alamat"></textarea></label>
+                <div class="pair">
+                  <label class="field">Jalur<input data-f="jalur"></label>
+                  <label class="field">Pengusul<input data-f="pengusul" placeholder="Belum diisi"></label>
+                </div>
+                <label class="field">Status alokasi
+                  <select data-f="status"><option value="">Alokasi utama</option><option>Cadangan</option><option>Belum Ditetapkan</option></select>
+                </label>
+                <label class="check"><input type="checkbox" data-f="duplikat"> Koordinat perlu verifikasi lapangan</label>
+              </fieldset>
+              <fieldset>
+                <legend>Koordinat</legend>
+                <div class="pair">
+                  <label class="field">Latitude<input inputmode="decimal" data-f="lat"></label>
+                  <label class="field">Longitude<input inputmode="decimal" data-f="lon"></label>
+                </div>
+                <div class="minimap" data-minimap>
+                  <div data-tiles></div>
+                  <svg class="pin" viewBox="0 0 36 48" aria-hidden="true"><path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="#fee50f" stroke="#293d50" stroke-width="2.5"/><circle cx="18" cy="18" r="6.5" fill="#293d50"/></svg>
+                </div>
+                <p class="minimap-note">Klik peta untuk memindahkan pin. Memindahkan pin tidak menandai lokasi sebagai terverifikasi.</p>
+              </fieldset>
+            </div>
+            <div>
+              <fieldset>
+                <legend>Foto survei</legend>
+                <figure class="photo">
+                  <img data-photo alt="Foto survei saat ini">
+                  <figcaption><span>Didokumentasikan <b data-f="tanggal"></b></span><button class="btn-ghost" type="button">Ganti foto</button></figcaption>
+                </figure>
+              </fieldset>
+              <fieldset>
+                <legend>Catatan</legend>
+                <label class="field">Keterangan<textarea rows="2" data-f="keterangan"></textarea></label>
+                <label class="field">Alasan perubahan<textarea rows="2" placeholder="Wajib. Contoh: koordinat dari stempel GPS foto 6 Okt"></textarea></label>
+              </fieldset>
+            </div>
+          </div>
+        </div>
+        <footer class="edit-foot">
+          <p>Draf belum mengubah peta publik.</p>
+          <button class="btn-ghost" type="button">Batalkan</button>
+          <button class="btn-primary" type="button">Simpan draf</button>
+        </footer>
+      </article>
+    </div>
+  </section>
+</div>
+
+<nav class="mock-nav" aria-label="Pilih mockup"><a href="a-jendela.html" aria-current="page">A Jendela</a><a href="b-lensa.html">B Lensa</a><a href="c-lipat.html">C Lipat</a></nav>
+
+<script src="mock.js"></script>
+<script>
+(function () {
+  var all = [], selected = null, bg = null;
+  var ul = document.querySelector("[data-list]");
+  var search = document.querySelector("[data-search]");
+  var editor = document.querySelector("[data-editor]");
+  var mini = document.querySelector("[data-minimap]");
+
+  Mock.backdrop(document.querySelector(".backdrop")).then(function (b) { bg = b; });
+
+  function render(reveal) { Mock.list(ul, all, { query: search.value, selected: selected && selected.id, reveal: reveal }); }
+
+  function select(pt, reveal) {
+    selected = pt;
+    Mock.fill(editor, pt);
+    var badge = editor.querySelector("[data-badge]");
+    badge.className = "badge badge--" + pt.status;
+    badge.textContent = Mock.STATUS_TEXT[pt.status];
+    Mock.tiles(mini, pt, 18);
+    render(reveal);
+  }
+
+  Mock.points().then(function (pts) {
+    all = pts;
+    var c = Mock.counts(pts);
+    document.querySelector("[data-stats]").innerHTML =
+      '<div class="stats-total">' + c.official + "<small>alokasi resmi</small></div>" +
+      '<div class="stats-line"><b>' + c.duplikat + "</b> perlu verifikasi</div>" +
+      '<div class="stats-line"><b>' + c.belum + "</b> belum ditetapkan</div>" +
+      '<div class="stats-line"><b>' + c.cadangan + "</b> cadangan, tidak dihitung</div>";
+    render();
+  });
+
+  search.addEventListener("input", function () { render(); });
+  ul.addEventListener("click", function (e) {
+    var btn = e.target.closest(".row");
+    if (!btn) return;
+    select(all[+btn.dataset.id]);
+    document.body.dataset.pane = "edit";
+  });
+  document.querySelector("[data-back]").addEventListener("click", function () { document.body.dataset.pane = "list"; });
+
+  Mock.session({
+    onEnter: function () {
+      document.querySelector("[data-who]").textContent = document.body.dataset.user;
+      document.body.dataset.pane = "list";
+    },
+    onSettled: function () {
+      var start = all.filter(function (p) { return /TANJUNG RADEN-007$/.test(p.nomor); })[0] || all[0];
+      if (start) select(start, true);
+    }
+  });
+})();
+</script>
+</body>
+</html>

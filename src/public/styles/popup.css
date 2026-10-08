@@ -1,0 +1,663 @@
+/* ---------- Point popup (desktop: anchored overlay) ---------- */
+
+.ol-popup {
+    position: absolute;
+    /* 48px clears the 40px-tall selected pin below the card */
+    bottom: 48px;
+    left: 0;
+    transform: translateX(-50%);
+    width: 312px;
+    padding: 0;
+    background: var(--surface);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 12px;
+    /* Same surface recipe as the sidebar: hairline plus one soft shadow. */
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.1),
+        0 14px 36px rgba(20, 38, 53, 0.18);
+    display: none;
+}
+
+/* qgis2web.css draws its own popup arrow with BOTH :before (gray) and
+   :after (white) triangles. The card already sits directly above the
+   selected pin, so the caret only notched the card's edge without adding
+   any information — hide both. */
+.ol-popup::before,
+.ol-popup::after {
+    display: none;
+}
+
+/* Sits over the photo, so it keeps a white surface for contrast — but flat,
+   like the panel's own collapse toggle, not a floating chip. */
+.ol-popup-closer {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.94);
+    text-align: center;
+    line-height: 26px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-size: 12px;
+    transition: background-color var(--dur) var(--ease-out),
+        border-color var(--dur) var(--ease-out),
+        color var(--dur) var(--ease-out);
+}
+
+.ol-popup-closer:hover {
+    background: #ffffff;
+    border-color: var(--blue);
+    color: var(--blue);
+}
+
+.ol-popup-closer:active {
+    background: var(--hairline);
+}
+
+.ol-popup-closer::after {
+    content: "\2715";
+}
+
+/* qgis2web caps #popup-content at 70vw — on phones that leaves a dead
+   strip inside the card. The card (.ol-popup) owns the width. */
+#popup-content {
+    max-width: none;
+    margin: 0;
+}
+
+/* qgis2web scrolls this at 70vh. Force a visible (thin) bar on WebKit —
+   macOS overlay scrollbars vanish at rest, which is how the card's last row
+   came to look cut in half. Only the WebKit pseudo-elements: setting the
+   standard scrollbar-width alongside makes Chrome ignore these. */
+#popup-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+#popup-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#popup-content::-webkit-scrollbar-thumb {
+    background: var(--hairline-strong);
+    border-radius: 3px;
+}
+
+#popup-content::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-2);
+}
+
+/* "More below" fade, stuck to the foot of whichever element scrolls
+   (custom.js appends it inside the scroller). Zero net height — the margin
+   pulls it back over the content — so the card's measured height is unchanged. */
+.popup-scroll-fade {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    display: block;
+    height: 44px;
+    margin-top: -44px;
+    background: linear-gradient(to top, var(--surface) 25%, rgba(255, 255, 255, 0));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease-out);
+}
+
+.ol-popup.is-scrollable:not(.is-scroll-end) .popup-scroll-fade {
+    opacity: 1;
+}
+
+.feature-popup {
+    /* Inner radius = card radius minus its 1px border, or the media corners
+       sit a hair proud of the card's. */
+    border-radius: 11px;
+    overflow: hidden;
+}
+
+.feature-popup__media {
+    display: block;
+    position: relative;
+    height: 152px;
+    background: var(--hairline-strong);
+    cursor: zoom-in;
+}
+
+.feature-popup__media:focus-visible {
+    outline: 3px solid var(--blue);
+    outline-offset: -3px;
+}
+
+.feature-popup__media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* A light, even veil so the centred pill holds up over a bright photo
+   without hiding what the photo shows. */
+.feature-popup__media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 32, 44, 0.16);
+    pointer-events: none;
+    transition: background-color var(--dur) var(--ease-out);
+}
+
+/* "Lihat foto": a frosted pill dead centre on the photo, the one place a
+   reader looks first, with an expand icon for "open this bigger". */
+.feature-popup__media-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 15px 9px 13px;
+    border-radius: 999px;
+    background: rgba(20, 32, 44, 0.62);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+        0 4px 14px rgba(0, 0, 0, 0.25);
+    color: #fff;
+    font: 600 13px/1 var(--font-ui);
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+    transition: transform 0.16s var(--ease-out),
+        background-color var(--dur) var(--ease-out);
+}
+
+.feature-popup__media-badge svg {
+    flex: 0 0 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+@media (hover: hover) {
+    .feature-popup__media:hover::after {
+        background: rgba(20, 32, 44, 0.28);
+    }
+
+    .feature-popup__media:hover .feature-popup__media-badge {
+        background: rgba(20, 32, 44, 0.78);
+        transform: translate(-50%, -50%) scale(1.04);
+    }
+}
+
+.feature-popup__media:active .feature-popup__media-badge {
+    transform: translate(-50%, -50%) scale(0.95);
+}
+
+.feature-popup__body {
+    display: flex;
+    flex-direction: column;
+    padding: 14px 16px 14px;
+}
+
+/* The yellow accent now lives on the eyebrow as the same marker disc the
+   sidebar's legend and active row use, so the separate rule is retired. */
+.feature-popup__rule {
+    display: none;
+}
+
+/* Same kicker as the panel brand block: small, tracked, muted. */
+.feature-popup__eyebrow {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font: 600 10px var(--font-ui);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+}
+
+.feature-popup__eyebrow::before {
+    content: "";
+    flex: 0 0 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--yellow);
+    box-shadow: 0 0 0 1px rgba(41, 61, 80, 0.36);
+}
+
+.feature-popup.is-cadangan .feature-popup__eyebrow::before {
+    background-color: #e3e8ed;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(41, 61, 80, 0.45) 0 1px,
+        transparent 1px 3px
+    );
+}
+
+/* Duplikat: the eyebrow disc keeps its yellow but gains the dashed orange
+   ring the pin wears on the map. */
+.feature-popup.is-duplikat .feature-popup__eyebrow::before {
+    outline: 2px dashed var(--orange);
+    outline-offset: 2px;
+}
+
+/* Belum Ditetapkan: pale disc with the pin's dashed slate outline. */
+.feature-popup.is-belum .feature-popup__eyebrow::before {
+    background: #f4f6f8;
+    box-shadow: none;
+    outline: 1.5px dashed #6b7a8c;
+    outline-offset: 1px;
+}
+
+/* The note sits where the photo would be: grey field, dashed edge, a "?"
+   mark echoing the pin, and the plain-language reason in the body tier so
+   the installer reads it before the address. */
+.feature-popup__note {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin: 0;
+    /* Right padding clears the card's close button, which sits over this
+       corner where the photo normally has nothing to hide. */
+    padding: 14px 48px 14px 16px;
+    background: #f4f6f8;
+    border-bottom: 1px dashed #b7c1cc;
+}
+
+.feature-popup__note-mark {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border: 1.5px dashed #6b7a8c;
+    border-radius: 50%;
+    font: 700 15px/1 var(--font-ui);
+    color: var(--ink);
+    background: var(--surface);
+}
+
+.feature-popup__note p {
+    margin: 2px 0 0;
+    font: 400 12.5px/1.5 var(--font-ui);
+    color: var(--muted);
+}
+
+/* The status name leads the sentence so a reader skimming the card gets the
+   category first ("Koordinat perlu verifikasi") and the instruction after. */
+.feature-popup__note-title {
+    display: block;
+    margin-bottom: 1px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+/* Under a photo the note is a band between picture and title; the dashed
+   top edge separates it from the photo, the bottom one from the body. */
+.feature-popup__media + .feature-popup__note {
+    border-top: 1px dashed #b7c1cc;
+    /* The close button sits over the photo here, not over the note. */
+    padding-right: 16px;
+}
+
+/* Perlu verifikasi: the same orange the pin's ring and the list capsule use,
+   so the reader connects the three without a legend lookup. */
+.feature-popup__note--duplikat {
+    background: var(--orange-tint);
+    border-color: var(--orange);
+}
+
+.feature-popup__note--duplikat .feature-popup__note-mark {
+    border-color: var(--orange);
+    color: var(--orange-deep);
+}
+
+/* Cadangan: the hatched field from the reserve pin and the list row. */
+.feature-popup__note--cadangan {
+    background-color: #f6f8fa;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(41, 61, 80, 0.085) 0 1px,
+        transparent 1px 7px
+    );
+    border-color: #c5cdd6;
+}
+
+.feature-popup__note--cadangan .feature-popup__note-mark {
+    border-style: solid;
+    border-color: #8fa3b3;
+    background-color: #e3e8ed;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(41, 61, 80, 0.45) 0 1px,
+        transparent 1px 3px
+    );
+}
+
+/* Route hand-off for the installers: opens Google Maps directions from
+   wherever they are to this pin. It is the one thing a field crew comes to
+   the card to do, so it is the card's only filled button — solid blue, full
+   width — and its subline plus ↗ say the tap leaves for Google Maps. The
+   press is where the feedback lives: a short scale-down plus a ripple that
+   spreads from the centre while the finger is down. */
+.feature-popup__actions {
+    margin-top: 16px;
+}
+
+.feature-popup__route {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 54px;
+    padding: 7px 14px 7px 8px;
+    border: 1px solid var(--blue-deep);
+    border-radius: 12px;
+    background: var(--blue-deep);
+    color: #fff;
+    font: 700 14px var(--font-ui);
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(0, 69, 143, 0.2),
+        0 6px 16px rgba(0, 69, 143, 0.22);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color 0.16s ease,
+        border-color 0.16s ease,
+        transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+        box-shadow 0.16s ease;
+}
+
+.feature-popup__route > * {
+    position: relative;
+    z-index: 1;
+}
+
+.feature-popup__route-icon {
+    flex: 0 0 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.feature-popup__route-icon svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.feature-popup__route-text {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.feature-popup__route-text strong {
+    font: 700 14px/1.2 var(--font-ui);
+}
+
+.feature-popup__route-text small {
+    font: 500 11.5px/1.2 var(--font-ui);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.feature-popup__route-ext {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    opacity: 0.85;
+    transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.feature-popup__route:hover {
+    background: #003a78;
+    border-color: #003a78;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 69, 143, 0.24),
+        0 10px 22px rgba(0, 69, 143, 0.28);
+}
+
+/* The arrows nudge the way the route will go. */
+.feature-popup__route:hover .feature-popup__route-icon svg,
+.feature-popup__route:hover .feature-popup__route-ext {
+    transform: translate(1px, -1px);
+}
+
+.feature-popup__route:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Ripple: idle it sits at the centre, scaled to nothing. Pressing swaps the
+   transitions on, so it grows and fades over ~450ms; letting go snaps it
+   back instantly and it is ready for the next press. */
+.feature-popup__route::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    transform: scale(0);
+    opacity: 0.7;
+    pointer-events: none;
+    transition: transform 0s, opacity 0s;
+}
+
+.feature-popup__route:active {
+    transform: scale(0.97);
+    background: #003a78;
+    box-shadow: inset 0 1px 3px rgba(0, 20, 50, 0.3);
+    transition-duration: 0.07s;
+}
+
+.feature-popup__route:active::after {
+    transform: scale(26);
+    opacity: 0;
+    transition: transform 0.45s ease-out, opacity 0.5s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .feature-popup__route,
+    .feature-popup__route-icon svg,
+    .feature-popup__route-ext,
+    .feature-popup__route::after {
+        transition: none;
+    }
+
+    .feature-popup__route:active {
+        transform: none;
+    }
+
+    .feature-popup__route:active::after {
+        display: none;
+    }
+}
+
+/* Localhost-only flag controls, in a tinted tray with its own label so they
+   read as editor tools, apart from the crews' route button above. Each is a
+   toggle (aria-pressed): an icon says what it does, and the pressed state
+   takes the colour of the status it sets on the pin. */
+.feature-popup__tools {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 12px;
+    background: #f4f6f9;
+}
+
+.feature-popup__tools-label {
+    margin: 0 2px 8px;
+    font: 700 10px/1.4 var(--font-ui);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+}
+
+.feature-popup__tools-row {
+    display: flex;
+    gap: 8px;
+}
+
+/* Sized by their labels, so "Perlu verifikasi" gets the room it needs and
+   "Arsir" does not hold half the row for five letters. */
+.feature-popup__hatch {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 38px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font: 600 12.5px var(--font-ui);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease,
+        color 0.16s ease, transform 0.12s ease;
+}
+
+.feature-popup__hatch svg {
+    flex: 0 0 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.feature-popup__hatch span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.feature-popup__hatch:not(:disabled):hover {
+    border-color: var(--ink-soft);
+    color: var(--ink);
+}
+
+.feature-popup__hatch:not(:disabled):active {
+    transform: scale(0.97);
+}
+
+.feature-popup__hatch:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.feature-popup__hatch--duplikat svg {
+    color: var(--orange);
+}
+
+.feature-popup__hatch--duplikat:not(:disabled):hover {
+    border-color: var(--orange);
+    color: var(--orange-deep);
+}
+
+/* Pressed: the button wears the status it has set. */
+.feature-popup__hatch--cadangan.is-active {
+    border-color: var(--ink-soft);
+    background: var(--ink-soft);
+    color: #fff;
+}
+
+.feature-popup__hatch--cadangan.is-active:not(:disabled):hover {
+    background: var(--ink);
+    color: #fff;
+}
+
+.feature-popup__hatch--duplikat.is-active {
+    border-color: var(--orange);
+    background: var(--orange-tint);
+    color: var(--orange-deep);
+}
+
+.feature-popup__hatch:disabled {
+    color: var(--disabled-ink);
+    cursor: wait;
+}
+
+.feature-popup__hatch.is-error {
+    color: #8a3b2a;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.feature-popup__title {
+    margin: 4px 0 0;
+    font: 600 21px/1.25 var(--font-display);
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+/* A two-column register — label left, value right, hairline between rows —
+   the same grammar as the sidebar's list. The blue icons went with the
+   badges: one accent (the yellow disc) per card. */
+.feature-popup__meta {
+    margin: 12px 0 0;
+    border-top: 1px solid var(--divider);
+    display: grid;
+}
+
+.feature-popup__meta-row {
+    padding: 8px 0;
+    border-top: none;
+}
+
+.feature-popup__meta-row + .feature-popup__meta-row {
+    border-top: 1px solid var(--divider);
+}
+
+/* Higher specificity than the label/value grid below, which also matches
+   this div. */
+.feature-popup__meta-row > .meta-icon {
+    display: none;
+}
+
+.feature-popup__meta-row > div {
+    display: grid;
+    grid-template-columns: 84px 1fr;
+    gap: 12px;
+    align-items: baseline;
+}
+
+.feature-popup__meta-row dt {
+    margin: 0;
+    font: 500 12px var(--font-ui);
+    line-height: 1.5;
+    color: var(--muted-2);
+}
+
+.feature-popup__meta-row dd {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+    /* Coordinates and dates line up column-wise instead of shimmying. */
+    font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,10 @@
+# Separate controlled admin hostname. No public-map HTML or backend source under this origin.
+{$ADMIN_HOST} {
+    request_body { max_size 21MB }
+    reverse_proxy https://{$ADMIN_PRIVATE_HOST}:8443 {
+        header_up Host {http.request.host}
+        transport http {
+            tls_trust_pool file {$ORIGIN_CA_FILE}
+        }
+    }
+}

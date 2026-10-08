@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup C: Lipat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+/* C: Lipat. The login sheet never moves or changes width. After login it
+   grows taller and becomes the editor; the point list and the photo/location
+   wing unfold from its two edges like a tri-fold. */
+:root {
+  --sheet-w: 440px;
+  --wing-l: 330px;
+  --wing-r: 350px;
+}
+.scrim { position: fixed; inset: 0; background: rgba(20, 32, 44, 0.14); pointer-events: none; }
+
+.shell {
+  position: fixed;
+  top: 50%; left: 50%;
+  translate: -50% -50%;
+  width: min(var(--sheet-w), calc(100vw - 32px));
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 5px rgba(20, 38, 53, 0.16), 0 24px 64px rgba(20, 38, 53, 0.34);
+}
+[data-state="login"] .shell { height: var(--login-h, 520px); transition: height 0.36s var(--ease-out) 0.3s; }
+[data-state="dash"] .shell { height: min(800px, calc(100vh - 48px)); transition: height 0.36s var(--ease-out) 0.08s; }
+
+.login, .dash { position: absolute; }
+[data-state="login"] .login { opacity: 1; visibility: visible; transition: opacity 0.22s 0.62s; }
+[data-state="dash"] .login { opacity: 0; visibility: hidden; transition: opacity 0.12s, visibility 0s 0.12s; }
+[data-state="dash"] .dash { opacity: 1; visibility: visible; transition: opacity 0.01s 0.3s; }
+[data-state="login"] .dash { opacity: 0; visibility: hidden; transition: opacity 0.01s 0.5s, visibility 0s 0.51s; }
+
+/* ---------- Login ---------- */
+.login { top: 0; left: 0; right: 0; padding: 30px 32px 26px; }
+.login-org { display: flex; align-items: center; gap: 12px; font-size: 13px; line-height: 1.35; color: var(--muted-2); }
+.login-org img { height: 46px; }
+.login h1 { margin: 24px 0 8px; font-size: 26px; line-height: 1.15; font-weight: 750; letter-spacing: -0.015em; }
+.login-lede { margin: 0 0 24px; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+.field { display: block; margin-bottom: 14px; font-size: 13.5px; font-weight: 600; }
+.field input, .field textarea, .field select {
+  display: block; width: 100%; margin-top: 6px; padding: 10px 12px;
+  font-size: 14.5px; font-weight: 500;
+  background: #fff; border: 1px solid var(--atlas-edge); border-radius: 8px;
+}
+.field input:hover, .field textarea:hover, .field select:hover { border-color: var(--ink-soft); }
+.field textarea { resize: vertical; min-height: 60px; line-height: 1.45; }
+.login-error { margin: 4px 0 14px; padding: 10px 12px; font-size: 13.5px; line-height: 1.45; color: #8a1f1f; background: #fff1f0; border-radius: 6px; }
+.btn-primary { width: 100%; padding: 12px 16px; font-size: 15px; font-weight: 700; color: #fff; background: var(--ink); border: 0; border-radius: 8px; }
+.btn-primary:hover { background: #1d2e3e; }
+.btn-ghost { padding: 7px 12px; font-size: 13.5px; font-weight: 600; background: #fff; border: 1px solid var(--atlas-edge); border-radius: 8px; }
+.btn-ghost:hover { border-color: var(--ink); }
+.login-foot { margin: 20px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted-2); }
+
+/* ---------- Dashboard: centre sheet ---------- */
+.dash { inset: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); perspective: 1800px; }
+.sheet-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 0 18px; }
+.sheet-head img { height: 30px; }
+.sheet-head strong { font-size: 15px; font-weight: 750; }
+.who { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.who-name { font-weight: 700; }
+.tabs { display: flex; gap: 2px; padding: 10px 12px 0; border-bottom: 1px solid var(--divider); overflow-x: auto; }
+.tabs button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px 10px;
+  font-size: 14px; font-weight: 600; color: var(--muted);
+  background: none; border: 0; border-bottom: 2px solid transparent; white-space: nowrap;
+}
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-current] { color: var(--ink); border-bottom-color: var(--ink); }
+.tabs .count { min-width: 18px; padding: 0 5px; font-size: 11.5px; line-height: 18px; text-align: center; background: var(--yellow); border-radius: 999px; }
+.panes { display: none; }
+
+.editor { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
+.edit-head { padding: 16px 20px 12px; }
+.edit-kab { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--muted-2); }
+.edit-head h2 { margin: 4px 0; font-size: 21px; line-height: 1.22; font-weight: 750; letter-spacing: -0.01em; }
+.edit-id { margin: 0 0 10px; font-size: 12px; color: var(--muted-2); overflow-wrap: anywhere; }
+.edit-scroll { overflow: auto; padding: 4px 20px 16px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.check { display: flex; align-items: center; gap: 9px; margin: 0 0 14px; font-size: 14px; }
+.check input { width: 18px; height: 18px; accent-color: var(--ink); }
+.edit-foot { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-top: 1px solid var(--divider); }
+.edit-foot p { margin: 0 auto 0 0; font-size: 12.5px; color: var(--muted-2); }
+.edit-foot .btn-primary { width: auto; padding: 10px 18px; }
+
+/* ---------- Wings ---------- */
+.wing {
+  position: absolute; top: 14px; bottom: 14px;
+  display: flex; flex-direction: column; min-height: 0;
+  background: var(--atlas-paper);
+  box-shadow: 0 2px 5px rgba(20, 38, 53, 0.14), 0 20px 50px rgba(20, 38, 53, 0.28);
+  backface-visibility: hidden;
+}
+.wing::after {
+  /* Light falling off the fold while it opens. */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+}
+.wing-l { right: 100%; width: var(--wing-l); border-radius: 14px 0 0 14px; transform-origin: right center; }
+.wing-l::after { background: linear-gradient(to left, rgba(20, 32, 44, 0.5), rgba(20, 32, 44, 0.1)); }
+.wing-r { left: 100%; width: var(--wing-r); border-radius: 0 14px 14px 0; transform-origin: left center; }
+.wing-r::after { background: linear-gradient(to right, rgba(20, 32, 44, 0.5), rgba(20, 32, 44, 0.1)); }
+/* The crease: a soft inner shadow along the hinge edge. */
+.wing-l { box-shadow: inset -10px 0 12px -10px rgba(20, 38, 53, 0.35), 0 20px 50px rgba(20, 38, 53, 0.28); }
+.wing-r { box-shadow: inset 10px 0 12px -10px rgba(20, 38, 53, 0.35), 0 20px 50px rgba(20, 38, 53, 0.28); }
+
+[data-state="login"] .wing-l { transform: rotateY(-92deg); opacity: 0; transition: transform 0.26s ease-in, opacity 0s 0.26s; }
+[data-state="login"] .wing-r { transform: rotateY(92deg); opacity: 0; transition: transform 0.26s ease-in, opacity 0s 0.26s; }
+[data-state="dash"] .wing { transform: none; opacity: 1; }
+[data-state="dash"] .wing-l { transition: transform 0.5s var(--ease-out) 0.42s, opacity 0s 0.42s; }
+[data-state="dash"] .wing-r { transition: transform 0.5s var(--ease-out) 0.5s, opacity 0s 0.5s; }
+[data-state="login"] .wing::after { opacity: 1; transition: opacity 0.2s; }
+[data-state="dash"] .wing::after { opacity: 0; transition: opacity 0.5s 0.5s; }
+[data-state="dash"] .wing-r::after { transition-delay: 0.58s; }
+
+.stats { display: flex; align-items: baseline; gap: 10px; padding: 18px 18px 2px; }
+.stats-total { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stats-label { font-size: 13px; color: var(--muted-2); }
+.stats-sub { margin: 4px 0 12px; padding: 0 18px; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.search { padding: 0 12px 10px; }
+.search input {
+  width: 100%; padding: 9px 12px 9px 34px; font-size: 14px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%234f6173' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m11 11 3.5 3.5'/%3E%3C/svg%3E") 11px 50% no-repeat;
+  border: 1px solid var(--atlas-edge); border-radius: 8px;
+}
+.rows { list-style: none; margin: 0; padding: 0 6px 10px; overflow: auto; flex: 1; }
+.rows .group { position: sticky; top: 0; z-index: 1; padding: 10px 12px 6px; font-size: 12.5px; font-weight: 700; color: var(--muted-2); background: var(--atlas-paper); }
+.row { display: grid; gap: 3px; width: 100%; padding: 9px 12px; text-align: left; background: none; border: 0; border-radius: 8px; }
+.row:hover { background: rgba(255, 255, 255, 0.75); }
+.row[aria-current] { background: #fff; box-shadow: inset 3px 0 0 var(--ink); }
+.row-title { font-size: 14px; font-weight: 600; line-height: 1.35; }
+.row-id { font-size: 11.5px; color: var(--muted-2); overflow-wrap: anywhere; }
+.row .badge { margin-top: 3px; }
+.empty { padding: 20px 12px; font-size: 13.5px; color: var(--muted); }
+
+.wing-scroll { overflow: auto; padding: 18px 18px 16px; }
+.wing h3 { margin: 0 0 10px; font-size: 14.5px; font-weight: 750; }
+.photo { margin: 0 0 20px; }
+.photo img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: #dfe7ee; }
+.photo figcaption { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.minimap { position: relative; overflow: hidden; height: 170px; border-radius: 8px; background: #1d2a36; }
+.minimap [data-tiles] { position: absolute; inset: 0; }
+.minimap .pin { position: absolute; left: 50%; top: 50%; width: 22px; height: 28px; translate: -50% -100%; }
+.minimap-note { margin: 8px 0 20px; font-size: 12.5px; line-height: 1.45; color: var(--muted-2); }
+.history { list-style: none; margin: 0; padding: 0; }
+.history li { position: relative; padding: 0 0 14px 18px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.history li::before { content: ""; position: absolute; left: 3px; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); }
+.history li + li::before { background: #fff; box-shadow: inset 0 0 0 1.5px var(--muted-2); }
+.history li:not(:last-child)::after { content: ""; position: absolute; left: 6px; top: 16px; bottom: 0; width: 1px; background: var(--atlas-edge); }
+.history b { display: block; color: var(--ink); }
+
+@media (max-width: 1200px) { :root { --sheet-w: 420px; --wing-l: 290px; --wing-r: 300px; } }
+
+/* Narrow screens: no room for wings, so the sheet fills the screen and the
+   wings become two more panes behind a segmented control. */
+@media (max-width: 1060px) {
+  [data-state="dash"] .shell { width: calc(100vw - 16px); height: calc(100dvh - 16px); transition: height 0.36s var(--ease-out) 0.08s, width 0.36s var(--ease-out) 0.08s; }
+  .dash { grid-template-rows: auto auto auto minmax(0, 1fr); perspective: none; }
+  .panes { display: flex; gap: 4px; margin: 10px 12px 0; padding: 3px; background: var(--atlas-paper); border-radius: 10px; }
+  .panes button { flex: 1; padding: 7px 4px; font-size: 13.5px; font-weight: 600; color: var(--muted); background: none; border: 0; border-radius: 8px; }
+  .panes button[aria-pressed="true"] { color: var(--ink); background: #fff; box-shadow: 0 1px 2px rgba(20, 38, 53, 0.14); }
+  .wing, .editor { grid-row: 4; grid-column: 1; }
+  .wing { position: static; transform: none !important; opacity: 1 !important; box-shadow: none; border-radius: 0 0 14px 14px; background: #fff; }
+  .wing::after { display: none; }
+  .rows .group { background: #fff; }
+  body:not([data-pane="list"]) .wing-l, body:not([data-pane="edit"]) .editor, body:not([data-pane="photo"]) .wing-r { display: none; }
+  .edit-foot p { display: none; }
+  .edit-foot .btn-primary { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell, .login, .dash, .wing, .wing::after { transition-duration: 0s !important; transition-delay: 0s !important; }
+}
+</style>
+</head>
+<body data-state="login">
+<iframe class="backdrop" src="/" title="Peta sebaran PUTS 2026" tabindex="-1" aria-hidden="true"></iframe>
+<div class="scrim"></div>
+
+<div class="shell">
+  <section class="login" data-login aria-labelledby="login-title">
+    <div class="login-org"><img src="/assets/lambang-jambi.png" alt=""><span>Dinas ESDM<br>Provinsi Jambi</span></div>
+    <h1 id="login-title">Administrasi survei PUTS 2026</h1>
+    <p class="login-lede">Sunting titik dan foto survei. Perubahan disimpan sebagai draf sampai diterbitkan.</p>
+    <form data-login-form>
+      <label class="field">Nama akun<input name="username" autocomplete="username" required autofocus></label>
+      <label class="field">Kata sandi<input name="password" type="password" autocomplete="current-password" required></label>
+      <p class="login-error" data-error role="alert" hidden>Nama akun atau kata sandi tidak cocok. Periksa ejaan lalu coba lagi.</p>
+      <button class="btn-primary" type="submit">Masuk</button>
+    </form>
+    <p class="login-foot">Hanya untuk akun yang telah disetujui. Lupa kata sandi? Hubungi pemilik akun.</p>
+  </section>
+
+  <section class="dash" aria-label="Administrasi survei">
+    <div class="sheet-head">
+      <img src="/assets/lambang-jambi.png" alt=""><strong>Administrasi survei</strong>
+      <div class="who"><span class="who-name" data-who>danny</span><button class="btn-ghost" data-logout>Keluar</button></div>
+    </div>
+    <nav class="tabs" aria-label="Navigasi administrasi">
+      <button aria-current="page">Titik</button>
+      <button>Draf <span class="count">2</span></button>
+      <button>Penerbitan</button>
+      <button>Audit</button>
+      <button>Akun</button>
+    </nav>
+    <div class="panes" role="group" aria-label="Tampilan">
+      <button type="button" data-seg="list" aria-pressed="true">Daftar</button>
+      <button type="button" data-seg="edit" aria-pressed="false">Sunting</button>
+      <button type="button" data-seg="photo" aria-pressed="false">Foto & lokasi</button>
+    </div>
+
+    <aside class="wing wing-l" aria-label="Daftar titik">
+      <div class="stats"><span class="stats-total" data-total>500</span><span class="stats-label">alokasi resmi</span></div>
+      <p class="stats-sub" data-sub></p>
+      <label class="search"><span class="visually-hidden">Cari titik</span><input type="search" data-search placeholder="Cari nomor, desa, atau pengusul"></label>
+      <ul class="rows" data-list></ul>
+    </aside>
+
+    <article class="editor" data-editor>
+      <div class="edit-head">
+        <p class="edit-kab" data-f="kab"></p>
+        <h2 data-f="rekapan"></h2>
+        <p class="edit-id" data-f="nomor"></p>
+        <span class="badge" data-badge></span>
+      </div>
+      <div class="edit-scroll">
+        <label class="field">Alamat lengkap<textarea rows="2" data-f="alamat"></textarea></label>
+        <div class="pair">
+          <label class="field">Jalur<input data-f="jalur"></label>
+          <label class="field">Pengusul<input data-f="pengusul" placeholder="Belum diisi"></label>
+        </div>
+        <label class="field">Status alokasi
+          <select data-f="status"><option value="">Alokasi utama</option><option>Cadangan</option><option>Belum Ditetapkan</option></select>
+        </label>
+        <label class="check"><input type="checkbox" data-f="duplikat"> Koordinat perlu verifikasi lapangan</label>
+        <div class="pair">
+          <label class="field">Latitude<input inputmode="decimal" data-f="lat"></label>
+          <label class="field">Longitude<input inputmode="decimal" data-f="lon"></label>
+        </div>
+        <label class="field">Keterangan<textarea rows="2" data-f="keterangan"></textarea></label>
+        <label class="field">Alasan perubahan<textarea rows="2" placeholder="Wajib. Contoh: koordinat dari stempel GPS foto 6 Okt"></textarea></label>
+      </div>
+      <div class="edit-foot">
+        <p>Draf belum mengubah peta publik.</p>
+        <button class="btn-primary" type="button">Simpan draf</button>
+      </div>
+    </article>
+
+    <aside class="wing wing-r" aria-label="Foto dan lokasi">
+      <div class="wing-scroll">
+        <h3>Foto survei</h3>
+        <figure class="photo">
+          <img data-photo alt="Foto survei saat ini">
+          <figcaption><span>Didokumentasikan <b data-f="tanggal"></b></span><button class="btn-ghost" type="button">Ganti foto</button></figcaption>
+        </figure>
+        <h3>Lokasi</h3>
+        <div class="minimap" data-minimap>
+          <div data-tiles></div>
+          <svg class="pin" viewBox="0 0 36 48" aria-hidden="true"><path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="#fee50f" stroke="#293d50" stroke-width="2.5"/><circle cx="18" cy="18" r="6.5" fill="#293d50"/></svg>
+        </div>
+        <p class="minimap-note">Klik peta untuk memindahkan pin. Memindahkan pin tidak menandai lokasi sebagai terverifikasi.</p>
+        <h3>Riwayat</h3>
+        <ol class="history">
+          <li><b>Revisi 2, diterbitkan</b>Koordinat dan foto dari stempel GPS kunjungan 6 Okt 2026.</li>
+          <li><b>Revisi 1</b>Impor data awal dari points.geojson.</li>
+        </ol>
+      </div>
+    </aside>
+  </section>
+</div>
+
+<nav class="mock-nav" aria-label="Pilih mockup"><a href="a-jendela.html">A Jendela</a><a href="b-lensa.html">B Lensa</a><a href="c-lipat.html" aria-current="page">C Lipat</a></nav>
+
+<script src="mock.js"></script>
+<script>
+(function () {
+  var all = [], selected = null;
+  var ul = document.querySelector("[data-list]");
+  var search = document.querySelector("[data-search]");
+  var dash = document.querySelector(".dash");
+  var mini = document.querySelector("[data-minimap]");
+
+  Mock.backdrop(document.querySelector(".backdrop"));
+
+  function render(reveal) { Mock.list(ul, all, { query: search.value, selected: selected && selected.id, reveal: reveal }); }
+
+  function select(pt, reveal) {
+    selected = pt;
+    Mock.fill(dash, pt);
+    var badge = dash.querySelector("[data-badge]");
+    badge.className = "badge badge--" + pt.status;
+    badge.textContent = Mock.STATUS_TEXT[pt.status];
+    render(reveal);
+    // The minimap may be hidden behind a pane on phones; measure when shown.
+    if (mini.clientWidth) Mock.tiles(mini, pt, 18);
+  }
+
+  Mock.points().then(function (pts) {
+    all = pts;
+    var c = Mock.counts(pts);
+    document.querySelector("[data-total]").textContent = c.official;
+    document.querySelector("[data-sub]").textContent =
+      c.duplikat + " perlu verifikasi, " + c.belum + " belum ditetapkan, " + c.cadangan + " cadangan tidak dihitung";
+    render();
+  });
+
+  function pane(name) {
+    document.body.dataset.pane = name;
+    document.querySelectorAll("[data-seg]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.seg === name)); });
+    if (name === "photo" && selected) Mock.tiles(mini, selected, 18);
+  }
+  document.querySelectorAll("[data-seg]").forEach(function (b) { b.addEventListener("click", function () { pane(b.dataset.seg); }); });
+
+  search.addEventListener("input", function () { render(); });
+  ul.addEventListener("click", function (e) {
+    var btn = e.target.closest(".row");
+    if (!btn) return;
+    select(all[+btn.dataset.id]);
+    pane("edit");
+  });
+
+  Mock.session({
+    settleOn: "height",
+    onEnter: function () {
+      document.querySelector("[data-who]").textContent = document.body.dataset.user;
+      pane(innerWidth <= 1060 ? "list" : "edit");
+      var start = all.filter(function (p) { return /TANJUNG RADEN-007$/.test(p.nomor); })[0] || all[0];
+      // Fill before the wings open so they unfold with content, not empty.
+      if (start) select(start);
+    },
+    onSettled: function () {
+      if (selected) { render(true); if (mini.clientWidth) Mock.tiles(mini, selected, 18); }
+    }
+  });
+})();
+</script>
+</body>
+</html>
