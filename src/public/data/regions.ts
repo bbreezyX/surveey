@@ -1,10 +1,21 @@
 import GeoJSON from 'ol/format/GeoJSON';
+import type OlFeature from 'ol/Feature';
 import type { SurveyPoint, RegionFeature } from '../../shared/survey/types';
 import { fromLonLat } from 'ol/proj';
 import { toDisplayCase } from '../../shared/survey/display';
+// Region assignment, the map layer and the sidebar thumbnails all need the
+// kabupaten in EPSG:3857. Projecting ~36k vertices three times showed up in the
+// first-render long task on a throttled phone, so each region is read once and
+// shared; every consumer only reads the geometry.
+const projected = new WeakMap<RegionFeature, OlFeature>();
+export function projectRegions(regions: RegionFeature[]): OlFeature[] {
+  const missing = regions.filter(region => !projected.has(region));
+  if (missing.length) new GeoJSON().readFeatures({ type: 'FeatureCollection', features: missing }, { featureProjection: 'EPSG:3857' }).forEach((feature, index) => projected.set(missing[index], feature));
+  return regions.map(region => projected.get(region)!);
+}
 // Keep the former projected nearest-boundary fallback for coastal/off-edge pins.
 export function assignRegions(points: SurveyPoint[], boundaries: RegionFeature[]): void {
-  const features = new GeoJSON().readFeatures({ type: 'FeatureCollection', features: boundaries }, { featureProjection: 'EPSG:3857' });
+  const features = projectRegions(boundaries);
   for (const point of points) {
     const coordinate = fromLonLat([point.lonNum, point.latNum]);
     let feature = features.find(region => region.getGeometry()?.intersectsCoordinate(coordinate));

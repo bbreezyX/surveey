@@ -19,6 +19,7 @@ import { attachPointFeedback } from './feedback';
 import { attachControlLayout } from './controls';
 import { unByKey } from 'ol/Observable';
 import { pointStyle, boundaryStyle, maskStyle } from './styles';
+import { projectRegions } from '../data/regions';
 export type LayerKey = 'google' | 'esri' | 'boundaries' | 'mask' | 'area' | 'sk' | 'cadangan' | 'belum';
 export interface FitOptions { duration?: number; maxZoom?: number; padding?: number[] }
 export interface SurveyMapAdapter {
@@ -40,7 +41,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const flags = { sk: true, cadangan: false, belum: true };
   const format = new GeoJSON();
   const projection = { featureProjection: 'EPSG:3857' };
-  const regions = format.readFeatures({ type: 'FeatureCollection', features: boundaries }, projection);
+  const regions = projectRegions(boundaries);
   const dissolvedFeatures = format.readFeatures(dissolved, projection);
   const source = new VectorSource({ features: points.map(point => { const feature = new Feature(new Point(fromLonLat([point.lonNum, point.latNum]))); feature.setId(point.nomor); return feature; }) });
   const google = new TileLayer({ source: new XYZ({ url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', maxZoom: 21, attributions: 'Tiles &copy; Google' }) });

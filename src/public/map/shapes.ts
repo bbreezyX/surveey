@@ -1,4 +1,4 @@
-import GeoJSON from 'ol/format/GeoJSON';
+import { projectRegions } from '../data/regions';
 import Polygon from 'ol/geom/Polygon';
 import MultiPolygon from 'ol/geom/MultiPolygon';
 import { fromLonLat } from 'ol/proj';
@@ -8,7 +8,7 @@ export function thumbnail(region: RegionFeature | undefined, points: readonly Su
   if (!region) return { path: '', dots: [] as { x: number; y: number; kind: string; id: string }[] };
   let geometry = geometryCache.get(region);
   if (!geometry) {
-    const parsed = new GeoJSON().readFeatures(region, { featureProjection: 'EPSG:3857' })[0]?.getGeometry();
+    const parsed = projectRegions([region])[0]?.getGeometry();
     const rings = parsed instanceof Polygon ? parsed.getCoordinates() : parsed instanceof MultiPolygon ? parsed.getCoordinates().flat() : [];
     geometry = { rings, extent: parsed?.getExtent() ?? [0, 0, 1, 1] }; geometryCache.set(region, geometry);
   }
