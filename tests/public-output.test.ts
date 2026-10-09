@@ -18,7 +18,7 @@ it('copies only intended public files even when admin, environment and docs sent
     execFileSync(process.execPath, [path.resolve('scripts/build-public-assets.mjs'), '--output', output], { cwd: root });
     expect(existsSync(path.join(output, 'images/survey.jpeg'))).toBe(true);
     for (const name of ['.env', 'assets/admin.js', 'images/private.env', 'docs/secret.md', 'admin/index.js']) expect(existsSync(path.join(output, name))).toBe(false);
-    expect(readdirSync(path.join(output, 'data')).sort()).toEqual(['dissolved.geojson', 'kabupaten.geojson', 'points.geojson']);
+    expect(readdirSync(path.join(output, 'data')).sort()).toEqual(['points.geojson', 'regions.json']);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 it('builds a hashed public entry without legacy vendors, write routes or source maps', () => {

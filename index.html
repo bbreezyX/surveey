@@ -44,9 +44,11 @@
          The href must stay byte-identical to the url in layers/layers.js or the
          file gets fetched twice. -->
     <link rel="preload" href="/data/points.geojson" as="fetch" crossorigin />
-    <!-- The province mask (Fokus Provinsi) renders from first paint and reads
-         this file; same byte-identical-href rule as above. -->
-    <link rel="preload" href="/data/dissolved.geojson" as="fetch" crossorigin />
+    <!-- Kabupaten and province boundaries (scripts/region-codec.mjs). The list
+         cannot group points until they arrive, and without a preload the request
+         waited for the whole JS bundle to download and run first. Same
+         byte-identical-href rule as above, against src/public/data/load.ts. -->
+    <link rel="preload" href="/data/regions.json" as="fetch" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap"
       rel="stylesheet"

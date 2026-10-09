@@ -14,5 +14,5 @@ RUN sed -i 's/\r$//' /usr/local/bin/start-railway-public.sh
 # Cutover artifact: original evidence and the old static point database are deliberately absent.
 COPY --from=build /app/dist/public/assets/ /srv/assets/
 COPY --from=build /app/dist/public/index.html /app/dist/public/favicon.ico /app/dist/public/favicon.png /app/dist/public/apple-touch-icon.png /app/dist/public/manifest.json /srv/
-COPY --from=build /app/dist/public/data/dissolved.geojson /app/dist/public/data/kabupaten.geojson /srv/data/
+COPY --from=build /app/dist/public/data/regions.json /srv/data/
 CMD ["sh", "/usr/local/bin/start-railway-public.sh"]
