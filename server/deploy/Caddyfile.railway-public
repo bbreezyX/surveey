@@ -37,7 +37,8 @@
     }
 
     handle /admin {
-        redir /admin/ 308
+        # Explicit matcher keeps the relative destination from being parsed as a path matcher.
+        redir * /admin/ 308
     }
     handle /admin/* {
         request_body {
