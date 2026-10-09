@@ -3,6 +3,7 @@ import App from './public/App.svelte';
 import '../resources/ol.css';
 import '../resources/ol-layerswitcher.css';
 import '../resources/qgis2web.css';
+import './public/styles/fonts.css';
 import './public/styles/tokens.css';
 import './public/styles/layout.css';
 import './public/styles/sidebar.css';
