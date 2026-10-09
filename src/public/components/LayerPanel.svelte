@@ -3,6 +3,7 @@
   import type { LayerKey } from '../map/create-map';
   import LayerSwitch from './LayerSwitch.svelte';
   import { layerIcons } from '../map/layer-icons';
+  import logoEsdm from '../assets/logo-esdm.webp';
   let { state: model }: { state: SurveyState } = $props();
   let open = $state(false);
   const rows: { key: LayerKey; label: string }[] = [{ key: 'boundaries', label: 'Batas Kabupaten/Kota' }, { key: 'area', label: 'Area Cakupan' }, { key: 'mask', label: 'Fokus Provinsi' }];
@@ -23,6 +24,6 @@
         <li class="layer"><input type="radio" id="layer-esri" name="basemap" checked={model.layers.esri} onchange={() => { model.layers.google = false; model.layers.esri = true; }}/><label for="layer-esri">Esri Satelit</label></li>
       </ul></li>
     </ul></div>
-    <img class="layer-switcher__watermark" src="/assets/logo-esdm.png" alt="Logo ESDM" draggable="false"/>
+    <img class="layer-switcher__watermark" src={logoEsdm} alt="Logo ESDM" width="64" height="64" loading="lazy" decoding="async" draggable="false"/>
   </div>
 </div>
