@@ -8,7 +8,7 @@
   import { STATUS_LABEL, countOfficialPoints } from '../../shared/survey/status';
   import RegionGrid from './RegionGrid.svelte';
   import PointList from './PointList.svelte';
-  import lambang from '../assets/lambang-jambi.webp';
+  import { lambang, lambangSrcset } from '../assets/lambang';
   import Icon from './Icon.svelte';
   let { state, onfit }: { state: SurveyState; onfit: () => void } = $props();
   let sidebar: HTMLElement, scroller: HTMLDivElement, search: HTMLInputElement;
@@ -46,7 +46,7 @@
     {#if state.activeRegion}
       <div class="atlas-detail"><div class="atlas-detail__bar"><button class="atlas-back" type="button" aria-label="Kembali ke semua wilayah" onclick={() => openRegion(null)}><Icon name="back" size={16}/>Semua wilayah</button><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar" onclick={collapse}><Icon name="collapse"/></button></div>
         <div class="atlas-detail__main"><div><h1>{state.activeRegion}</h1><p><b>{countOfficialPoints(regionPoints)}</b> titik di <b>{new Set(regionPoints.filter(p => !p.cadangan).map(p => p.display.kecamatan)).size}</b> kecamatan</p></div><div class="atlas-locator" role="img" aria-label={`Letak ${state.activeRegion} di Provinsi Jambi`}><Locator regions={state.dataset.boundaries} active={state.activeRegion}/></div></div></div>
-    {:else}<div class="atlas-head"><img src={lambang} alt="Lambang Provinsi Jambi" width="38" height="39" decoding="async"/><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar" onclick={collapse}><Icon name="collapse"/></button></div>{/if}
+    {:else}<div class="atlas-head"><img src={lambang} srcset={lambangSrcset} sizes="38px" alt="Lambang Provinsi Jambi" width="38" height="39" decoding="async"/><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar" onclick={collapse}><Icon name="collapse"/></button></div>{/if}
   </div>
   <div class="panel-search"><span class="panel-search__icon"><Icon name="search" size={18}/></span><input id="list-search" type="search" aria-label="Cari titik PUTS" placeholder={state.activeRegion ? `Cari dalam ${state.activeRegion}…` : "Cari lokasi atau kabupaten…"} title="Cari titik, lokasi, kabupaten, atau koordinat" autocomplete="off" bind:value={state.query} bind:this={search} onfocus={() => { if (innerWidth < 960) state.panelOpen = true; }}/>{#if state.query}<button class="panel-search__clear" id="list-search-clear" type="button" aria-label="Hapus pencarian" onclick={() => { state.query = ''; search.focus({ preventScroll: true }); }}><Icon name="close" size={16}/></button>{/if}</div>
   <div class="panel-meta" id="panel-meta">
