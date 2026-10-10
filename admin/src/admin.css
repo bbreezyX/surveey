@@ -65,7 +65,7 @@
 .edit-title { flex: 1; min-width: 0; }
 .edit-head h2 { margin: 0 0 4px; font-size: 21px; line-height: 1.22; font-weight: 750; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .edit-id { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted-2); overflow-wrap: anywhere; }
-.edit-meta { display: flex; align-items: center; gap: 10px; margin: 8px 0 0; font-size: 12.5px; color: var(--muted-2); }
+.edit-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 8px 0 0; font-size: 12.5px; color: var(--muted-2); }
 .edit-notice { margin: 0 20px 10px; }
 .edit-form { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0; }
 .edit-scroll { flex: 1; min-height: 0; overflow: auto; padding: 4px 20px 8px; border-top: 1px solid var(--divider); }
@@ -97,6 +97,9 @@ th { font-weight: 650; }
 .badge--cadangan, .badge--arsip { background: var(--atlas-paper); color: var(--muted); }
 .badge--cadangan::before { background: repeating-linear-gradient(-45deg, #7d90a1 0 1.5px, #fff 1.5px 5px); box-shadow: inset 0 0 0 1px #7d90a1; }
 .badge--arsip::before { background: var(--muted-2); }
+/* A point with a draft waiting for review; shown in the list and the editor head. */
+.badge--draf { background: var(--blue-tint); color: var(--blue-deep); }
+.badge--draf::before { background: var(--blue); }
 
 /* ---------- Wings ----------
    White panels like the public map's #sidebar. Only the centre sheet's
@@ -224,6 +227,8 @@ th { font-weight: 650; }
 }
 .atlas-pt__coord { min-width: 0; color: var(--muted); font-size: 12px; line-height: 1.3; font-variant-numeric: tabular-nums; }
 .atlas-pt__coord--none { color: var(--muted-2); font-style: italic; }
+.atlas-pt__draft { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; color: var(--blue-deep); font-size: 11.5px; font-weight: 650; }
+.atlas-pt__draft::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
 .atlas-unit {
   display: grid; place-items: center; flex: none; min-width: 46px; height: 34px; padding: 0 8px;
   border: 1px solid #c6d3df; border-radius: 8px; background: #fff; color: var(--ink);

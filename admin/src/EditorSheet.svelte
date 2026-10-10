@@ -14,7 +14,7 @@
   <div class="edit-title">
     <h2>{detail.state.lokasi_rekapan || detail.state.nomor}</h2>
     <p class="edit-id">{detail.state.nomor}</p>
-    <p class="edit-meta"><span class="badge badge--{badge.kind}">{badge.label}</span><span>Revisi {detail.revision}</span></p>
+    <p class="edit-meta"><span class="badge badge--{badge.kind}">{badge.label}</span>{#if detail.drafts}<span class="badge badge--draf">{detail.drafts > 1 ? `${detail.drafts} draf menunggu` : 'Draf menunggu'}</span>{/if}<span>Revisi {detail.revision}</span></p>
   </div>
   <button class="btn-ghost" type="button" onclick={onReload} disabled={editor.busy}>Muat ulang</button>
 </div>

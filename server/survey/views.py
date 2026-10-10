@@ -111,7 +111,7 @@ def points(request):
         data = body(request, ['state', 'reason'])
         point = services.create_point(request.user, data['state'], data['reason'])
         return response({'id': str(point.pk), 'revision': point.revision}, 201)
-    from django.db.models import Q
+    from django.db.models import Count, Q
     query = request.GET.get('q', '')[:250].strip()
     rows = Point.objects.all()
     if query:
@@ -129,8 +129,10 @@ def points(request):
     except ValueError:
         raise Problem('Nomor halaman tidak valid.')
     total = rows.count()
-    rows = rows.order_by('nomor')[(page-1)*50:page*50]
-    return response({'items': [{'id': str(p.pk), 'revision': p.revision, 'state': p.state} for p in rows],
+    # Pending drafts are flagged in the list so a changed point is visible
+    # without opening the Draf tab.
+    rows = rows.annotate(drafts=Count('draft', filter=Q(draft__status='pending'))).order_by('nomor')[(page-1)*50:page*50]
+    return response({'items': [{'id': str(p.pk), 'revision': p.revision, 'state': p.state, 'drafts': p.drafts} for p in rows],
         'total': total, 'page': page, 'pages': max(1, (total+49)//50), 'counts': counts(Point.objects.values_list('state', flat=True))})
 
 @api(['GET'])
@@ -163,6 +165,7 @@ def point_detail(request, point_id):
     revisions = [{'number': r.number, 'state': r.state, 'reason': r.reason,
         'at': r.created_at.isoformat()} for r in Revision.objects.filter(point=point).order_by('-number')]
     return response({'id': str(point.pk), 'revision': point.revision, 'state': point.state,
+        'drafts': Draft.objects.filter(point=point, status='pending').count(),
         'observations': observations, 'revisions': revisions})
 
 @api(['GET', 'POST'])

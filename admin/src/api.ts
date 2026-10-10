@@ -5,7 +5,8 @@ export interface PointState {
 }
 export interface Account { id: number; username: string; name: string; role: 'editor' | 'publisher' | 'owner'; enabled: boolean; last_login: string | null }
 export interface Counts { total: number; official: number; cadangan: number; belum: number; duplikat: number }
-export interface PointRow { id: string; revision: number; state: PointState }
+// drafts: how many drafts for this point are still waiting for review.
+export interface PointRow { id: string; revision: number; state: PointState; drafts: number }
 export interface Detail extends PointRow {
   observations: { id: string; date: string; lon: number; lat: number; notes: string; source: string; photos: string[] }[];
   revisions: { number: number; state: PointState; reason: string; at: string }[];

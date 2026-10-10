@@ -8,7 +8,7 @@ import type { PointRow } from './api';
 // numbered unit tiles), so admin rows are turned into the public SurveyPoint
 // shape and passed through the same list model. `id` is the admin record id
 // (what the editor loads); `nomor` stays the visible identifier.
-export interface ListPoint extends SurveyPoint { archived: boolean; revision: number }
+export interface ListPoint extends SurveyPoint { archived: boolean; revision: number; drafts: number }
 
 export function toListPoint(row: PointRow): ListPoint {
   const s = row.state;
@@ -22,7 +22,7 @@ export function toListPoint(row: PointRow): ListPoint {
     display: buildDisplayParts(s.nomor, s.keterangan, s.lokasi_rekapan),
     koordinat, koordinatSingkat: belum ? '' : koordinat, searchText: '',
     cadangan: s.status === 'Cadangan', belum, duplikat: !!s.duplikat,
-    archived: !!s.archived, revision: row.revision,
+    archived: !!s.archived, revision: row.revision, drafts: row.drafts,
   };
 }
 

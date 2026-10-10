@@ -77,7 +77,7 @@
   }
   async function select(id: string) {
     busy = true; error = ''; creating = false; pane = 'edit';
-    try { detail = await api<Detail>(`points/${id}`); editor = new PointEditor(detail, { onSaved: announce }); backdrop?.setSelected(id); }
+    try { detail = await api<Detail>(`points/${id}`); editor = new PointEditor(detail, { onSaved: text => { announce(text); loadPoints(); select(id); } }); backdrop?.setSelected(id); }
     catch(e) { failed(e); } finally { busy = false; }
   }
   async function navigate(next: typeof page) { page = next; error = ''; message = ''; try {
@@ -235,13 +235,14 @@
                 {#if group.shared}<p class="atlas-desa__note">{group.shared}</p>{/if}
                 <div class="atlas-units">
                   {#each group.items as point, index (point.id)}
-                    <button class="atlas-pt" type="button" aria-pressed={detail?.id === point.id} aria-label={[`Titik ${point.display.code}`, badgeOf(editorState(point)).label, point.display.primary].join('. ')} onclick={() => select(point.id)}>
+                    <button class="atlas-pt" type="button" aria-pressed={detail?.id === point.id} aria-label={[`Titik ${point.display.code}`, badgeOf(editorState(point)).label, point.drafts ? 'Ada draf menunggu' : '', point.display.primary].filter(Boolean).join('. ')} onclick={() => select(point.id)}>
                       <span class="atlas-unit" class:is-active={detail?.id === point.id} class:is-cadangan={point.cadangan} class:is-duplikat={point.duplikat} class:is-belum={point.belum} class:is-arsip={point.archived}>{point.display.code}</span>
                       <span class="atlas-pt__info">
                         {#if !group.shared && group.landmarks[index]}<span class="atlas-pt__note">{group.landmarks[index]}</span>{/if}
                         {#if point.archived}<span class="atlas-pt__coord atlas-pt__coord--none">Arsip</span>
                         {:else if point.belum || !point.koordinat}<span class="atlas-pt__coord atlas-pt__coord--none">Belum ada koordinat</span>
                         {:else}<span class="atlas-pt__coord">{point.koordinat.split(', ')[0]}<br/>{point.koordinat.split(', ')[1]}</span>{/if}
+                        {#if point.drafts}<span class="atlas-pt__draft">{point.drafts > 1 ? `${point.drafts} draf` : 'Ada draf'}</span>{/if}
                       </span>
                     </button>
                   {/each}

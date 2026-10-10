@@ -77,3 +77,18 @@ class AdminPathTests(TestCase):
         draft = Draft.objects.get()
         self.assertEqual((draft.point_id, draft.status), (point.id, 'pending'))
         self.assertEqual(draft.proposed['state']['alamat'], 'Kel. Tempino, Kecamatan Mestong, Kabupaten Muaro Jambi')
+
+    def test_point_list_and_detail_count_pending_drafts(self):
+        from .services import create_point, save_draft
+        state = {'nomor': 'KOTA JAMBI-KOTA BARU-PAAL LIMA-001', 'nama': '', 'jalur': '', 'alamat': 'Kel. Paal Lima, Kecamatan Kota Baru, Kota Jambi',
+            'keterangan': '', 'lokasi_rekapan': '', 'catatan': '', 'status': '', 'duplikat': False, 'archived': False,
+            'lon': 103.6, 'lat': -1.6, 'date': '', 'photo_id': None, 'observation_id': None}
+        point = create_point(self.user, state, 'Uji')
+        self.client.get('/admin/')
+        token = self.client.cookies['survey_admin_csrf'].value
+        self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token})
+        listed = lambda: self.client.get('/admin/api/points?archived=1').json()['items'][0]['drafts']
+        detail = lambda: self.client.get(f'/admin/api/points/{point.id}').json()['drafts']
+        self.assertEqual((listed(), detail()), (0, 0))
+        save_draft(self.user, str(point.id), point.revision, {'state': dict(point.state, catatan='Uji draf'), 'new_observation': None}, 'Uji')
+        self.assertEqual((listed(), detail()), (1, 1))
