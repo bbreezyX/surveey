@@ -93,6 +93,30 @@ class AdminPathTests(TestCase):
         save_draft(self.user, str(point.id), point.revision, {'state': dict(point.state, catatan='Uji draf'), 'new_observation': None}, 'Uji')
         self.assertEqual((listed(), detail()), (1, 1))
 
+    def test_saving_again_revises_own_pending_draft_and_detail_returns_it(self):
+        from .models import Account, AuditEvent, Draft
+        from .services import create_point, save_draft
+        state = {'nomor': 'KOTA JAMBI-KOTA BARU-PAAL LIMA-002', 'nama': '', 'jalur': '', 'alamat': 'Kel. Paal Lima, Kecamatan Kota Baru, Kota Jambi',
+            'keterangan': '', 'lokasi_rekapan': '', 'catatan': '', 'status': '', 'duplikat': False, 'archived': False,
+            'lon': 103.6, 'lat': -1.6, 'date': '', 'photo_id': None, 'observation_id': None}
+        point = create_point(self.user, state, 'Uji')
+        first = save_draft(self.user, str(point.id), point.revision, {'state': dict(point.state, catatan='Satu'), 'new_observation': None}, 'Pertama')
+        second = save_draft(self.user, str(point.id), point.revision, {'state': dict(point.state, catatan='Dua'), 'new_observation': None}, 'Kedua')
+        self.assertEqual(first.id, second.id)
+        draft = Draft.objects.get(status='pending')
+        self.assertEqual((draft.proposed['state']['catatan'], draft.reason), ('Dua', 'Kedua'))
+        self.assertTrue(AuditEvent.objects.filter(action='draft.updated', target=str(draft.id)).exists())
+        other = Account.objects.create_user(username='routing-editor', password='test-only-password-551208', role='editor')
+        save_draft(other, str(point.id), point.revision, {'state': dict(point.state, catatan='Lain'), 'new_observation': None}, 'Akun lain')
+        self.assertEqual(Draft.objects.filter(status='pending').count(), 2)
+        self.client.get('/admin/')
+        token = self.client.cookies['survey_admin_csrf'].value
+        self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token})
+        detail = self.client.get(f'/admin/api/points/{point.id}').json()
+        self.assertEqual(detail['drafts'], 2)
+        self.assertEqual((detail['own_draft']['id'], detail['own_draft']['reason']), (str(draft.id), 'Kedua'))
+        self.assertEqual(detail['own_draft']['proposed']['state']['catatan'], 'Dua')
+
 
 class PublicationCostTests(TestCase):
     def setUp(self):

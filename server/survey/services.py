@@ -52,6 +52,14 @@ def save_draft(actor, point_id, base_revision, proposed, reason):
             {'revision': point.revision, 'state': point.state})
     proposed = validate_proposal(point, proposed)
     reason = text(reason, 'Alasan perubahan', 3000, True)
+    # One pending draft per author and point: the editor reopens it, and saving
+    # again revises it instead of stacking near-identical drafts for review.
+    draft = Draft.objects.select_for_update().filter(point=point, author=actor, status='pending').order_by('-created_at').first()
+    if draft:
+        draft.base_revision, draft.proposed, draft.reason = base_revision, proposed, reason
+        draft.save(update_fields=['base_revision', 'proposed', 'reason'])
+        audit(actor, 'draft.updated', draft.id, point.state, proposed, reason)
+        return draft
     draft = Draft.objects.create(point=point, base_revision=base_revision, proposed=proposed, reason=reason, author=actor)
     audit(actor, 'draft.created', draft.id, point.state, proposed, reason)
     return draft

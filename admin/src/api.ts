@@ -8,6 +8,7 @@ export interface Counts { total: number; official: number; cadangan: number; bel
 // drafts: how many drafts for this point are still waiting for review.
 export interface PointRow { id: string; revision: number; state: PointState; drafts: number }
 export interface Detail extends PointRow {
+  own_draft: { id: string; proposed: { state: PointState; new_observation: { date: string; notes: string; source: string } | null }; reason: string } | null;
   observations: { id: string; date: string; lon: number; lat: number; notes: string; source: string; photos: string[] }[];
   revisions: { number: number; state: PointState; reason: string; at: string }[];
 }

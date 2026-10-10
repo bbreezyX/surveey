@@ -9,6 +9,7 @@
   let detail = $derived(editor.detail);
   let edit = $derived(editor.edit);
   let badge = $derived(badgeOf(detail.state));
+  $effect(() => editor.remember());
 </script>
 <div class="edit-head">
   <div class="edit-title">
@@ -16,9 +17,11 @@
     <p class="edit-id">{detail.state.nomor}</p>
     <p class="edit-meta"><span class="badge badge--{badge.kind}">{badge.label}</span>{#if detail.drafts}<span class="badge badge--draf">{detail.drafts > 1 ? `${detail.drafts} draf menunggu` : 'Draf menunggu'}</span>{/if}<span>Revisi {detail.revision}</span></p>
   </div>
-  <button class="btn-ghost" type="button" onclick={onReload} disabled={editor.busy}>Muat ulang</button>
+  <button class="btn-ghost" type="button" onclick={() => { editor.forget(); onReload(); }} disabled={editor.busy}>Muat ulang</button>
 </div>
 {#if editor.error}<p class="notice-error edit-notice" role="alert">{editor.error}</p>{/if}
+{#if editor.restored}<p class="hint edit-notice">Isian yang belum disimpan dipulihkan. “Muat ulang” membuangnya.</p>{/if}
+{#if detail.own_draft}<p class="hint edit-notice">Formulir berisi draf Anda yang menunggu tinjauan. Menyimpan akan memperbarui draf tersebut.</p>{/if}
 {#if editor.conflict}<p class="hint edit-notice">Perubahan ini masih tampil di formulir dan akan terganti saat “Muat ulang” memuat revisi terbaru. Penyimpanan berikutnya mengacu pada revisi terbaru tersebut.</p>{/if}
 <form class="edit-form" onsubmit={event => editor.save(event)}>
   <div class="edit-scroll">
@@ -53,6 +56,6 @@
   </div>
   <div class="edit-foot">
     <p>Draf belum mengubah peta publik.</p>
-    <button class="btn-primary" type="submit" disabled={editor.busy || (!editor.changed.length && editor.mode !== 'visit')}>{editor.busy ? 'Memproses…' : 'Simpan draf'}</button>
+    <button class="btn-primary" type="submit" disabled={editor.busy || (!editor.changed.length && editor.mode !== 'visit')}>{editor.busy ? 'Memproses…' : detail.own_draft ? 'Perbarui draf' : 'Simpan draf'}</button>
   </div>
 </form>

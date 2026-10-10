@@ -164,8 +164,12 @@ def point_detail(request, point_id):
             'notes': obs.notes, 'source': obs.source, 'photos': [str(v) for v in ObservationEvidence.objects.filter(observation=obs).values_list('photo_id', flat=True)]})
     revisions = [{'number': r.number, 'state': r.state, 'reason': r.reason,
         'at': r.created_at.isoformat()} for r in Revision.objects.filter(point=point).order_by('-number')]
+    # The editor opens on the viewer's own pending draft, so a saved change is
+    # still in the form the next time the point is opened.
+    own = Draft.objects.filter(point=point, author=request.user, status='pending').order_by('-created_at').first()
     return response({'id': str(point.pk), 'revision': point.revision, 'state': point.state,
         'drafts': Draft.objects.filter(point=point, status='pending').count(),
+        'own_draft': {'id': str(own.id), 'proposed': own.proposed, 'reason': own.reason} if own else None,
         'observations': observations, 'revisions': revisions})
 
 @api(['GET', 'POST'])
