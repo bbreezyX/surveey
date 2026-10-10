@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { distance, type PointState } from './api';
+  import { distance, formatDistance, type PointState } from './api';
   import { badgeOf, type PointEditor } from './editor.svelte';
   import Select from './Select.svelte';
   import AddressPicker from './AddressPicker.svelte';
@@ -35,7 +35,7 @@
     </fieldset>
     <fieldset disabled={editor.busy}><legend>Koordinat</legend>
       <div class="pair"><label class="field">Latitude<input type="number" min="-90" max="90" step="any" bind:value={edit.lat} required></label><label class="field">Longitude<input type="number" min="-180" max="180" step="any" bind:value={edit.lon} required></label></div>
-      <p class="hint">Perpindahan dari lokasi saat ini: <strong>{distance(detail.state, edit).toLocaleString('id-ID')} meter</strong>. Pin dapat digeser pada peta di panel Foto & lokasi.</p>
+      <p class="hint">Perpindahan dari lokasi saat ini: <strong>{formatDistance(distance(detail.state, edit))}</strong>. Pin dapat digeser pada peta di panel Foto & lokasi.</p>
     </fieldset>
     <fieldset disabled={editor.busy}><legend>Pengamatan survei</legend>
       <label class="field">Jenis perubahan<Select label="Jenis perubahan" bind:value={editor.mode} options={[{ value: 'correction', label: 'Koreksi foto / data pada pengamatan yang ada' }, { value: 'visit', label: 'Kunjungan survei baru' }]}/></label>

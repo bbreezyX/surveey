@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { api, photoUrl, type Draft, type PointState } from './api';
+  import { api, photoUrl, formatDistance, type Draft, type PointState } from './api';
   let { canPublish, onMessage }: { canPublish: boolean; onMessage: (text: string) => void } = $props();
   let items = $state<Draft[]>([]); let selected = $state<string[]>([]); let reason = $state(''); let busy = $state(false); let error = $state('');
   async function load() { try { items = (await api<{items: Draft[]}>('drafts')).items; selected = []; } catch(e) { error = e instanceof Error ? e.message : 'Gagal memuat draf.'; } }
@@ -27,7 +27,7 @@
     {#if conflict}<p class="notice-error">Konflik: titik sudah pada revisi {draft.current_revision}. Draf ini tidak dapat diterbitkan; perubahan perlu diajukan ulang dari data terbaru.</p>{/if}
     <p class="page-row__text">{draft.reason}</p>
     <dl class="stats-line">
-      <div><dt>Perpindahan</dt><dd>{draft.movement_m.toLocaleString('id-ID')} m</dd></div>
+      <div><dt>Perpindahan</dt><dd>{formatDistance(draft.movement_m)}</dd></div>
       <div><dt>Jumlah resmi</dt><dd>{draft.counts_before.official} → {draft.counts_after.official}</dd></div>
       <div><dt>Cadangan</dt><dd>{draft.counts_before.cadangan} → {draft.counts_after.cadangan}</dd></div>
     </dl>

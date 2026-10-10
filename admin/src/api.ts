@@ -40,3 +40,7 @@ export function distance(a: PointState, b: PointState) {
   const h = Math.sin((y-x)/2)**2 + Math.cos(x)*Math.cos(y)*Math.sin((b.lon-a.lon)*rad/2)**2;
   return Math.round(6371008.8*2*Math.asin(Math.min(1, Math.sqrt(h))));
 }
+// Thousands of metres read faster as kilometres: "2,35 km", not "2.347 m".
+export function formatDistance(metres: number) {
+  return metres < 1000 ? `${metres.toLocaleString('id-ID')} m` : `${(metres/1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} km`;
+}
