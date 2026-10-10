@@ -12,7 +12,7 @@ admin_patterns = [
     path('api/photos/<uuid:photo_id>/revocations', views.revoke),
     path('api/photos/<uuid:photo_id>/<str:kind>', views.photo_content),
     path('api/accounts', views.accounts), path('api/accounts/<int:account_id>', views.account_update),
-    path('api/password', views.password), path('api/audit', views.audit_history), path('api/export', views.export),
+    path('api/password', views.password), path('api/wilayah', views.wilayah), path('api/audit', views.audit_history), path('api/export', views.export),
     path('api/export.csv', views.export_csv), path('api/evidence', views.legacy_evidence),
 ]
 

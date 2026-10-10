@@ -2,6 +2,7 @@
   import { distance, type PointState } from './api';
   import { badgeOf, type PointEditor } from './editor.svelte';
   import Select from './Select.svelte';
+  import AddressPicker from './AddressPicker.svelte';
   let { editor, onReload }: { editor: PointEditor; onReload: () => void } = $props();
   const labels: Record<string, string> = { nomor: 'Nomor', nama: 'Pengusul', jalur: 'Jalur', alamat: 'Alamat lengkap', keterangan: 'Keterangan',
     lokasi_rekapan: 'Lokasi rekapan', catatan: 'Catatan', status: 'Status alokasi', duplikat: 'Perlu verifikasi', archived: 'Diarsipkan', lat: 'Latitude', lon: 'Longitude', photo_id: 'Foto', date: 'Tanggal' };
@@ -22,6 +23,7 @@
 <form class="edit-form" onsubmit={event => editor.save(event)}>
   <div class="edit-scroll">
     <fieldset disabled={editor.busy}><legend>Data alokasi</legend>
+      <AddressPicker bind:value={edit.alamat}/>
       <label class="field">Alamat lengkap<textarea bind:value={edit.alamat} rows="2" maxlength="3000"></textarea></label>
       <div class="pair"><label class="field">Pengusul<input bind:value={edit.nama} maxlength="250"></label><label class="field">Jalur<input bind:value={edit.jalur} maxlength="250"></label></div>
       <label class="field">Lokasi rekapan<textarea bind:value={edit.lokasi_rekapan} rows="2" maxlength="3000"></textarea></label>

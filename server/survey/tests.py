@@ -18,7 +18,7 @@ class AdminPathTests(TestCase):
         self.assertEqual(page.cookies['survey_admin_csrf']['path'], '/admin/')
 
     def test_anonymous_api_and_admin_app_assets_are_protected(self):
-        for path in ('/admin/api/session', '/admin/api/points', '/admin/assets/unknown.js'):
+        for path in ('/admin/api/session', '/admin/api/points', '/admin/api/wilayah', '/admin/assets/unknown.js'):
             result = self.client.get(path)
             self.assertEqual(result.status_code, 401)
             self.assertEqual(result['Cache-Control'], 'private, no-store')
@@ -50,3 +50,14 @@ class AdminPathTests(TestCase):
         login = self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token}, secure=True, HTTP_ORIGIN='https://testserver')
         self.assertEqual(login.status_code, 302)
         self.assertTrue(login.cookies['survey_admin_session']['secure'])
+
+    def test_wilayah_tree_lists_jambi_regions_for_the_address_picker(self):
+        self.client.get('/admin/')
+        token = self.client.cookies['survey_admin_csrf'].value
+        self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token})
+        tree = self.client.get('/admin/api/wilayah').json()
+        self.assertEqual(len(tree), 11)
+        kota = next(kab for kab in tree if kab['nama'] == 'Kota Jambi')
+        mestong = next(kec for kab in tree if kab['nama'] == 'Kabupaten Muaro Jambi' for kec in kab['kecamatan'] if kec['nama'] == 'Mestong')
+        self.assertIn('Kel. Tempino', mestong['desa'])
+        self.assertTrue(all(desa.startswith(('Desa ', 'Kel. ')) for kec in kota['kecamatan'] for desa in kec['desa']))

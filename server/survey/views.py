@@ -144,6 +144,15 @@ def point_map(request):
             items.append({'id': str(pk), 'lon': lon, 'lat': lat, 'status': state.get('status') or '', 'duplikat': bool(state.get('duplikat'))})
     return response({'items': items})
 
+# Kepmendagri region tree for Jambi (kab/kota → kecamatan → desa/kel), built
+# by scripts/build_wilayah_jambi.py. Served from our own origin because the
+# admin's CSP keeps connect-src at 'self'; read once, it never changes at runtime.
+WILAYAH = (Path(__file__).resolve().parent / 'data' / 'wilayah-jambi.json').read_bytes()
+
+@api(['GET'])
+def wilayah(request):
+    return HttpResponse(WILAYAH, content_type='application/json')
+
 @api(['GET'])
 def point_detail(request, point_id):
     point = Point.objects.get(pk=point_id)
