@@ -19,7 +19,7 @@
   <button class="btn-ghost" type="button" onclick={onReload} disabled={editor.busy}>Muat ulang</button>
 </div>
 {#if editor.error}<p class="notice-error edit-notice" role="alert">{editor.error}</p>{/if}
-{#if editor.conflict}<p class="hint edit-notice">Usulan ini masih tampil di formulir dan akan terganti saat “Muat ulang” memuat revisi terbaru. Penyimpanan berikutnya mengacu pada revisi terbaru tersebut.</p>{/if}
+{#if editor.conflict}<p class="hint edit-notice">Perubahan ini masih tampil di formulir dan akan terganti saat “Muat ulang” memuat revisi terbaru. Penyimpanan berikutnya mengacu pada revisi terbaru tersebut.</p>{/if}
 <form class="edit-form" onsubmit={event => editor.save(event)}>
   <div class="edit-scroll">
     <fieldset disabled={editor.busy}><legend>Data alokasi</legend>
@@ -46,7 +46,7 @@
       {:else}<p class="hint">Tanggal dokumentasi tetap {edit.date || 'belum diketahui'}. Bukti lama tetap disimpan. Koreksi koordinat mengubah lokasi saat ini dan tidak menimpa koordinat pengamatan lama.</p>{/if}
     </fieldset>
     <fieldset disabled={editor.busy}><legend>Tinjau perubahan</legend>
-      {#if editor.changed.length}<div class="table-wrap"><table><thead><tr><th>Data</th><th>Saat ini</th><th>Usulan</th></tr></thead><tbody>{#each editor.changed as key}<tr><th>{labels[key] || key}</th><td>{String(detail.state[key as keyof PointState] ?? '—')}</td><td>{String(edit[key as keyof PointState] ?? '—')}</td></tr>{/each}</tbody></table></div>{:else}<p class="hint">Belum ada perubahan data alokasi atau lokasi.</p>{/if}
+      {#if editor.changed.length}<div class="table-wrap"><table><thead><tr><th>Data</th><th>Lama</th><th>Baru</th></tr></thead><tbody>{#each editor.changed as key}<tr><th>{labels[key] || key}</th><td>{String(detail.state[key as keyof PointState] ?? '—')}</td><td>{String(edit[key as keyof PointState] ?? '—')}</td></tr>{/each}</tbody></table></div>{:else}<p class="hint">Belum ada perubahan data alokasi atau lokasi.</p>{/if}
       <p class="hint">Kontribusi ke jumlah resmi: <strong>{detail.state.archived || detail.state.status === 'Cadangan' ? 0 : 1} → {edit.archived || edit.status === 'Cadangan' ? 0 : 1}</strong>. Titik “Belum Ditetapkan” tetap termasuk alokasi resmi.</p>
       <label class="field">Alasan perubahan<textarea bind:value={editor.reason} rows="2" maxlength="3000" required></textarea></label>
     </fieldset>

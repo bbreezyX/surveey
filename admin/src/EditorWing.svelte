@@ -9,8 +9,8 @@
 <section class="wing-section">
   <h3>Foto survei</h3>
   <div class="photo-compare">
-    <figure><figcaption>Saat ini</figcaption>{#if detail.state.photo_id}<img src={photoUrl(detail.state.photo_id)} alt="Foto survei saat ini">{:else}<p class="photo-empty">Belum ada foto</p>{/if}</figure>
-    <figure><figcaption>Usulan</figcaption>{#if editor.edit.photo_id}<img src={photoUrl(editor.edit.photo_id)} alt="Foto usulan">{:else}<p class="photo-empty">Belum ada foto</p>{/if}</figure>
+    <figure><figcaption>Foto lama</figcaption>{#if detail.state.photo_id}<img src={photoUrl(detail.state.photo_id)} alt="Foto lama">{:else}<p class="photo-empty">Belum ada foto</p>{/if}</figure>
+    <figure><figcaption>Foto baru</figcaption>{#if editor.edit.photo_id && editor.edit.photo_id !== detail.state.photo_id}<img src={photoUrl(editor.edit.photo_id)} alt="Foto baru">{:else}<p class="photo-empty">Belum ada foto baru</p>{/if}</figure>
   </div>
   <!-- The native input covers the whole zone (invisible), so clicking and
        dropping a file both reach it without any script. -->

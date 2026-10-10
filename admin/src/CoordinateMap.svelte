@@ -50,5 +50,5 @@
   });
 </script>
 <div class="coordinate-map" bind:this={target} aria-label="Peta penyuntingan koordinat"></div>
-<button type="button" disabled={!Number.isFinite(lat) || !Number.isFinite(lon)} onclick={() => map?.getView().setCenter(fromLonLat([lon, lat]))}>Lihat lokasi usulan</button>
-<p class="hint">Klik pada peta atau pergeseran pin kuning mengubah koordinat usulan. Pin abu-abu menandai lokasi sebelumnya. Pemindahan pin tidak menandai lokasi sebagai terverifikasi.</p>
+<button type="button" disabled={!Number.isFinite(lat) || !Number.isFinite(lon)} onclick={() => map?.getView().setCenter(fromLonLat([lon, lat]))}>Lihat lokasi baru</button>
+<p class="hint">Klik pada peta atau pergeseran pin kuning mengubah koordinat baru. Pin abu-abu menandai lokasi sebelumnya. Pemindahan pin tidak menandai lokasi sebagai terverifikasi.</p>
