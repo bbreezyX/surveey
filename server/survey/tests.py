@@ -61,3 +61,19 @@ class AdminPathTests(TestCase):
         mestong = next(kec for kab in tree if kab['nama'] == 'Kabupaten Muaro Jambi' for kec in kab['kecamatan'] if kec['nama'] == 'Mestong')
         self.assertIn('Kel. Tempino', mestong['desa'])
         self.assertTrue(all(desa.startswith(('Desa ', 'Kel. ')) for kec in kota['kecamatan'] for desa in kec['desa']))
+
+    def test_alamat_fix_batch_drafts_once_and_dry_run_writes_nothing(self):
+        from django.core.management import call_command
+        from .models import Draft
+        from .services import create_point
+        state = {'nomor': 'MUARO JAMBI-MESTONG-TEMPINO-001', 'nama': '', 'jalur': '', 'alamat': 'Desa Tempino, Kecamatan Mestong, Kabupaten Muaro Jambi',
+            'keterangan': '', 'lokasi_rekapan': '', 'catatan': '', 'status': '', 'duplikat': False, 'archived': False,
+            'lon': 103.5, 'lat': -1.78, 'date': '', 'photo_id': None, 'observation_id': None}
+        point = create_point(self.user, state, 'Uji')
+        call_command('draft_alamat_fixes', stdout=__import__('io').StringIO())
+        self.assertFalse(Draft.objects.exists())
+        for _ in range(2):
+            call_command('draft_alamat_fixes', '--apply', '--actor', self.user.username, stdout=__import__('io').StringIO())
+        draft = Draft.objects.get()
+        self.assertEqual((draft.point_id, draft.status), (point.id, 'pending'))
+        self.assertEqual(draft.proposed['state']['alamat'], 'Kel. Tempino, Kecamatan Mestong, Kabupaten Muaro Jambi')
