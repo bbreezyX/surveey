@@ -168,24 +168,27 @@ def build_publication(actor, active, reason):
     photos = list(Photo.objects.filter(id__in=photo_ids, ready=True))
     if len(photos) != len(photo_ids):
         raise Problem('Terdapat foto yang belum siap. Penerbitan dibatalkan.', 409)
+    known = {media.id: media for media in PublishedMedia.objects.filter(id__in=[photo.id for photo in photos])}
+    if any(media.revoked for media in known.values()):
+        raise Problem('Foto telah dicabut karena privasi; pilih foto lain.', 409)
+    # Derivatives are write-once and cleanup_uploads never deletes anything with a PublishedMedia row,
+    # so only photos published for the first time need a storage round trip. Re-checking every
+    # manifest photo cost one HEAD per published point on each publication.
     for photo in photos:
-        if not storage.exists(photo.derivative_key):
+        if photo.id not in known and not storage.exists(photo.derivative_key):
             raise Problem('Berkas foto belum tersedia. Penerbitan dibatalkan.', 409)
-        if PublishedMedia.objects.filter(pk=photo.pk, revoked=True).exists():
-            raise Problem('Foto telah dicabut karena privasi; pilih foto lain.', 409)
     geojson = {'type': 'FeatureCollection', 'features': [public_feature(p, p.state) for p in points]}
     manifest = sorted(str(photo.id) for photo in photos)
     checksum = hashlib.sha256(json.dumps(geojson, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
     publication = Publication.objects.create(geojson=geojson, manifest=manifest, checksum=checksum)
     # Retention begins when an image last leaves the active manifest, not when first uploaded.
     PublishedMedia.objects.filter(retain_until__isnull=True).exclude(id__in=photo_ids).update(retain_until=timezone.now()+timedelta(days=30))
-    for photo in photos:
-        media, _ = PublishedMedia.objects.get_or_create(id=photo.id, defaults={'derivative_key': photo.derivative_key,
-            'checksum': photo.derivative_checksum, 'mime': photo.mime})
-        if media.retain_until is not None:
-            media.retain_until = None
-            media.save(update_fields=['retain_until'])
-        MediaGrant.objects.create(publication=publication, media=media)
+    # Set-based writes keep the query count flat as the map grows; the publication lock above
+    # serializes publishers, so the known/new split cannot race another publication.
+    PublishedMedia.objects.filter(id__in=list(known), retain_until__isnull=False).update(retain_until=None)
+    PublishedMedia.objects.bulk_create([PublishedMedia(id=photo.id, derivative_key=photo.derivative_key,
+        checksum=photo.derivative_checksum, mime=photo.mime) for photo in photos if photo.id not in known])
+    MediaGrant.objects.bulk_create([MediaGrant(publication=publication, media_id=photo.id) for photo in photos])
     previous = str(active.publication_id) if active.publication_id else None
     active.publication = publication
     active.save(update_fields=['publication'])

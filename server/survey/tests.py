@@ -92,3 +92,62 @@ class AdminPathTests(TestCase):
         self.assertEqual((listed(), detail()), (0, 0))
         save_draft(self.user, str(point.id), point.revision, {'state': dict(point.state, catatan='Uji draf'), 'new_observation': None}, 'Uji')
         self.assertEqual((listed(), detail()), (1, 1))
+
+
+class PublicationCostTests(TestCase):
+    def setUp(self):
+        import tempfile
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        override = override_settings(STORAGE_BACKEND='filesystem', STORAGE_ROOT=self.directory.name)
+        override.enable()
+        self.addCleanup(override.disable)
+        self.user = Account.objects.create_user(username='publish-owner', password='test-only-password-347192', role='owner')
+
+    def add_points(self, count):
+        import uuid
+        from pathlib import Path
+        from .models import Point, Photo
+        folder = Path(self.directory.name) / 'display'
+        folder.mkdir(exist_ok=True)
+        for _ in range(count):
+            photo_id = uuid.uuid4()
+            (folder / photo_id.hex).write_bytes(b'jpeg')
+            photo = Photo.objects.create(id=photo_id, original_key=f'originals/{photo_id.hex}', derivative_key=f'display/{photo_id.hex}',
+                original_checksum='0' * 64, derivative_checksum='1' * 64, width=1, height=1, mime='image/jpeg', ready=True)
+            nomor = f'KOTA JAMBI-KOTA BARU-PAAL LIMA-{Point.objects.count() + 1:03d}'
+            state = {'nomor': nomor, 'nama': '', 'jalur': '', 'alamat': '', 'keterangan': '', 'lokasi_rekapan': '', 'catatan': '',
+                'status': '', 'duplikat': False, 'archived': False, 'lon': 103.6, 'lat': -1.6, 'date': '', 'photo_id': str(photo.id), 'observation_id': None}
+            point = Point.objects.create(nomor=nomor, state=state)
+            Photo.objects.filter(id=photo.id).update(point=point)
+
+    def publish_one_draft(self):
+        from unittest import mock
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        from delivery import storage
+        from .models import Point
+        from .services import save_draft, publish
+        point = Point.objects.order_by('nomor').first()
+        draft = save_draft(self.user, str(point.id), point.revision, {'state': dict(point.state, catatan='Uji'), 'new_observation': None}, 'Uji')
+        with mock.patch.object(storage, 'exists', wraps=storage.exists) as exists, CaptureQueriesContext(connection) as queries:
+            publish(self.user, [str(draft.id)], 'Uji')
+        return exists.call_count, len(queries)
+
+    def test_republishing_skips_known_media_and_does_not_scale_with_points(self):
+        from delivery.models import ActivePublication, MediaGrant
+        from .services import publish_baseline
+        ActivePublication.objects.get_or_create(id=1)
+        self.add_points(3)
+        publish_baseline(self.user, 'Uji')
+        small = self.publish_one_draft()
+        self.add_points(1)
+        self.assertEqual(self.publish_one_draft()[0], 1, 'Only a photo published for the first time is checked in storage.')
+        self.add_points(20)
+        self.publish_one_draft()
+        large = self.publish_one_draft()
+        self.assertEqual((small[0], large[0]), (0, 0))
+        self.assertEqual(small[1], large[1])
+        active = ActivePublication.objects.get(id=1).publication
+        self.assertEqual(MediaGrant.objects.filter(publication=active).count(), 24)
+        self.assertEqual(len(active.manifest), 24)
