@@ -10,6 +10,7 @@
   import Point from 'ol/geom/Point';
   import Modify from 'ol/interaction/Modify';
   import { fromLonLat, toLonLat } from 'ol/proj';
+  import { containsCoordinate } from 'ol/extent';
   import { Style, Circle, Fill, Stroke } from 'ol/style';
   let { lat = $bindable(), lon = $bindable(), original }: { lat: number; lon: number; original?: { lat: number; lon: number } } = $props();
   let target: HTMLDivElement;
@@ -41,6 +42,10 @@
       const xy = fromLonLat([lon, lat]);
       if (!pin) { pin = new Feature(new Point(xy)); source.addFeature(pin); }
       else pin.getGeometry()?.setCoordinates(xy);
+      // Typed coordinates can land anywhere; follow them once the pin leaves
+      // the view. A click or drag always stays inside it, so those don't jump.
+      const view = map.getView();
+      if (!containsCoordinate(view.calculateExtent(map.getSize()), xy)) view.setCenter(xy);
     }
   });
 </script>
