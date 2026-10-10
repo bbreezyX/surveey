@@ -85,6 +85,8 @@ legend { padding: 0; margin-bottom: 10px; font-size: 14.5px; font-weight: 750; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--divider); overflow-wrap: anywhere; }
 th { font-weight: 650; }
+/* Row labels ("Alamat lengkap") break between words only; long values take the rest. */
+tbody th { width: 1%; overflow-wrap: normal; }
 
 .badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 6px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 18px; white-space: nowrap; }
 .badge::before { content: ""; width: 9px; height: 9px; border-radius: 50%; flex: none; }
