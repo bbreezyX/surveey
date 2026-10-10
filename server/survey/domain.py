@@ -44,6 +44,26 @@ def coordinate(value, limit):
         raise Problem('Koordinat di luar batas atau tidak valid.')
     return value
 
+# Nomor reads KABUPATEN-KECAMATAN-DESA-NNN and follows the address, so the
+# lists group a point where its address says it is. Only the official form
+# written by the address picker ("Desa X, Kecamatan Y, Kabupaten Z" or
+# "Kel. X, Kecamatan Y, Kota Z") is read; anything else keeps its Nomor.
+ADDRESS = re.compile(r'(?:Desa|Kel\.)\s+(.+?),\s*Kecamatan\s+(.+?),\s*(Kabupaten|Kota)\s+(.+)')
+
+def nomor_prefix(alamat):
+    match = ADDRESS.fullmatch(str(alamat or '').strip())
+    if not match:
+        return None
+    desa, kecamatan, kind, kabupaten = match.groups()
+    # A hyphen inside a name ("Muko-muko") would split the Nomor's segments.
+    part = lambda name: re.sub(r'\s+', ' ', name.replace('-', ' ')).strip().upper()
+    return '-'.join(part(name) for name in (('Kota ' if kind == 'Kota' else '') + kabupaten, kecamatan, desa))
+
+def same_place(nomor, prefix):
+    # Spelling and case differences ("Desa Suka Damai" vs "SUKA DAMAI") are not a move.
+    plain = lambda name: re.sub(r'[^A-Z0-9]', '', re.sub(r'^(DESA|KEL\.?|KELURAHAN)\s+', '', name.strip().upper()))
+    return [plain(name) for name in nomor.rsplit('-', 1)[0].split('-')] == [plain(name) for name in prefix.split('-')]
+
 def validate_state(value, original=None):
     if not isinstance(value, dict) or set(value) != FIELDS:
         raise Problem('Kolom titik tidak lengkap atau tidak dikenal.')

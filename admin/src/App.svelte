@@ -148,7 +148,7 @@
       {#if editor}{#key editor}<EditorSheet {editor} onReload={() => select(editor!.detail.id)}/>{/key}
       {:else if creating}<div class="edit-head"><div class="edit-title"><h2>Titik baru</h2><p class="edit-id">Titik baru dimulai sebagai arsip. Setelah data dan bukti lengkap, aktivasi diajukan melalui draf.</p></div></div>
         <form class="edit-form" onsubmit={create}><div class="edit-scroll"><fieldset disabled={busy}><legend>Identitas & lokasi</legend>
-          <label class="field">Nomor permanen<input bind:value={newPoint.nomor} placeholder="KABUPATEN-KECAMATAN-DESA-001" required maxlength="250"></label>
+          <label class="field">Nomor<input bind:value={newPoint.nomor} placeholder="KABUPATEN-KECAMATAN-DESA-001" required maxlength="250"></label>
           <AddressPicker bind:value={newPoint.alamat}/>
           <label class="field">Alamat lengkap<textarea bind:value={newPoint.alamat} rows="2" maxlength="3000" required></textarea></label>
           <div class="pair"><label class="field">Latitude<input type="number" bind:value={newPoint.lat} min="-90" max="90" step="any" required></label><label class="field">Longitude<input type="number" bind:value={newPoint.lon} min="-180" max="180" step="any" required></label></div>

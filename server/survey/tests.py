@@ -117,6 +117,42 @@ class AdminPathTests(TestCase):
         self.assertEqual((detail['own_draft']['id'], detail['own_draft']['reason']), (str(draft.id), 'Kedua'))
         self.assertEqual(detail['own_draft']['proposed']['state']['catatan'], 'Dua')
 
+    def test_nomor_follows_the_address_with_the_next_free_number(self):
+        from .domain import nomor_prefix, same_place
+        from .models import Point
+        from .services import create_point, save_draft, publish
+        self.assertEqual(nomor_prefix('Desa Pelempang, Kecamatan Mestong, Kabupaten Muaro Jambi'), 'MUARO JAMBI-MESTONG-PELEMPANG')
+        self.assertEqual(nomor_prefix('Kel. Kenali Besar, Kecamatan Alam Barajo, Kota Jambi'), 'KOTA JAMBI-ALAM BARAJO-KENALI BESAR')
+        self.assertEqual(nomor_prefix('Desa X, Kecamatan Muko-muko Bathin VII, Kabupaten Bungo'), 'BUNGO-MUKO MUKO BATHIN VII-X')
+        self.assertIsNone(nomor_prefix('RT 21 Rawasari, Kota Jambi'))
+        self.assertTrue(same_place('Muaro Jambi-Mestong-Desa Suka Damai-001', 'MUARO JAMBI-MESTONG-SUKA DAMAI'))
+        self.assertFalse(same_place('MUARO BUNGO-SEPENGGAL LINTAS-LUBUK LANDAI-001', 'BUNGO-TANAH SEPENGGAL LINTAS-LUBUK LANDAI'))
+        def point(nomor, alamat):
+            return create_point(self.user, {'nomor': nomor, 'nama': '', 'jalur': '', 'alamat': alamat, 'keterangan': '', 'lokasi_rekapan': '',
+                'catatan': '', 'status': '', 'duplikat': False, 'archived': False, 'lon': 103.5, 'lat': -1.8, 'date': '', 'photo_id': None, 'observation_id': None}, 'Uji')
+        pelempang = 'Desa Pelempang, Kecamatan Mestong, Kabupaten Muaro Jambi'
+        point('MUARO JAMBI-MESTONG-PELEMPANG-001', pelempang)
+        point('MUARO JAMBI-MESTONG-PELEMPANG-003', pelempang)
+        first = point('MUARO JAMBI-MESTONG-TEMPINO-001', 'Kel. Tempino, Kecamatan Mestong, Kabupaten Muaro Jambi')
+        second = point('MUARO JAMBI-MESTONG-TEMPINO-002', 'Kel. Tempino, Kecamatan Mestong, Kabupaten Muaro Jambi')
+        a = save_draft(self.user, str(first.id), first.revision, {'state': dict(first.state, alamat=pelempang), 'new_observation': None}, 'Pindah')
+        other = __import__('survey.models', fromlist=['Account']).Account.objects.create_user(username='routing-editor-2', password='test-only-password-551209', role='editor')
+        b = save_draft(other, str(second.id), second.revision, {'state': dict(second.state, alamat=pelempang), 'new_observation': None}, 'Pindah')
+        self.assertEqual(a.proposed['state']['nomor'], 'MUARO JAMBI-MESTONG-PELEMPANG-004')
+        self.assertEqual(b.proposed['state']['nomor'], 'MUARO JAMBI-MESTONG-PELEMPANG-005')
+        # Saving again keeps the number it already holds.
+        a = save_draft(self.user, str(first.id), first.revision, {'state': a.proposed['state'], 'new_observation': None}, 'Pindah lagi')
+        self.assertEqual(a.proposed['state']['nomor'], 'MUARO JAMBI-MESTONG-PELEMPANG-004')
+        # The number cannot be typed freely, and spelling alone does not rename.
+        c = point('Muaro Jambi-Mestong-Desa Suka Damai-001', 'Desa Suka Damai, Kecamatan Mestong, Kabupaten Muaro Jambi')
+        d = save_draft(self.user, str(c.id), c.revision, {'state': dict(c.state, nomor='X-Y-Z-999', catatan='Catat'), 'new_observation': None}, 'Catatan')
+        self.assertEqual(d.proposed['state']['nomor'], 'Muaro Jambi-Mestong-Desa Suka Damai-001')
+        publish(self.user, [str(a.id), str(b.id)], 'Terbit')
+        self.assertEqual(sorted(Point.objects.filter(nomor__contains='PELEMPANG').values_list('nomor', flat=True)),
+            ['MUARO JAMBI-MESTONG-PELEMPANG-001', 'MUARO JAMBI-MESTONG-PELEMPANG-003', 'MUARO JAMBI-MESTONG-PELEMPANG-004', 'MUARO JAMBI-MESTONG-PELEMPANG-005'])
+        first.refresh_from_db()
+        self.assertEqual((first.nomor, first.state['nomor']), ('MUARO JAMBI-MESTONG-PELEMPANG-004', 'MUARO JAMBI-MESTONG-PELEMPANG-004'))
+
 
 class PublicationCostTests(TestCase):
     def setUp(self):

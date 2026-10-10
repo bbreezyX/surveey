@@ -1,12 +1,13 @@
 import hashlib
 import json
+import re
 from datetime import timedelta
 from django.db import transaction, IntegrityError
 from django.utils import timezone
 from delivery.models import Publication, ActivePublication, PublishedMedia, MediaGrant
 from delivery import storage
 from .models import Point, Draft, Photo, Observation, ObservationEvidence, Revision, AuditEvent
-from .domain import Problem, validate_state, text, date, coordinate, identifier, clone, public_feature, counts, movement
+from .domain import Problem, validate_state, nomor_prefix, same_place, text, date, coordinate, identifier, clone, public_feature, counts, movement
 from .security import permission
 
 def audit(actor, action, target, before=None, after=None, reason=''):
@@ -20,10 +21,33 @@ def checked_photo(photo_id, point):
         raise Problem('Foto tidak tersedia untuk titik ini.')
     return photo
 
+def assign_nomor(point, state, wanted=None):
+    """Rename the point when its address moves it to another desa.
+
+    The number is the next free one in that desa, counting other points and
+    other points' pending drafts, so no two points can publish the same
+    Nomor. A draft saved again keeps the number it already holds."""
+    prefix = nomor_prefix(state['alamat'])
+    if not prefix or same_place(point.nomor, prefix):
+        state['nomor'] = point.nomor
+        return state
+    taken = {n.upper() for n in Point.objects.filter(nomor__istartswith=prefix + '-').exclude(pk=point.pk).values_list('nomor', flat=True)}
+    taken |= {d.proposed['state']['nomor'].upper() for d in Draft.objects.filter(status='pending')
+        .filter(proposed__state__nomor__istartswith=prefix + '-').exclude(point=point)}
+    if isinstance(wanted, str) and re.fullmatch(re.escape(prefix) + r'-\d{3,}', wanted) and wanted not in taken:
+        state['nomor'] = wanted
+        return state
+    numbers = [int(n.rsplit('-', 1)[1]) for n in taken if re.fullmatch(re.escape(prefix) + r'-\d+', n)]
+    state['nomor'] = f'{prefix}-{max(numbers, default=0) + 1:03d}'
+    return state
+
 def validate_proposal(point, proposed):
-    if not isinstance(proposed, dict) or set(proposed) != {'state', 'new_observation'}:
+    if not isinstance(proposed, dict) or set(proposed) != {'state', 'new_observation'} or not isinstance(proposed['state'], dict):
         raise Problem('Usulan perubahan tidak valid.')
-    state = validate_state(proposed['state'], point.state)
+    # The Nomor is never taken from the form; it is derived from the address.
+    wanted = proposed['state'].get('nomor')
+    state = validate_state({**proposed['state'], 'nomor': point.nomor} if 'nomor' in proposed['state'] else proposed['state'], point.state)
+    assign_nomor(point, state, wanted)
     photo = checked_photo(state['photo_id'], point)
     if photo and photo.id != point.state.get('photo_id') and not photo.ready:
         raise Problem('Foto belum siap.')
@@ -122,7 +146,8 @@ def validate_saved_draft(draft):
         previous = Revision.objects.get(point=draft.point, number=draft.proposed['restore_revision'])
         if previous.state != draft.proposed['state'] or draft.proposed.get('new_observation') is not None:
             raise Problem('Draf pemulihan tidak sesuai riwayat.')
-        state = validate_state(previous.state, draft.point.state)
+        state = validate_state({**previous.state, 'nomor': draft.point.nomor}, draft.point.state)
+        assign_nomor(draft.point, state, previous.state['nomor'])
         checked_photo(state['photo_id'], draft.point)
         return {'state': state, 'new_observation': None}
     return validate_proposal(draft.point, draft.proposed)
@@ -162,8 +187,8 @@ def publish(actor, draft_ids, reason):
             ObservationEvidence.objects.get_or_create(observation=observation, photo_id=state['photo_id'])
         before = point.state
         point.revision += 1
-        point.state, point.archived = state, state['archived']
-        point.save(update_fields=['revision', 'state', 'archived', 'updated_at'])
+        point.state, point.archived, point.nomor = state, state['archived'], state['nomor']
+        point.save(update_fields=['revision', 'state', 'archived', 'nomor', 'updated_at'])
         Revision.objects.create(point=point, number=point.revision, state=state, actor=actor, reason=draft.reason)
         draft.status = 'published'
         draft.save(update_fields=['status'])
