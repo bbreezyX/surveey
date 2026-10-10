@@ -30,5 +30,6 @@ it('preserves the existing entire dataset without changing counting semantics', 
   expect(points.length).toBe(550);
   expect(points.filter(p => !p.cadangan).length).toBe(500);
   expect(points.filter(p => p.belum).length).toBe(2);
-  expect(points.filter(p => p.duplikat).length).toBe(22);
+  // 21 since MUARO JAMBI-MESTONG-PELEMPANG-002 got its own coordinates in the admin.
+  expect(points.filter(p => p.duplikat).length).toBe(21);
 });
