@@ -401,7 +401,7 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
 .page pre { background: var(--frost); }
 .page .photo-compare { margin-top: 12px; }
 .page .photo-compare img, .page .photo-empty { aspect-ratio: 4 / 3; }
-.page-foot { position: sticky; bottom: 0; z-index: 2; padding: 14px 24px 4px; border-top: 1px solid var(--divider); background: #fff; }
+.page-foot { position: sticky; bottom: 0; z-index: 2; padding: 14px 24px; border-top: 1px solid var(--divider); background: #fff; }
 .page-foot .field { margin-bottom: 10px; }
 .page-foot__bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .page-foot__bar p { margin: 0; color: var(--muted); font-size: 13px; }
