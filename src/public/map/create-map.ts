@@ -30,7 +30,7 @@ export interface SurveyMapAdapter {
   updateSize(): void;
   dispose(): void;
 }
-export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null) => void }): SurveyMapAdapter {
+export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null, nearby?: boolean) => void }): SurveyMapAdapter {
   const { points, boundaries, dissolved } = options.dataset;
   const byId = new Map(points.map(point => [point.nomor, point]));
   const coordinateKey = (point: SurveyPoint) => `${point.latNum.toFixed(6)},${point.lonNum.toFixed(6)}`;
@@ -81,7 +81,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     const candidates: SurveyPoint[] = [];
     map.forEachFeatureAtPixel(event.pixel, feature => { const point = byId.get(String(feature.getId())); if (point) for (const unit of atCoordinate.get(coordinateKey(point)) ?? [point]) if (shown(unit) && !candidates.includes(unit)) candidates.push(unit); }, { layerFilter: layer => layer === pointLayer, hitTolerance: 8 });
     if (!candidates.length) options.onSelect(null);
-    else { const index = candidates.findIndex(point => point.nomor === selected); options.onSelect(candidates[(index + 1) % candidates.length].nomor); }
+    else { const index = candidates.findIndex(point => point.nomor === selected); options.onSelect(candidates[(index + 1) % candidates.length].nomor, candidates.length > 1); }
   });
   const pointer = map.on('pointermove', event => { options.target.style.cursor = !event.dragging && map.hasFeatureAtPixel(event.pixel, { layerFilter: layer => layer === pointLayer, hitTolerance: 8 }) ? 'pointer' : ''; });
   const observer = new ResizeObserver(() => { if (!disposed) map.updateSize(); }); observer.observe(options.target);

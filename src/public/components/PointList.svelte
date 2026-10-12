@@ -28,7 +28,7 @@
           <div class="atlas-units">
             {#each group.items as point, index (point.nomor)}
               {@const flags = [point.cadangan ? STATUS_LABEL.cadangan.tag : '', point.duplikat ? STATUS_LABEL.duplikat.tag : '', point.belum ? STATUS_LABEL.belum.tag : ''].filter(Boolean)}
-              <button class="atlas-pt" type="button" data-item-id={point.nomor} aria-label={[`Titik ${point.display.code}`, ...flags, point.display.primary].join('. ')} aria-pressed={state.selectedNomor === point.nomor} onclick={event => state.select(point.nomor, event.currentTarget)}>
+              <button class="atlas-pt" class:is-recent={state.recentNomor === point.nomor} type="button" data-item-id={point.nomor} aria-label={[`Titik ${point.display.code}`, ...flags, point.display.primary, state.recentNomor === point.nomor ? 'Terakhir dilihat' : ''].filter(Boolean).join('. ')} aria-pressed={state.selectedNomor === point.nomor} onclick={event => state.select(point.nomor, event.currentTarget)}>
                 <span class="atlas-unit" class:is-active={state.selectedNomor === point.nomor} class:is-cadangan={point.cadangan} class:is-duplikat={point.duplikat} class:is-belum={point.belum}>{point.display.code}</span>
                 <span class="atlas-pt__info">
                   {#if !shared && landmarks[index]}<span class="atlas-pt__note">{landmarks[index]}</span>{/if}

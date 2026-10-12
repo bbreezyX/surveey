@@ -766,6 +766,61 @@ body.is-sidebar-collapsed #sidebar {
     background: var(--row-hover);
 }
 
+/* The point whose detail was just closed, so the reader finds where they left
+   off. Only the numbered tile is marked: the code is what the eye scans for.
+   Blue, not yellow: yellow keeps meaning "selected on the map". A halo ring
+   instead of a new border keeps the duplikat/cadangan tile colours readable.
+   The mark is a cue, not a state: it pulses once after the sheet has finished
+   rising, then fades out before the state drops the class (2.8s). */
+.atlas-pt.is-recent .atlas-unit:not(.is-active) {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue);
+}
+
+.atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
+    border-color: var(--blue);
+    background-color: var(--blue-tint);
+    color: var(--blue-deep);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .atlas-pt.is-recent .atlas-unit:not(.is-active) {
+        animation: atlas-recent 2.4s ease-out 0.3s both;
+    }
+
+    .atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
+        animation: atlas-recent 2.4s ease-out 0.3s both, atlas-recent-tile 2.4s ease-out 0.3s both;
+    }
+}
+
+@keyframes atlas-recent {
+    0% {
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue), 0 0 0 4px rgba(0, 114, 188, 0.45);
+    }
+    25% {
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue), 0 0 0 12px rgba(0, 114, 188, 0);
+    }
+    65% {
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue), 0 0 0 4px rgba(0, 114, 188, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0), 0 0 0 4px rgba(0, 114, 188, 0), 0 0 0 4px rgba(0, 114, 188, 0);
+    }
+}
+
+@keyframes atlas-recent-tile {
+    0%,
+    65% {
+        border-color: var(--blue);
+        background-color: var(--blue-tint);
+        color: var(--blue-deep);
+    }
+    100% {
+        border-color: #c6d3df;
+        background-color: #fff;
+        color: var(--ink);
+    }
+}
+
 .atlas-pt__info {
     display: flex;
     flex-direction: column;
