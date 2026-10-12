@@ -77,7 +77,9 @@ def nomor_numbers(nomors):
 def nomor_gaps(nomors):
     # A desa needs tidying when its numbers are not exactly 001..N: a point
     # that moved away leaves a hole, and the one that arrived takes max+1.
-    return sorted(prefix for prefix, numbers in nomor_numbers(nomors).items() if sorted(numbers) != list(range(1, len(numbers) + 1)))
+    # The numbers in use come along so the list can show what is out of order.
+    return {prefix: sorted(numbers) for prefix, numbers in sorted(nomor_numbers(nomors).items())
+        if sorted(numbers) != list(range(1, len(numbers) + 1))}
 
 def validate_state(value, original=None):
     if not isinstance(value, dict) or set(value) != FIELDS:

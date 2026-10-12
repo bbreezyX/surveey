@@ -14,7 +14,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
 from delivery import storage
 from delivery.models import ActivePublication, Publication
-from .domain import Problem, text, identifier, counts, nomor_gaps
+from .domain import Problem, text, identifier, counts, nomor_gaps, nomor_prefix
 from .models import Account, Point, Draft, Revision, Observation, ObservationEvidence, Photo, AuditEvent
 from .security import permission, establish, throttle
 from .media import store_photo, MAX_BYTES
@@ -136,6 +136,13 @@ def points(request):
         'total': total, 'page': page, 'pages': max(1, (total+49)//50), 'counts': counts(Point.objects.values_list('state', flat=True)),
         # Over every point, not the page: a desa can span two pages of 50.
         'gaps': nomor_gaps(Point.objects.values_list('nomor', flat=True))})
+
+@api(['GET'])
+def next_nomor(request):
+    # Fills the new-point form's Nomor once a desa is picked. null when the
+    # address is not in the picker's official form.
+    prefix = nomor_prefix(request.GET.get('alamat', '')[:3000])
+    return response({'nomor': services.next_nomor(prefix, services.taken_nomors(prefix)) if prefix else None})
 
 @api(['POST'])
 def renumber(request):

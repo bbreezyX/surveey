@@ -17,7 +17,8 @@
   // Cascading kab/kota → kecamatan → desa/kel picker that writes the address
   // in the form the existing data uses: "Desa X, Kecamatan Y, Kabupaten Z".
   // The text stays editable; the picker only overwrites it once a desa is chosen.
-  let { value = $bindable() }: { value: string } = $props();
+  // onpick runs only when a desa is chosen here, not when the text is typed.
+  let { value = $bindable(), onpick }: { value: string; onpick?: (address: string) => void } = $props();
   let tree = $state<Wilayah>([]), failed = $state(false);
   let kab = $state(''), kec = $state(''), desa = $state('');
   // The address this picker last read or wrote. Picking only a kabupaten
@@ -41,6 +42,7 @@
   function chooseDesa(next: string) {
     if (!next) return;
     value = seen = `${next}, Kecamatan ${kec}, ${kab}`;
+    onpick?.(value);
   }
 </script>
 {#if failed}<p class="hint">Daftar wilayah gagal dimuat. Alamat tetap dapat diketik.</p>

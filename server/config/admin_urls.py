@@ -4,7 +4,7 @@ from survey import views
 admin_patterns = [
     path('', views.home), path('login', views.login), path('logout', views.logout),
     path('assets/<str:filename>', views.asset), path('api/session', views.session),
-    path('api/points', views.points), path('api/points/map', views.point_map), path('api/points/renumber', views.renumber), path('api/points/<uuid:point_id>', views.point_detail),
+    path('api/points', views.points), path('api/points/map', views.point_map), path('api/points/renumber', views.renumber), path('api/points/next-nomor', views.next_nomor), path('api/points/<uuid:point_id>', views.point_detail),
     path('api/points/<uuid:point_id>/restorations', views.restore),
     path('api/drafts', views.drafts), path('api/drafts/<uuid:draft_id>/discard', views.discard),
     path('api/publications', views.publications), path('api/publications/publish', views.publish),

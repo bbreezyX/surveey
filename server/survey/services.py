@@ -31,15 +31,25 @@ def assign_nomor(point, state, wanted=None):
     if not prefix or same_place(point.nomor, prefix):
         state['nomor'] = point.nomor
         return state
-    taken = {n.upper() for n in Point.objects.filter(nomor__istartswith=prefix + '-').exclude(pk=point.pk).values_list('nomor', flat=True)}
-    taken |= {d.proposed['state']['nomor'].upper() for d in Draft.objects.filter(status='pending')
-        .filter(proposed__state__nomor__istartswith=prefix + '-').exclude(point=point)}
+    taken = taken_nomors(prefix, point)
     if isinstance(wanted, str) and re.fullmatch(re.escape(prefix) + r'-\d{3,}', wanted) and wanted not in taken:
         state['nomor'] = wanted
         return state
-    numbers = [int(n.rsplit('-', 1)[1]) for n in taken if re.fullmatch(re.escape(prefix) + r'-\d+', n)]
-    state['nomor'] = f'{prefix}-{max(numbers, default=0) + 1:03d}'
+    state['nomor'] = next_nomor(prefix, taken)
     return state
+
+def taken_nomors(prefix, point=None):
+    # Other points' numbers in the desa plus those other points' pending
+    # drafts have reserved there (upper-cased), so no two can publish the same Nomor.
+    points = Point.objects.filter(nomor__istartswith=prefix + '-')
+    drafts = Draft.objects.filter(status='pending', proposed__state__nomor__istartswith=prefix + '-')
+    if point:
+        points, drafts = points.exclude(pk=point.pk), drafts.exclude(point=point)
+    return {n.upper() for n in points.values_list('nomor', flat=True)} | {d.proposed['state']['nomor'].upper() for d in drafts}
+
+def next_nomor(prefix, taken):
+    numbers = [int(n.rsplit('-', 1)[1]) for n in taken if re.fullmatch(re.escape(prefix) + r'-\d+', n)]
+    return f'{prefix}-{max(numbers, default=0) + 1:03d}'
 
 def validate_proposal(point, proposed):
     if not isinstance(proposed, dict) or set(proposed) != {'state', 'new_observation'} or not isinstance(proposed['state'], dict):

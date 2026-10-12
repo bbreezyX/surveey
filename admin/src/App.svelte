@@ -17,7 +17,7 @@
   let points = $state<PointRow[]>([]); let detail = $state<Detail>(); let q = $state(''); let status = $state(''); let archived = $state(false);
   let listPage = $state(1); let pages = $state(1); let total = $state(0); let counts = $state<Counts>();
   // Desa whose units are not numbered 001..N (server-side, across all pages).
-  let gaps = $state<string[]>([]); let tidying = $state(''); let tidyReason = $state('');
+  let gaps = $state<Record<string, number[]>>({}); let tidying = $state(''); let tidyReason = $state('');
   let creating = $state(false); let newPoint = $state<PointState>(emptyState()); let newReason = $state('');
   let publications = $state<{id: string; at: string; checksum: string; points: number}[]>([]); let active = $state(''); let baselineReason = $state('');
   let auditRows = $state<{id: number; actor: string; action: string; target: string; reason: string; before: unknown; after: unknown; at: string}[]>([]);
@@ -70,7 +70,7 @@
   function kabupaten(nomor: string) { return nomor.split('-')[0].toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
   async function loadPoints() {
     error = ''; busy = true;
-    try { const result = await api<{items: PointRow[]; total: number; pages: number; counts: Counts; gaps: string[]}>(`points?${new URLSearchParams({ q, status, page: String(listPage), archived: archived ? '1' : '0' })}`);
+    try { const result = await api<{items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}>(`points?${new URLSearchParams({ q, status, page: String(listPage), archived: archived ? '1' : '0' })}`);
       points = result.items; total = result.total; pages = result.pages; counts = result.counts; gaps = result.gaps;
     } catch(e) { failed(e); } finally { busy = false; }
   }
@@ -105,6 +105,12 @@
     if (detail && desaPrefix(detail.state.nomor) === prefix) { const keep = pane; await select(detail.id); pane = keep; }
     announce(`${result.renumbered} titik di ${title} dinomori ulang dan diterbitkan.`);
   } catch(e) { failed(e); } finally { busy = false; } }
+  // The next free number in the picked desa; the field stays editable.
+  async function fillNomor(alamat: string) {
+    try { const { nomor } = await api<{nomor: string | null}>(`points/next-nomor?${new URLSearchParams({ alamat })}`);
+      if (nomor && newPoint.alamat === alamat) newPoint.nomor = nomor;
+    } catch(e) { failed(e); }
+  }
   function startCreate() { creating = true; detail = undefined; editor = undefined; backdrop?.setSelected(null); newPoint = emptyState(); newReason = ''; pane = 'edit'; }
   function leave(event: SubmitEvent) {
     if (reducedMotion() || narrow()) return;
@@ -159,7 +165,7 @@
       {:else if creating}<div class="edit-head"><div class="edit-title"><h2>Titik baru</h2><p class="edit-id">Titik baru dimulai sebagai arsip. Setelah data dan bukti lengkap, aktivasi diajukan melalui draf.</p></div></div>
         <form class="edit-form" onsubmit={create}><div class="edit-scroll"><fieldset disabled={busy}><legend>Identitas & lokasi</legend>
           <label class="field">Nomor<input bind:value={newPoint.nomor} placeholder="KABUPATEN-KECAMATAN-DESA-001" required maxlength="250"></label>
-          <AddressPicker bind:value={newPoint.alamat}/>
+          <AddressPicker bind:value={newPoint.alamat} onpick={fillNomor}/>
           <label class="field">Alamat lengkap<textarea bind:value={newPoint.alamat} rows="2" maxlength="3000" required></textarea></label>
           <div class="pair"><label class="field">Latitude<input type="number" bind:value={newPoint.lat} min="-90" max="90" step="any" required></label><label class="field">Longitude<input type="number" bind:value={newPoint.lon} min="-180" max="180" step="any" required></label></div>
           <p class="hint">Lokasi dapat ditentukan lewat peta di panel Foto & lokasi atau diketik sebagai koordinat.</p>
@@ -231,7 +237,7 @@
       </form>
       {#if counts}<div class="atlas-summary atlas-summary--total">
         <div class="atlas-total"><span class="atlas-total__num">{counts.official}</span><span class="atlas-total__label"><span>alokasi resmi</span><span>{counts.cadangan} cadangan tidak dihitung</span></span></div>
-        <div class="atlas-flags"><span class="status-flag status-flag--duplikat">{counts.duplikat} perlu verifikasi</span><span class="status-flag status-flag--belum">{counts.belum} belum ditetapkan</span></div>
+        <div class="atlas-flags"><span class="status-flag status-flag--duplikat">{counts.duplikat} perlu verifikasi</span><span class="status-flag status-flag--belum">{counts.belum} belum ditetapkan</span>{#if Object.keys(gaps).length}<span class="status-flag status-flag--urut">{Object.keys(gaps).length} desa nomor belum urut</span>{/if}</div>
       </div>{/if}
       <div class="atlas-summary"><p><b>{total}</b> titik ditemukan</p><button type="button" class="text-action" onclick={startCreate}><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah titik</button></div>
       <div class="sidebar-scroll" use:stuckHeads>
@@ -242,8 +248,9 @@
               {@const prefix = desaPrefix(group.items[0].nomor)}
               {@const tidyKey = section.key + '|' + group.key}
               <div class="atlas-desa">
-                <div class="atlas-desa__head"><span class="atlas-desa__title">{group.head.title}</span><span class="atlas-desa__side"><span class="atlas-desa__count">{group.items.filter(point => !point.cadangan).length} titik</span>{#if canPublish && gaps.includes(prefix) && tidying !== tidyKey}<button type="button" class="text-action" title="Urutkan ulang nomor unit desa ini menjadi 001, 002, … lalu terbitkan" onclick={() => { tidying = tidyKey; tidyReason = ''; }}>Rapikan nomor</button>{/if}</span></div>
+                <div class="atlas-desa__head"><span class="atlas-desa__title">{group.head.title}</span><span class="atlas-desa__side"><span class="atlas-desa__count">{group.items.filter(point => !point.cadangan).length} titik</span>{#if canPublish && gaps[prefix] && tidying !== tidyKey}<button type="button" class="text-action" title="Urutkan ulang nomor unit desa ini menjadi 001, 002, … lalu terbitkan" onclick={() => { tidying = tidyKey; tidyReason = ''; }}>Rapikan nomor</button>{/if}</span></div>
                 {#if tidying === tidyKey}<form class="desa-tidy" onsubmit={event => tidy(event, prefix, group.head.title)}><label class="visually-hidden" for="tidy-reason">Alasan penomoran ulang</label><input id="tidy-reason" class="input" bind:value={tidyReason} placeholder="Alasan" required maxlength="3000"><button class="btn-primary" disabled={busy}>Rapikan</button><button type="button" class="btn-ghost" onclick={() => tidying = ''}>Batal</button></form>{/if}
+                {#if gaps[prefix]}<p class="status-flag status-flag--urut atlas-desa__flag">Nomor belum urut ({gaps[prefix].map(n => String(n).padStart(3, '0')).join(', ')})</p>{/if}
                 {#if group.head.line}<p class="atlas-desa__note">Rekapan: {group.head.line}</p>{/if}
                 {#if group.shared}<p class="atlas-desa__note">{group.shared}</p>{/if}
                 <div class="atlas-units">

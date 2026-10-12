@@ -203,8 +203,9 @@ class AdminPathTests(TestCase):
         self.client.get('/admin/')
         token = self.client.cookies['survey_admin_csrf'].value
         self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token})
+        # Each untidy desa comes with the numbers it uses, for the list's indicator.
         self.assertEqual(self.client.get('/admin/api/points').json()['gaps'],
-            ['MUARO JAMBI-MESTONG-PELEMPANG', 'MUARO JAMBI-MESTONG-TEMPINO'])
+            {'MUARO JAMBI-MESTONG-PELEMPANG': [1, 3, 4], 'MUARO JAMBI-MESTONG-TEMPINO': [1, 3]})
         editor = Account.objects.create_user(username='renumber-editor', password='test-only-password-551210', role='editor')
         with self.assertRaises(Problem):
             renumber(editor, 'MUARO JAMBI-MESTONG-PELEMPANG', 'Rapikan')
@@ -232,8 +233,28 @@ class AdminPathTests(TestCase):
         self.assertEqual(AuditEvent.objects.filter(action='point.renumbered').count(), 2)
         active = ActivePublication.objects.get(id=1).publication
         self.assertIn('MUARO JAMBI-MESTONG-PELEMPANG-002', [f['properties']['Nomor'] for f in active.geojson['features']])
-        self.assertEqual(self.client.get('/admin/api/points').json()['gaps'], ['MUARO JAMBI-MESTONG-TEMPINO'])
+        self.assertEqual(self.client.get('/admin/api/points').json()['gaps'], {'MUARO JAMBI-MESTONG-TEMPINO': [1, 3]})
 
+
+    def test_next_nomor_for_a_picked_address_counts_points_and_reserved_drafts(self):
+        from .services import create_point, save_draft
+        def point(nomor, alamat):
+            return create_point(self.user, {'nomor': nomor, 'nama': '', 'jalur': '', 'alamat': alamat, 'keterangan': '', 'lokasi_rekapan': '',
+                'catatan': '', 'status': '', 'duplikat': False, 'archived': False, 'lon': 103.5, 'lat': -1.8, 'date': '', 'photo_id': None, 'observation_id': None}, 'Uji')
+        pelempang = 'Desa Pelempang, Kecamatan Mestong, Kabupaten Muaro Jambi'
+        point('MUARO JAMBI-MESTONG-PELEMPANG-001', pelempang)
+        point('MUARO JAMBI-MESTONG-PELEMPANG-003', pelempang)
+        mover = point('MUARO JAMBI-MESTONG-TEMPINO-001', 'Kel. Tempino, Kecamatan Mestong, Kabupaten Muaro Jambi')
+        save_draft(self.user, str(mover.id), mover.revision, {'state': dict(mover.state, alamat=pelempang), 'new_observation': None}, 'Pindah')
+        self.client.get('/admin/')
+        token = self.client.cookies['survey_admin_csrf'].value
+        self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token})
+        nomor = lambda alamat: self.client.get('/admin/api/points/next-nomor', {'alamat': alamat}).json()['nomor']
+        # 004 is held by the pending draft moving Tempino-001 in.
+        self.assertEqual(nomor(pelempang), 'MUARO JAMBI-MESTONG-PELEMPANG-005')
+        self.assertEqual(nomor('Kel. Tempino, Kecamatan Mestong, Kabupaten Muaro Jambi'), 'MUARO JAMBI-MESTONG-TEMPINO-002')
+        self.assertEqual(nomor('Desa Suka Damai, Kecamatan Mestong, Kabupaten Muaro Jambi'), 'MUARO JAMBI-MESTONG-SUKA DAMAI-001')
+        self.assertIsNone(nomor('RT 21 Rawasari, Kota Jambi'))
 
 class PublicationCostTests(TestCase):
     def setUp(self):

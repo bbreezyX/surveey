@@ -188,6 +188,10 @@ tbody th { width: 1%; overflow-wrap: normal; }
 .status-flag--duplikat::before { border: 2px solid var(--orange); background: var(--yellow); }
 .status-flag--belum { color: var(--muted); }
 .status-flag--belum::before { border: 1.5px dashed var(--muted-2); background: #fff; }
+/* A desa whose units are not numbered 001..N; same orange as the verification flag, square so it reads as a different issue. */
+.status-flag--urut { color: var(--orange-deep); }
+.status-flag--urut::before { border: 2px solid var(--orange); border-radius: 2px; background: #fff; }
+.atlas-desa__flag { margin: 3px 0 0; }
 /* Text actions are the public panel's blue links ("Semua wilayah", "Lihat semua"). */
 .text-action {
   display: inline-flex; align-items: center; gap: 4px; flex: none;
