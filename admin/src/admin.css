@@ -304,6 +304,14 @@ tbody th { width: 1%; overflow-wrap: normal; }
 .photo-compare figure { margin: 0 0 12px; min-width: 0; }
 .photo-compare figcaption { margin-bottom: 6px; font-size: 12.5px; font-weight: 600; color: var(--muted-2); }
 .photo-compare img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: var(--frost); }
+/* Thumbnails are cropped to fit the wing; the full photo opens in a new tab
+   so the reviewer can zoom without leaving the draft they are checking. */
+.photo-link { display: block; border-radius: 12px; cursor: pointer; transition: opacity var(--dur); }
+.photo-link:hover { opacity: 0.88; }
+.photo-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.history-photos .photo-link { border-radius: 8px; }
+.photo-link--evidence { display: inline-block; max-width: 100%; margin-top: 10px; }
+.photo-link--evidence .evidence-image { margin-top: 0; }
 .photo-empty { display: grid; place-items: center; aspect-ratio: 3 / 4; margin: 0; font-size: 12.5px; color: var(--muted-2); background: var(--frost); border: 1.5px dashed var(--hairline-strong); border-radius: 12px; }
 /* Upload: the native input is stretched invisibly over the whole zone, so
    clicking and dropping a file both work; the zone is what shows. */

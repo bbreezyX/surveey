@@ -192,7 +192,7 @@
       {#each evidence as item}
         <details class="page-row page-row--compact disclosure-row">
           <summary><span class="page-row__title">{item.name}</span><span class="status-flag" class:status-flag--ready={item.ready} class:status-flag--belum={!item.ready}>{item.ready ? 'Dapat ditampilkan' : 'Hanya bukti asli'}</span></summary>
-          {#if item.ready}<img class="evidence-image" src={`/admin/api/photos/${item.id}/display`} alt="Bukti lama" loading="lazy">{:else}<p class="page-row__text">Format berkas tidak dapat dipublikasikan; berkas asli tetap tersimpan.</p>{/if}
+          {#if item.ready}<a class="photo-link photo-link--evidence" href={`/admin/api/photos/${item.id}/display`} target="_blank" rel="noopener" title="Buka foto di tab baru"><img class="evidence-image" src={`/admin/api/photos/${item.id}/display`} alt="Bukti lama" loading="lazy"></a>{:else}<p class="page-row__text">Format berkas tidak dapat dipublikasikan; berkas asli tetap tersimpan.</p>{/if}
           <p class="page-row__meta">SHA-256 {item.checksum}</p>
           <div class="page-row__actions"><a class="btn-ghost" href={`/admin/api/photos/${item.id}/original`}>Unduh bukti asli</a></div>
         </details>
