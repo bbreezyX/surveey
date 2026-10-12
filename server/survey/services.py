@@ -7,7 +7,7 @@ from django.utils import timezone
 from delivery.models import Publication, ActivePublication, PublishedMedia, MediaGrant
 from delivery import storage
 from .models import Point, Draft, Photo, Observation, ObservationEvidence, Revision, AuditEvent
-from .domain import Problem, validate_state, nomor_prefix, same_place, text, date, coordinate, identifier, clone, public_feature, counts, movement
+from .domain import Problem, validate_state, nomor_prefix, nomor_gaps, same_place, text, date, coordinate, identifier, clone, public_feature, counts, movement
 from .security import permission
 
 def audit(actor, action, target, before=None, after=None, reason=''):
@@ -194,6 +194,43 @@ def publish(actor, draft_ids, reason):
         draft.save(update_fields=['status'])
         audit(actor, 'point.published', point.id, before, state, draft.reason)
     return build_publication(actor, active, reason)
+
+@transaction.atomic
+def renumber(actor, prefix, reason):
+    """Re-sequence one desa's units to 001..N, keeping their current order.
+
+    Run by hand from the list, never on publish: it changes the Nomor of points
+    nobody edited, which field lists and SK attachments may still cite. It
+    publishes straight away so the public map and the admin agree on Nomor."""
+    permission(actor, 'publish')
+    prefix = text(prefix, 'Desa', 250, True).upper()
+    reason = text(reason, 'Alasan penomoran ulang', 3000, True)
+    active = ActivePublication.objects.select_for_update().get(id=1)
+    points = [p for p in Point.objects.select_for_update().filter(nomor__istartswith=prefix + '-').order_by('pk')
+        if re.fullmatch(re.escape(prefix) + r'-\d+', p.nomor.upper())]
+    if prefix not in nomor_gaps([p.nomor for p in points]):
+        raise Problem('Desa ini tidak memiliki nomor yang perlu dirapikan.', 409)
+    # A pending draft here would become a conflict, and one moving a point in
+    # holds a number assign_nomor reserved; both must be settled first.
+    for draft in Draft.objects.filter(status='pending').select_related('point'):
+        if any(nomor.upper().startswith(prefix + '-') for nomor in (draft.point.nomor, draft.proposed['state']['nomor'])):
+            raise Problem('Selesaikan draf di desa ini terlebih dahulu.', 409)
+    ordered = sorted(points, key=lambda p: (int(p.nomor.rsplit('-', 1)[1]), p.nomor))
+    # Each point keeps its own prefix spelling; only the number changes.
+    changes = [(p, f"{p.nomor.rsplit('-', 1)[0]}-{i:03d}") for i, p in enumerate(ordered, 1)]
+    changes = [(p, nomor) for p, nomor in changes if p.nomor != nomor]
+    # Park the moving points on their own id first so no step of the shuffle
+    # collides with the unique Nomor of a point still waiting to move.
+    for point, _ in changes:
+        Point.objects.filter(pk=point.pk).update(nomor=str(point.pk))
+    for point, nomor in changes:
+        before = point.state
+        point.revision += 1
+        point.state, point.nomor = dict(before, nomor=nomor), nomor
+        point.save(update_fields=['revision', 'state', 'nomor', 'updated_at'])
+        Revision.objects.create(point=point, number=point.revision, state=point.state, actor=actor, reason=reason)
+        audit(actor, 'point.renumbered', point.id, before, point.state, reason)
+    return len(changes), build_publication(actor, active, reason)
 
 def build_publication(actor, active, reason):
     points = list(Point.objects.filter(archived=False).order_by('nomor'))

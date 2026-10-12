@@ -179,6 +179,61 @@ class AdminPathTests(TestCase):
         first.refresh_from_db()
         self.assertEqual((first.nomor, first.state['nomor']), ('MUARO JAMBI-MESTONG-PELEMPANG-004', 'MUARO JAMBI-MESTONG-PELEMPANG-004'))
 
+    def test_renumbering_closes_one_desa_gaps_on_request_and_publishes(self):
+        from delivery.models import ActivePublication
+        from .domain import Problem
+        from .models import AuditEvent, Point, Revision
+        from .services import create_point, save_draft, discard_draft, renumber
+        ActivePublication.objects.get_or_create(id=1)
+        def point(nomor, alamat, **extra):
+            created = create_point(self.user, {'nomor': nomor, 'nama': '', 'jalur': '', 'alamat': alamat, 'keterangan': '', 'lokasi_rekapan': '',
+                'catatan': '', 'status': '', 'duplikat': False, 'archived': False, 'lon': 103.5, 'lat': -1.8, 'date': '', 'photo_id': None, 'observation_id': None}, 'Uji')
+            # create_point always starts as an archive; most of these stand in for active points.
+            state = {**created.state, 'archived': False, **extra}
+            Point.objects.filter(pk=created.pk).update(state=state, archived=state['archived'])
+            created.refresh_from_db()
+            return created
+        pelempang, tempino = 'Desa Pelempang, Kecamatan Mestong, Kabupaten Muaro Jambi', 'Kel. Tempino, Kecamatan Mestong, Kabupaten Muaro Jambi'
+        a = point('MUARO JAMBI-MESTONG-PELEMPANG-001', pelempang)
+        b = point('MUARO JAMBI-MESTONG-PELEMPANG-003', pelempang, status='Cadangan')
+        c = point('MUARO JAMBI-MESTONG-PELEMPANG-004', pelempang, archived=True)
+        point('MUARO JAMBI-MESTONG-TEMPINO-001', tempino)
+        point('MUARO JAMBI-MESTONG-TEMPINO-003', tempino)
+        point('MUARO JAMBI-MESTONG-SUKA DAMAI-001', 'Desa Suka Damai, Kecamatan Mestong, Kabupaten Muaro Jambi')
+        self.client.get('/admin/')
+        token = self.client.cookies['survey_admin_csrf'].value
+        self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token})
+        self.assertEqual(self.client.get('/admin/api/points').json()['gaps'],
+            ['MUARO JAMBI-MESTONG-PELEMPANG', 'MUARO JAMBI-MESTONG-TEMPINO'])
+        editor = Account.objects.create_user(username='renumber-editor', password='test-only-password-551210', role='editor')
+        with self.assertRaises(Problem):
+            renumber(editor, 'MUARO JAMBI-MESTONG-PELEMPANG', 'Rapikan')
+        with self.assertRaisesMessage(Problem, 'tidak memiliki nomor yang perlu dirapikan'):
+            renumber(self.user, 'MUARO JAMBI-MESTONG-SUKA DAMAI', 'Rapikan')
+        # A pending draft on a point in the desa, or one reserving a number
+        # there from elsewhere, would be turned into a conflict.
+        own = save_draft(self.user, str(a.id), a.revision, {'state': dict(a.state, catatan='Uji'), 'new_observation': None}, 'Uji')
+        with self.assertRaisesMessage(Problem, 'Selesaikan draf'):
+            renumber(self.user, 'MUARO JAMBI-MESTONG-PELEMPANG', 'Rapikan')
+        discard_draft(self.user, str(own.id))
+        mover = Point.objects.get(nomor='MUARO JAMBI-MESTONG-TEMPINO-001')
+        moving = save_draft(self.user, str(mover.id), mover.revision, {'state': dict(mover.state, alamat=pelempang), 'new_observation': None}, 'Pindah')
+        with self.assertRaisesMessage(Problem, 'Selesaikan draf'):
+            renumber(self.user, 'MUARO JAMBI-MESTONG-PELEMPANG', 'Rapikan')
+        discard_draft(self.user, str(moving.id))
+        result = self.client.post('/admin/api/points/renumber', {'prefix': 'MUARO JAMBI-MESTONG-PELEMPANG', 'reason': 'Rapikan'},
+            content_type='application/json', HTTP_X_CSRFTOKEN=self.client.get('/admin/api/session').json()['csrf'])
+        self.assertEqual(result.status_code, 201, result.content)
+        self.assertEqual(result.json()['renumbered'], 2)
+        for item, nomor, revision in ((a, '001', 1), (b, '002', 2), (c, '003', 2)):
+            item.refresh_from_db()
+            self.assertEqual((item.nomor, item.state['nomor'], item.revision), (f'MUARO JAMBI-MESTONG-PELEMPANG-{nomor}',) * 2 + (revision,))
+        self.assertEqual(Revision.objects.get(point=b, number=2).reason, 'Rapikan')
+        self.assertEqual(AuditEvent.objects.filter(action='point.renumbered').count(), 2)
+        active = ActivePublication.objects.get(id=1).publication
+        self.assertIn('MUARO JAMBI-MESTONG-PELEMPANG-002', [f['properties']['Nomor'] for f in active.geojson['features']])
+        self.assertEqual(self.client.get('/admin/api/points').json()['gaps'], ['MUARO JAMBI-MESTONG-TEMPINO'])
+
 
 class PublicationCostTests(TestCase):
     def setUp(self):

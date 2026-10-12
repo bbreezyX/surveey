@@ -64,6 +64,21 @@ def same_place(nomor, prefix):
     plain = lambda name: re.sub(r'[^A-Z0-9]', '', re.sub(r'^(DESA|KEL\.?|KELURAHAN)\s+', '', name.strip().upper()))
     return [plain(name) for name in nomor.rsplit('-', 1)[0].split('-')] == [plain(name) for name in prefix.split('-')]
 
+def nomor_numbers(nomors):
+    """Numbers in use per desa, keyed by the upper-case KABUPATEN-KECAMATAN-DESA
+    prefix, the same case-insensitive match assign_nomor uses."""
+    desa = {}
+    for nomor in nomors:
+        prefix, _, number = nomor.rpartition('-')
+        if prefix and number.isdigit():
+            desa.setdefault(prefix.upper(), []).append(int(number))
+    return desa
+
+def nomor_gaps(nomors):
+    # A desa needs tidying when its numbers are not exactly 001..N: a point
+    # that moved away leaves a hole, and the one that arrived takes max+1.
+    return sorted(prefix for prefix, numbers in nomor_numbers(nomors).items() if sorted(numbers) != list(range(1, len(numbers) + 1)))
+
 def validate_state(value, original=None):
     if not isinstance(value, dict) or set(value) != FIELDS:
         raise Problem('Kolom titik tidak lengkap atau tidak dikenal.')

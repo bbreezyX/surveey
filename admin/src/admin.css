@@ -214,6 +214,11 @@ tbody th { width: 1%; overflow-wrap: normal; }
 .atlas-desa__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .atlas-desa__title { font-size: 14.5px; font-weight: 650; line-height: 1.3; }
 .atlas-desa__count { flex: none; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.atlas-desa__side { display: flex; flex: none; align-items: baseline; gap: 8px; }
+/* Renumbering asks for its reason in one line under the desa head. */
+.desa-tidy { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.desa-tidy .input { flex: 1; min-width: 0; margin: 0; padding: 7px 12px; font-size: 14px; }
+.desa-tidy .btn-primary { min-height: 36px; padding: 0 14px; font-size: 13.5px; }
 .atlas-desa__note { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.35; text-wrap: pretty; }
 .atlas-units { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 4px 10px; margin-top: 10px; }
 .atlas-pt {

@@ -16,6 +16,8 @@
   let page = $state<'points' | 'drafts' | 'publications' | 'accounts' | 'audit' | 'password' | 'evidence'>('points');
   let points = $state<PointRow[]>([]); let detail = $state<Detail>(); let q = $state(''); let status = $state(''); let archived = $state(false);
   let listPage = $state(1); let pages = $state(1); let total = $state(0); let counts = $state<Counts>();
+  // Desa whose units are not numbered 001..N (server-side, across all pages).
+  let gaps = $state<string[]>([]); let tidying = $state(''); let tidyReason = $state('');
   let creating = $state(false); let newPoint = $state<PointState>(emptyState()); let newReason = $state('');
   let publications = $state<{id: string; at: string; checksum: string; points: number}[]>([]); let active = $state(''); let baselineReason = $state('');
   let auditRows = $state<{id: number; actor: string; action: string; target: string; reason: string; before: unknown; after: unknown; at: string}[]>([]);
@@ -68,8 +70,8 @@
   function kabupaten(nomor: string) { return nomor.split('-')[0].toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
   async function loadPoints() {
     error = ''; busy = true;
-    try { const result = await api<{items: PointRow[]; total: number; pages: number; counts: Counts}>(`points?${new URLSearchParams({ q, status, page: String(listPage), archived: archived ? '1' : '0' })}`);
-      points = result.items; total = result.total; pages = result.pages; counts = result.counts;
+    try { const result = await api<{items: PointRow[]; total: number; pages: number; counts: Counts; gaps: string[]}>(`points?${new URLSearchParams({ q, status, page: String(listPage), archived: archived ? '1' : '0' })}`);
+      points = result.items; total = result.total; pages = result.pages; counts = result.counts; gaps = result.gaps;
     } catch(e) { failed(e); } finally { busy = false; }
   }
   async function loadMap() {
@@ -94,6 +96,14 @@
   async function changePassword(event: SubmitEvent) { event.preventDefault(); busy = true; error = ''; try {
     await api('password', 'POST', { old_password: oldPassword, password: newPassword }); oldPassword = ''; newPassword = '';
     const result = await api<{csrf: string}>('session'); csrf = result.csrf; setCsrf(csrf); announce('Kata sandi diperbarui. Sesi lain dicabut.');
+  } catch(e) { failed(e); } finally { busy = false; } }
+  function desaPrefix(nomor: string) { return nomor.slice(0, nomor.lastIndexOf('-')).toUpperCase(); }
+  async function tidy(event: SubmitEvent, prefix: string, title: string) { event.preventDefault(); busy = true; error = ''; try {
+    const result = await api<{renumbered: number}>('points/renumber', 'POST', { prefix, reason: tidyReason });
+    tidying = ''; tidyReason = ''; await loadPoints();
+    // An open point from this desa now has a new Nomor and revision; reload it so saving does not conflict.
+    if (detail && desaPrefix(detail.state.nomor) === prefix) { const keep = pane; await select(detail.id); pane = keep; }
+    announce(`${result.renumbered} titik di ${title} dinomori ulang dan diterbitkan.`);
   } catch(e) { failed(e); } finally { busy = false; } }
   function startCreate() { creating = true; detail = undefined; editor = undefined; backdrop?.setSelected(null); newPoint = emptyState(); newReason = ''; pane = 'edit'; }
   function leave(event: SubmitEvent) {
@@ -229,8 +239,11 @@
           <div class="atlas-group">
             <div class="atlas-section" role="heading" aria-level="3">{section.title}<span>{section.kabupaten}</span></div>
             {#each section.groups as group (group.key)}
+              {@const prefix = desaPrefix(group.items[0].nomor)}
+              {@const tidyKey = section.key + '|' + group.key}
               <div class="atlas-desa">
-                <div class="atlas-desa__head"><span class="atlas-desa__title">{group.head.title}</span><span class="atlas-desa__count">{group.items.filter(point => !point.cadangan).length} titik</span></div>
+                <div class="atlas-desa__head"><span class="atlas-desa__title">{group.head.title}</span><span class="atlas-desa__side"><span class="atlas-desa__count">{group.items.filter(point => !point.cadangan).length} titik</span>{#if canPublish && gaps.includes(prefix) && tidying !== tidyKey}<button type="button" class="text-action" title="Urutkan ulang nomor unit desa ini menjadi 001, 002, … lalu terbitkan" onclick={() => { tidying = tidyKey; tidyReason = ''; }}>Rapikan nomor</button>{/if}</span></div>
+                {#if tidying === tidyKey}<form class="desa-tidy" onsubmit={event => tidy(event, prefix, group.head.title)}><label class="visually-hidden" for="tidy-reason">Alasan penomoran ulang</label><input id="tidy-reason" class="input" bind:value={tidyReason} placeholder="Alasan" required maxlength="3000"><button class="btn-primary" disabled={busy}>Rapikan</button><button type="button" class="btn-ghost" onclick={() => tidying = ''}>Batal</button></form>{/if}
                 {#if group.head.line}<p class="atlas-desa__note">Rekapan: {group.head.line}</p>{/if}
                 {#if group.shared}<p class="atlas-desa__note">{group.shared}</p>{/if}
                 <div class="atlas-units">

@@ -14,7 +14,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
 from delivery import storage
 from delivery.models import ActivePublication, Publication
-from .domain import Problem, text, identifier, counts
+from .domain import Problem, text, identifier, counts, nomor_gaps
 from .models import Account, Point, Draft, Revision, Observation, ObservationEvidence, Photo, AuditEvent
 from .security import permission, establish, throttle
 from .media import store_photo, MAX_BYTES
@@ -133,7 +133,15 @@ def points(request):
     # without opening the Draf tab.
     rows = rows.annotate(drafts=Count('draft', filter=Q(draft__status='pending'))).order_by('nomor')[(page-1)*50:page*50]
     return response({'items': [{'id': str(p.pk), 'revision': p.revision, 'state': p.state, 'drafts': p.drafts} for p in rows],
-        'total': total, 'page': page, 'pages': max(1, (total+49)//50), 'counts': counts(Point.objects.values_list('state', flat=True))})
+        'total': total, 'page': page, 'pages': max(1, (total+49)//50), 'counts': counts(Point.objects.values_list('state', flat=True)),
+        # Over every point, not the page: a desa can span two pages of 50.
+        'gaps': nomor_gaps(Point.objects.values_list('nomor', flat=True))})
+
+@api(['POST'])
+def renumber(request):
+    data = body(request, ['prefix', 'reason'])
+    renumbered, publication = services.renumber(request.user, data['prefix'], data['reason'])
+    return response({'renumbered': renumbered, 'id': str(publication.id)}, 201)
 
 @api(['GET'])
 def point_map(request):
