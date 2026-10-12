@@ -4,26 +4,47 @@ Implemented locally and connected to the existing Railway `survey` project on 20
 
 ## Local setup
 
-Use Python 3.12 and the existing Node/npm toolchain. Run from the implementation worktree:
+Local administration uses the live production PostgreSQL database and private
+photo bucket. Accounts, drafts and publications are shared with the online admin.
+Use the same approved account. The launcher keeps HTTP/cookies on loopback and
+opens an SSH tunnel to Railway's private database; it does not expose a public
+database port or run migrations/imports at startup.
+
+Use Python 3.12, Node/npm, an authenticated Railway CLI and OpenSSH:
 
 ```powershell
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r server/requirements.lock
 npm ci
 npm run build:admin
-npm run admin:local -- migrate --noinput
-npm run admin:local -- import_legacy --geojson data/points.geojson --images images --report .local/import-report.json
-```
-
-The last command is a dry run. Review every reconciliation error/warning and the per-record/photo inventory, then import into an empty local database:
-
-```powershell
-npm run admin:local -- import_legacy --geojson data/points.geojson --images images --report .local/import-report.json --apply
-npm run admin:local -- provision_account <approved-account-name> --role owner
+npm run admin:connect
 npm run admin:local
 ```
 
-Provisioning prompts privately for a new password of at least 15 characters. No default account/password exists. Visit `http://127.0.0.1:8130/admin/`. The local command binds loopback, keeps its random session secret, SQLite database and private originals in ignored `.local/`, and never modifies repository data/images. Local mode is deliberately explicit and must not be used online. Existing public preview remains on its existing port and static data until cutover.
+`admin:connect` registers a dedicated local SSH key in `~/.ssh`, reads the restricted admin
+service connection and bucket configuration, and saves them privately in ignored
+`.local/admin-production.json`. Secrets are not printed. Run it again if the
+production service credentials change. `admin:local` refreshes the SSH destination
+and holds a loopback-only tunnel on port 15432 for the server's lifetime. Stopping
+the server stops its tunnel. The database login is `survey_admin_app`, not an
+operator/superuser login. Visit `http://127.0.0.1:8130/admin/`.
+
+Migrations, first imports and account recovery use the existing production
+operator workflow. The local launcher rejects initialization/restoration commands.
+It fails when the PostgreSQL connection or production bucket settings are missing;
+there is no SQLite or local-photo fallback. A private random local Django session
+secret stays in `.local/django-secret`.
+
+Backend tests use a dedicated settings module and an isolated in-memory database:
+
+```powershell
+npm run admin:local -- test survey delivery --noinput
+```
+
+This test path never loads production connection settings or opens a tunnel.
+The public `npm run dev` server also follows production's published GeoJSON and
+`/media/` routes. Build previews and the explicit legacy server retain their local
+snapshot for offline comparison and browser fixtures.
 
 ## Workflows
 

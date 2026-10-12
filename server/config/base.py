@@ -5,6 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = os.environ.get('SURVEY_ENV') == 'local'
+TESTING = os.environ.get('DJANGO_SETTINGS_MODULE') == 'config.test_settings'
 RAILWAY = os.environ.get('SURVEY_DEPLOYMENT') == 'railway'
 if RAILWAY and (LOCAL or not os.environ.get('RAILWAY_ENVIRONMENT_ID')):
     raise ImproperlyConfigured('Railway deployment requires an actual Railway environment and production mode.')
@@ -35,24 +36,18 @@ if not LOCAL:
         if parsed_origin.hostname not in ALLOWED_HOSTS or parsed_origin.path not in ('', '/') or parsed_origin.username or parsed_origin.query or parsed_origin.fragment:
             raise ImproperlyConfigured(f'{origin_variable} must match an explicit allowed hostname and contain no credentials/path/query.')
 CSRF_TRUSTED_ORIGINS = origins
-DATABASE_URL = os.environ.get('DATABASE_URL', '')
-if DATABASE_URL:
+if TESTING:
+    # Only the dedicated test settings may use an isolated, disposable database.
+    # Local serving always requires the same PostgreSQL source as production.
+    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': ':memory:'}}
+else:
+    DATABASE_URL = required('DATABASE_URL')
     db = urlparse(DATABASE_URL)
     if db.scheme not in ('postgres', 'postgresql'):
         raise ImproperlyConfigured('DATABASE_URL must use PostgreSQL.')
     DATABASES = {'default': {'ENGINE': 'django.db.backends.postgresql', 'NAME': unquote(db.path.lstrip('/')),
         'USER': unquote(db.username or ''), 'PASSWORD': unquote(db.password or ''), 'HOST': db.hostname,
         'PORT': db.port or 5432, 'CONN_MAX_AGE': 60, 'OPTIONS': {'sslmode': os.environ.get('DB_SSLMODE', 'require')}}}
-elif LOCAL:
-    (ROOT / '.local').mkdir(exist_ok=True)
-    # Every API request writes its throttle row and session. With SQLite's
-    # default deferred transactions, two threads that both read then write
-    # fail at once with "database is locked" (the busy timeout does not apply
-    # to a lock upgrade). IMMEDIATE takes the write lock up front, so they queue.
-    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': ROOT / '.local/survey.sqlite3',
-        'OPTIONS': {'transaction_mode': 'IMMEDIATE', 'timeout': 20}}}
-else:
-    raise ImproperlyConfigured('DATABASE_URL is required outside explicit local mode.')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 USE_TZ = True
 TIME_ZONE = 'Asia/Jakarta'
@@ -79,7 +74,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 40
 DATA_UPLOAD_MAX_NUMBER_FILES = 1
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
-STORAGE_BACKEND = 'filesystem' if LOCAL else 's3'
+STORAGE_BACKEND = 'filesystem' if TESTING else 's3'
 STORAGE_ROOT = ROOT / '.local/private-media'
 MEDIA_BROKER_TOKEN = os.environ.get('MEDIA_BROKER_TOKEN', '')
 MEDIA_BROKER_URL = os.environ.get('MEDIA_BROKER_URL', '')
@@ -94,7 +89,7 @@ if broker_client:
     STORAGE_BACKEND = 'broker'
 if RAILWAY and len(MEDIA_BROKER_TOKEN) < 50:
     raise ImproperlyConfigured('A private MEDIA_BROKER_TOKEN of at least 50 characters is required.')
-if not LOCAL and not broker_client:
+if STORAGE_BACKEND == 's3':
     S3_ENDPOINT = required('S3_ENDPOINT')
     if not S3_ENDPOINT.startswith('https://'):
         raise ImproperlyConfigured('S3_ENDPOINT must use HTTPS.')

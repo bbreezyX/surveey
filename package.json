@@ -6,6 +6,7 @@
     "build:admin": "npm run check:admin && vite build --config vite.admin.config.mts",
     "watch:admin": "vite build --config vite.admin.config.mts --watch",
     "admin:local": "node scripts/admin-local.mjs",
+    "admin:connect": "node scripts/admin-connect.mjs",
     "start": "vite --config vite.public.config.mts",
     "dev": "vite --config vite.public.config.mts",
     "dev:legacy": "node scripts/run-python.js scripts/dev-server.py",

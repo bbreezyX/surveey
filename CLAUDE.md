@@ -7,12 +7,13 @@ This repository now uses Svelte 5, TypeScript, Vite and OpenLayers for the publi
 - `npm ci`, `npm run build`, `npm test`: public build and unit checks.
 - `npm run build:admin`: admin type check and build.
 - `npm run test:e2e`: browser checks.
-- `npm run admin:local`: local admin on 127.0.0.1:8130/admin/; local data stays separate.
+- `npm run admin:connect`: save the restricted production DB/bucket connection privately and register the dedicated local SSH key.
+- `npm run admin:local`: local admin on 127.0.0.1:8130/admin/; it opens a private SSH tunnel and shares production PostgreSQL, photos, accounts, drafts and publications. No automatic migration/import or SQLite fallback.
 - `node scripts/admin-local.mjs test survey delivery --noinput`: backend checks after installing the local virtual environment.
 
 Railway production follows the `master` branch. Keep the service-specific Dockerfile settings: `server/deploy/Dockerfile.railway-public-map`, `server/deploy/Dockerfile.admin`, and `server/deploy/Dockerfile.public-data`. The public-map service reverse-proxies admin and published data to private services. Never substitute the legacy static image for this production topology. See README.md, docs/railway-deployment.md and docs/admin-operations.md for current commands and boundaries.
 
-Private `.local/`, environment files, credentials, SQLite databases, generated builds and OCR crops are ignored. Do not commit them. Preserve the original public controls and other approved UI. Text remains Indonesian; comments explain reasoning, and commit subjects are plain imperative sentences.
+Private `.local/`, SSH keys, environment files, credentials, generated builds and OCR crops are ignored. Do not commit them. Backend tests use the explicit isolated `config.test_settings` module and never load the production connection. Public Vite development proxies published GeoJSON/media to production; preview/legacy fixtures keep their local snapshots. Preserve the original public controls and other approved UI. Text remains Indonesian; comments explain reasoning, and commit subjects are plain imperative sentences.
 
 ## Historical legacy implementation
 

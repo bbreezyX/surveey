@@ -1,5 +1,31 @@
-from django.test import TestCase, Client, override_settings
+from django.test import TestCase, SimpleTestCase, Client, override_settings
 from .models import Account
+
+
+class LocalProductionConfigurationTests(SimpleTestCase):
+    def configure(self, values):
+        import os
+        import subprocess
+        import sys
+        from pathlib import Path
+        return subprocess.run([sys.executable, '-c',
+            "import json,config.base as c; print(json.dumps({'database':c.DATABASES['default']['ENGINE'],'storage':c.STORAGE_BACKEND}))"],
+            cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True,
+            env={'PATH': os.environ.get('PATH', ''), 'SURVEY_ENV': 'local',
+                 'DJANGO_SECRET_KEY': 'configuration-test-only-' * 4, **values})
+
+    def test_missing_postgres_connection_cannot_create_a_local_sqlite_database(self):
+        result = self.configure({})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('DATABASE_URL', result.stderr)
+
+    def test_local_postgres_uses_the_production_photo_storage(self):
+        import json
+        result = self.configure({'DATABASE_URL': 'postgresql://survey_admin_app:fixture@127.0.0.1:15432/railway',
+            'S3_ENDPOINT': 'https://storage.example.invalid', 'S3_BUCKET': 'fixture',
+            'S3_ACCESS_KEY': 'fixture', 'S3_SECRET_KEY': 'fixture'})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {'database': 'django.db.backends.postgresql', 'storage': 's3'})
 
 
 class AdminPathTests(TestCase):

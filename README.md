@@ -22,8 +22,9 @@ npm run dev
 ```
 
 Buka `http://127.0.0.1:8123/`. Vite memakai port tetap dan melaporkan jika port itu
-sudah dipakai. Setelah mengubah GeoJSON atau foto, mulai ulang dev server agar
-salinan aset publik diperbarui.
+sudah dipakai. Peta development mengambil GeoJSON terbitan dan foto melalui
+produksi, sehingga mengikuti perubahan yang diterbitkan admin. Build preview dan
+halaman legacy tetap memakai snapshot lokal.
 
 ```bash
 npm run check
@@ -187,4 +188,4 @@ hanya tersedia di checkout lokal; halaman itu tidak masuk artefak produksi baru.
 
 ## Administrasi data
 
-Admin tersedia sebagai build terpisah dengan login kata sandi untuk akun yang disetujui. Mendukung titik, koordinat, foto/pengamatan, draf, penerbitan, riwayat/pemulihan, arsip, akses akun dan ekspor. Panduan: [docs/admin-operations.md](docs/admin-operations.md). Jalankan `npm run build:admin`, kemudian `npm run admin:local`. Akun awal dibuat lewat perintah operator dengan kata sandi yang dimasukkan secara privat; tidak ada akun bawaan. Admin produksi dan peta publik sudah aktif di domain yang sama; akses lokal adalah `http://127.0.0.1:8130/admin/`. UI peta publik dipertahankan. Hasil pemeriksaan dan batas verifikasi tercatat di [validasi domain admin](docs/superpowers/validation/2026-10-09-same-domain-admin.md).
+Admin tersedia sebagai build terpisah dengan login kata sandi untuk akun yang disetujui. Mendukung titik, koordinat, foto/pengamatan, draf, penerbitan, riwayat/pemulihan, arsip, akses akun dan ekspor. Panduan: [docs/admin-operations.md](docs/admin-operations.md). Setelah memasang virtual environment dan dependensi backend, jalankan `npm run build:admin`, `npm run admin:connect`, kemudian `npm run admin:local`. Admin lokal memakai PostgreSQL dan bucket produksi melalui tunnel SSH privat, dengan akun, draf dan publikasi yang sama; tidak ada database SQLite lokal atau migrasi otomatis saat startup. Kredensial tetap di `.local/` yang diabaikan Git. Tes backend memakai database terisolasi lewat `npm run admin:local -- test survey delivery --noinput`. Admin produksi dan peta publik sudah aktif di domain yang sama; akses lokal adalah `http://127.0.0.1:8130/admin/`. Hasil pemeriksaan dan batas verifikasi tercatat di [validasi domain admin](docs/superpowers/validation/2026-10-09-same-domain-admin.md).
