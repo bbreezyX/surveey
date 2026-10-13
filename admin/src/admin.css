@@ -420,7 +420,12 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
 .page pre { background: var(--frost); }
 .page .photo-compare { margin-top: 12px; }
 .page .photo-compare img, .page .photo-empty { aspect-ratio: 4 / 3; }
-.page-foot { position: sticky; bottom: 0; z-index: 2; padding: 14px 24px; border-top: 1px solid var(--divider); background: #fff; }
+.page-foot { position: sticky; bottom: 0; z-index: 2; padding: 14px 24px 24px; border-top: 1px solid var(--divider); background: #fff; }
+/* A page with a sticky foot runs to the sheet's edge and takes its rounded
+   corners: with the usual 12px gap the scroller ended 14px under the button,
+   so the button's 22px shadow was cut in a straight line above a blank band.
+   The extra bottom padding keeps that shadow inside the clip. */
+.page:has(> .page-foot) { margin-bottom: 0; border-radius: 0 0 var(--sheet-radius) var(--sheet-radius); }
 .page-foot .field { margin-bottom: 10px; }
 .page-foot__bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .page-foot__bar p { margin: 0; color: var(--muted); font-size: 13px; }
