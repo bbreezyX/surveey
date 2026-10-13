@@ -214,7 +214,8 @@ def renumber(actor, prefix, reason):
     publishes straight away so the public map and the admin agree on Nomor."""
     permission(actor, 'publish')
     prefix = text(prefix, 'Desa', 250, True).upper()
-    reason = text(reason, 'Alasan penomoran ulang', 3000, True)
+    # Tidying is mechanical, so the list sends no reason; the audit still names what was done.
+    reason = text(reason, 'Alasan penomoran ulang', 3000) or f'Rapikan nomor unit {prefix}'
     active = ActivePublication.objects.select_for_update().get(id=1)
     points = [p for p in Point.objects.select_for_update().filter(nomor__istartswith=prefix + '-').order_by('pk')
         if re.fullmatch(re.escape(prefix) + r'-\d+', p.nomor.upper())]

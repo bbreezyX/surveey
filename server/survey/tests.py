@@ -254,7 +254,8 @@ class AdminPathTests(TestCase):
         token = self.client.cookies['survey_admin_csrf'].value
         self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token})
         self.assertEqual(self.client.get('/admin/api/points').json()['gaps'], {'BATANG HARI-PEMAYUNG-TURE': [1, 3, 4]})
-        renumbered, publication = renumber(self.user, 'BATANG HARI-PEMAYUNG-TURE', 'Rapikan')
+        # The list asks for no reason; the revision still records the tidying.
+        renumbered, publication = renumber(self.user, 'BATANG HARI-PEMAYUNG-TURE', '')
         # Active units close up to 001..N; the archive keeps a unique number behind them.
         self.assertEqual(renumbered, 3)
         for item, nomor in ((first, '001'), (third, '002'), (fourth, '003'), (settled, '004')):
@@ -262,6 +263,7 @@ class AdminPathTests(TestCase):
             self.assertEqual((item.nomor, item.state['nomor']), (f'BATANG HARI-PEMAYUNG-TURE-{nomor}',) * 2)
         self.assertEqual(sorted(f['properties']['Nomor'][-3:] for f in publication.geojson['features']), ['001', '002', '003'])
         self.assertEqual(self.client.get('/admin/api/points').json()['gaps'], {})
+        self.assertEqual(third.revisions.get(number=third.revision).reason, 'Rapikan nomor unit BATANG HARI-PEMAYUNG-TURE')
 
 
     def test_next_nomor_for_a_picked_address_counts_points_and_reserved_drafts(self):
