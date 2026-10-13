@@ -77,6 +77,8 @@ def nomor_numbers(nomors):
 def nomor_gaps(nomors):
     # A desa needs tidying when its numbers are not exactly 001..N: a point
     # that moved away leaves a hole, and the one that arrived takes max+1.
+    # Callers pass active points only: an archived point still holds its
+    # number, yet the public map skips it, so it is a hole there too.
     # The numbers in use come along so the list can show what is out of order.
     return {prefix: sorted(numbers) for prefix, numbers in sorted(nomor_numbers(nomors).items())
         if sorted(numbers) != list(range(1, len(numbers) + 1))}

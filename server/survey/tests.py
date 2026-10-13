@@ -203,9 +203,9 @@ class AdminPathTests(TestCase):
         self.client.get('/admin/')
         token = self.client.cookies['survey_admin_csrf'].value
         self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token})
-        # Each untidy desa comes with the numbers it uses, for the list's indicator.
+        # Each untidy desa comes with the active numbers it uses, for the list's indicator.
         self.assertEqual(self.client.get('/admin/api/points').json()['gaps'],
-            {'MUARO JAMBI-MESTONG-PELEMPANG': [1, 3, 4], 'MUARO JAMBI-MESTONG-TEMPINO': [1, 3]})
+            {'MUARO JAMBI-MESTONG-PELEMPANG': [1, 3], 'MUARO JAMBI-MESTONG-TEMPINO': [1, 3]})
         editor = Account.objects.create_user(username='renumber-editor', password='test-only-password-551210', role='editor')
         with self.assertRaises(Problem):
             renumber(editor, 'MUARO JAMBI-MESTONG-PELEMPANG', 'Rapikan')
@@ -234,6 +234,34 @@ class AdminPathTests(TestCase):
         active = ActivePublication.objects.get(id=1).publication
         self.assertIn('MUARO JAMBI-MESTONG-PELEMPANG-002', [f['properties']['Nomor'] for f in active.geojson['features']])
         self.assertEqual(self.client.get('/admin/api/points').json()['gaps'], {'MUARO JAMBI-MESTONG-TEMPINO': [1, 3]})
+
+    def test_archived_points_leave_a_gap_and_move_behind_the_active_ones(self):
+        from delivery.models import ActivePublication
+        from .models import Point
+        from .services import create_point, renumber
+        ActivePublication.objects.get_or_create(id=1)
+        ture = 'Desa Ture, Kecamatan Pemayung, Kabupaten Batang Hari'
+        def point(number, archived):
+            created = create_point(self.user, {'nomor': f'BATANG HARI-PEMAYUNG-TURE-{number}', 'nama': '', 'jalur': '', 'alamat': ture,
+                'keterangan': '', 'lokasi_rekapan': '', 'catatan': '', 'status': '', 'duplikat': False, 'archived': False,
+                'lon': 103.4, 'lat': -1.55, 'date': '', 'photo_id': None, 'observation_id': None}, 'Uji')
+            Point.objects.filter(pk=created.pk).update(state={**created.state, 'archived': archived}, archived=archived)
+            return created
+        # 002 was archived once its desa was settled. The public map then jumps
+        # from 001 to 003, so the desa needs tidying even though every number is held.
+        first, settled, third, fourth = point('001', False), point('002', True), point('003', False), point('004', False)
+        self.client.get('/admin/')
+        token = self.client.cookies['survey_admin_csrf'].value
+        self.client.post('/admin/login', {'username': self.user.username, 'password': 'test-only-password-347192', 'csrfmiddlewaretoken': token})
+        self.assertEqual(self.client.get('/admin/api/points').json()['gaps'], {'BATANG HARI-PEMAYUNG-TURE': [1, 3, 4]})
+        renumbered, publication = renumber(self.user, 'BATANG HARI-PEMAYUNG-TURE', 'Rapikan')
+        # Active units close up to 001..N; the archive keeps a unique number behind them.
+        self.assertEqual(renumbered, 3)
+        for item, nomor in ((first, '001'), (third, '002'), (fourth, '003'), (settled, '004')):
+            item.refresh_from_db()
+            self.assertEqual((item.nomor, item.state['nomor']), (f'BATANG HARI-PEMAYUNG-TURE-{nomor}',) * 2)
+        self.assertEqual(sorted(f['properties']['Nomor'][-3:] for f in publication.geojson['features']), ['001', '002', '003'])
+        self.assertEqual(self.client.get('/admin/api/points').json()['gaps'], {})
 
 
     def test_next_nomor_for_a_picked_address_counts_points_and_reserved_drafts(self):

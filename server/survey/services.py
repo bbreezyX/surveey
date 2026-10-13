@@ -218,14 +218,16 @@ def renumber(actor, prefix, reason):
     active = ActivePublication.objects.select_for_update().get(id=1)
     points = [p for p in Point.objects.select_for_update().filter(nomor__istartswith=prefix + '-').order_by('pk')
         if re.fullmatch(re.escape(prefix) + r'-\d+', p.nomor.upper())]
-    if prefix not in nomor_gaps([p.nomor for p in points]):
+    if prefix not in nomor_gaps([p.nomor for p in points if not p.archived]):
         raise Problem('Desa ini tidak memiliki nomor yang perlu dirapikan.', 409)
     # A pending draft here would become a conflict, and one moving a point in
     # holds a number assign_nomor reserved; both must be settled first.
     for draft in Draft.objects.filter(status='pending').select_related('point'):
         if any(nomor.upper().startswith(prefix + '-') for nomor in (draft.point.nomor, draft.proposed['state']['nomor'])):
             raise Problem('Selesaikan draf di desa ini terlebih dahulu.', 409)
-    ordered = sorted(points, key=lambda p: (int(p.nomor.rsplit('-', 1)[1]), p.nomor))
+    # Active units take 001..N in their current order; archived ones follow,
+    # keeping a unique number so they can still be restored later.
+    ordered = sorted(points, key=lambda p: (p.archived, int(p.nomor.rsplit('-', 1)[1]), p.nomor))
     # Each point keeps its own prefix spelling; only the number changes.
     changes = [(p, f"{p.nomor.rsplit('-', 1)[0]}-{i:03d}") for i, p in enumerate(ordered, 1)]
     changes = [(p, nomor) for p, nomor in changes if p.nomor != nomor]

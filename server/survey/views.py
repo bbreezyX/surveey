@@ -135,7 +135,7 @@ def points(request):
     return response({'items': [{'id': str(p.pk), 'revision': p.revision, 'state': p.state, 'drafts': p.drafts} for p in rows],
         'total': total, 'page': page, 'pages': max(1, (total+49)//50), 'counts': counts(Point.objects.values_list('state', flat=True)),
         # Over every point, not the page: a desa can span two pages of 50.
-        'gaps': nomor_gaps(Point.objects.values_list('nomor', flat=True))})
+        'gaps': nomor_gaps(Point.objects.filter(archived=False).values_list('nomor', flat=True))})
 
 @api(['GET'])
 def next_nomor(request):
