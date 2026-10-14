@@ -1403,6 +1403,70 @@ body.is-data-unavailable .atlas-summary {
     body:not(.is-panel-open) .nearby__note {
         margin: 8px 4px;
     }
+
+    /* One kabupaten, collapsed: its header shrinks to a single line (back,
+       name, count) so the peek leaves the map room for the lead to the
+       nearest unit. The locator and the "Semua wilayah" label come back
+       with the opened sheet; the button keeps its aria-label throughout. */
+    body:not(.is-panel-open) .atlas-detail {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 2px 16px 10px 10px;
+    }
+
+    body:not(.is-panel-open) .atlas-back {
+        justify-content: center;
+        min-width: 36px;
+        min-height: 36px;
+        margin: 0;
+        padding: 0;
+    }
+
+    body:not(.is-panel-open) .atlas-back__label,
+    body:not(.is-panel-open) .atlas-detail__kec,
+    body:not(.is-panel-open) .atlas-locator {
+        display: none;
+    }
+
+    body:not(.is-panel-open) .atlas-detail__main {
+        display: block;
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* A long name like Kab. Tanjung Jabung Barat: when the count no longer
+       fits beside it, the count wraps onto a second line that the one-line
+       height clips away, so it disappears whole instead of reading "43 …".
+       The name only ends in an ellipsis if it alone outruns the row. */
+    body:not(.is-panel-open) .atlas-detail__main > div:first-child {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0 8px;
+        min-width: 0;
+        max-height: 22px;
+        overflow: hidden;
+    }
+
+    body:not(.is-panel-open) .atlas-detail h1,
+    body:not(.is-panel-open) .atlas-detail p {
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    body:not(.is-panel-open) .atlas-detail h1 {
+        overflow: hidden;
+        min-width: 0;
+        font-size: 18px;
+        text-overflow: ellipsis;
+    }
+
+    body:not(.is-panel-open) .atlas-detail p {
+        flex: none;
+    }
 }
 
 /* ---------- Reader's position on the map ---------- */
