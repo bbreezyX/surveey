@@ -14,14 +14,7 @@
     state.select(point.nomor, origin);
   }
 </script>
-{#if locator.status === 'off'}
-  <!-- Phones only: there this is the whole location control, sitting in the sheet's peek. Desktop uses the round button. -->
-  <button class="nearby-cta" type="button" onclick={locator.toggle}>
-    <span class="nearby-cta__icon" aria-hidden="true"><Icon name="locate" size={20}/></span>
-    <span class="nearby-cta__text"><b>Lihat titik terdekat</b><span>Pakai lokasi HP-mu</span></span>
-    <Icon name="back" size={16}/>
-  </button>
-{:else}
+{#if locator.status !== 'off'}
   <section class="nearby" class:is-live={locator.status === 'on'} aria-labelledby="nearby-title">
     <div class="nearby__head">
       <h2 class="nearby__title" id="nearby-title"><span class="nearby__live" aria-hidden="true"></span>Di dekatmu</h2>
