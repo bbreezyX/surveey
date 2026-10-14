@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { distanceMeters, nearestPoints, isHere, formatDistance } from '../src/public/state/nearby';
+import { distanceMeters, nearestPoints, suggestable, isHere, formatDistance } from '../src/public/state/nearby';
 const at = (nomor: string, latNum: number, lonNum: number) => ({ nomor, latNum, lonNum });
 it('measures ground distance close to what a phone GPS reports', () => {
   // 0.001° of latitude is about 111 m everywhere.
@@ -21,4 +21,9 @@ it('formats distances the way Indonesian readers write them', () => {
   expect(formatDistance(8.4)).toBe('8 m');
   expect(formatDistance(999.6)).toBe('1,0 km');
   expect(formatDistance(2345)).toBe('2,3 km');
+});
+it('never suggests unsited units and lets reserves follow their layer', () => {
+  const points = [{ nomor: 'sk', belum: false, cadangan: false }, { nomor: 'belum', belum: true, cadangan: false }, { nomor: 'cadangan', belum: false, cadangan: true }];
+  expect(suggestable(points, { sk: true, cadangan: false }).map(point => point.nomor)).toEqual(['sk']);
+  expect(suggestable(points, { sk: false, cadangan: true }).map(point => point.nomor)).toEqual(['cadangan']);
 });

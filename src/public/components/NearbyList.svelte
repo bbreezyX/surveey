@@ -2,12 +2,10 @@
   import type { SurveyState } from '../state/survey.svelte';
   import type { Locator } from '../state/locate.svelte';
   import type { SurveyPoint } from '../../shared/survey/types';
-  import { nearestPoints, isHere, formatDistance, WEAK_ACCURACY } from '../state/nearby';
+  import { nearestPoints, suggestable, isHere, formatDistance, WEAK_ACCURACY } from '../state/nearby';
   import Icon from './Icon.svelte';
   let { state, locator }: { state: SurveyState; locator: Locator } = $props();
-  // Unsited units are left out: their pin is only an estimate, so "you are at it" would be a false match.
-  // Reserves follow their layer, the same rule the map uses to draw them.
-  const candidates = $derived(state.points.filter(point => !point.belum && (point.cadangan ? state.layers.cadangan : state.layers.sk)));
+  const candidates = $derived(suggestable(state.points, state.layers));
   const fix = $derived(locator.fix);
   const rows = $derived(fix ? nearestPoints(candidates, fix) : []);
   function open(point: SurveyPoint, origin: HTMLElement) {

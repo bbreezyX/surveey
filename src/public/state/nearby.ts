@@ -15,6 +15,11 @@ export function nearestPoints<T extends Located>(points: readonly T[], fix: Fix,
     .map(point => ({ point, meters: distanceMeters(fix.lat, fix.lon, point.latNum, point.lonNum) }))
     .sort((a, b) => a.meters - b.meters).slice(0, limit);
 }
+// Unsited units are left out: their pin is only an estimate, so "you are at it" would be a false match.
+// Reserves follow their layer, the same rule the map uses to draw them.
+export function suggestable<T extends { belum: boolean; cadangan: boolean }>(points: readonly T[], layers: { sk: boolean; cadangan: boolean }): T[] {
+  return points.filter(point => !point.belum && (point.cadangan ? layers.cadangan : layers.sk));
+}
 export function isHere(meters: number, accuracy: number): boolean { return meters <= Math.max(HERE_METERS, accuracy); }
 export function formatDistance(meters: number): string {
   return meters < 999.5 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1).replace('.', ',')} km`;

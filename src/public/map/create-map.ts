@@ -3,6 +3,11 @@ import View from 'ol/View';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import Circle from 'ol/geom/Circle';
+import LineString from 'ol/geom/LineString';
+import Style from 'ol/style/Style';
+import Fill from 'ol/style/Fill';
+import Stroke from 'ol/style/Stroke';
+import CircleStyle from 'ol/style/Circle';
 import GeoJSON from 'ol/format/GeoJSON';
 import VectorSource from 'ol/source/Vector';
 import XYZ from 'ol/source/XYZ';
@@ -14,7 +19,7 @@ import { defaults as defaultControls } from 'ol/control/defaults';
 import { FullWidthScaleLine } from './scale';
 import { inAndOut } from 'ol/easing';
 import { fromLonLat } from 'ol/proj';
-import { createEmpty, extendCoordinate } from 'ol/extent';
+import { createEmpty, extend, extendCoordinate } from 'ol/extent';
 import type { SurveyDataset, SurveyPoint } from '../../shared/survey/types';
 import type { Fix } from '../state/nearby';
 import { attachPointFeedback } from './feedback';
@@ -30,7 +35,7 @@ export interface SurveyMapAdapter {
   fitToPoints(ids: ReadonlySet<string>, options?: FitOptions): void;
   setLayerVisibility(key: LayerKey, visible: boolean): void;
   updateSize(): void;
-  setUserLocation(fix: Fix | null, frame?: boolean): void;
+  setUserLocation(fix: Fix | null, nearest: SurveyPoint | null, here?: boolean, frame?: boolean): void;
   dispose(): void;
 }
 export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null, nearby?: boolean) => void }): SurveyMapAdapter {
@@ -57,9 +62,15 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     if (!point || !visibleIds.has(id) || !shown(point) && id !== selected) return undefined;
     return pointStyle(point, resolution, id === selected);
   } });
-  // The accuracy disc is drawn under the pins so it never hides the unit the reader is standing at.
+  // The accuracy disc and the dashed lead to the nearest unit are drawn under the pins, so neither hides
+  // the unit itself. The lead is what answers "which point am I at": the dot alone only says where you are.
+  const discStyle = new Style({ fill: new Fill({ color: 'rgba(0,114,188,.14)' }), stroke: new Stroke({ color: 'rgba(0,114,188,.55)', width: 1.25 }) });
+  const leadStyles = [new Style({ stroke: new Stroke({ color: 'rgba(255,255,255,.85)', width: 4.5 }) }), new Style({ stroke: new Stroke({ color: '#0072bc', width: 2.5, lineDash: [6, 6] }) })];
+  // Standing at the unit, the lead shrinks to a stub buried under the pin and the dot; a held yellow ring
+  // on the unit says "this one" instead. Yellow because the pins and the selection already speak it.
+  const hereStyles = [new Style({ image: new CircleStyle({ radius: 19, stroke: new Stroke({ color: 'rgba(255,255,255,.9)', width: 6 }) }) }), new Style({ image: new CircleStyle({ radius: 19, fill: new Fill({ color: 'rgba(254,229,15,.18)' }), stroke: new Stroke({ color: '#fee50f', width: 3 }) }) })];
   const userSource = new VectorSource();
-  const userLayer = new VectorLayer({ source: userSource, declutter: false, style: { 'fill-color': 'rgba(0,114,188,.14)', 'stroke-color': 'rgba(0,114,188,.55)', 'stroke-width': 1.25 } });
+  const userLayer = new VectorLayer({ source: userSource, declutter: false, style: feature => { const geometry = feature.getGeometry(); return geometry instanceof LineString ? leadStyles : geometry instanceof Point ? hereStyles : discStyle; } });
   // The dot is a DOM overlay, not a canvas feature, so its pulse runs on the compositor instead of
   // re-rendering the whole map every frame on a phone already busy with GPS.
   const userDot = document.createElement('div'); userDot.className = 'user-dot'; userDot.setAttribute('aria-hidden', 'true');
@@ -132,14 +143,19 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       else ({ boundaries: regionLayer, mask, area })[key].setVisible(visible);
     },
     updateSize: resize,
-    setUserLocation(fix, frame = false) {
+    setUserLocation(fix, nearest, here = false, frame = false) {
       userSource.clear();
       if (!fix) { userOverlay.setPosition(undefined); return; }
-      const at = fromLonLat([fix.lon, fix.lat]);
+      const at = fromLonLat([fix.lon, fix.lat]), target = nearest ? fromLonLat([nearest.lonNum, nearest.latNum]) : null;
       // Web Mercator stretches distance by 1/cos(latitude); Jambi is near the equator, but the radius is kept true anyway.
       const disc = new Circle(at, fix.accuracy / Math.cos(fix.lat * Math.PI / 180));
       userSource.addFeature(new Feature(disc)); userOverlay.setPosition(at);
-      if (frame && !disposed) map.getView().fit(disc.getExtent(), { padding: padding(), maxZoom: 17, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600 });
+      if (target) userSource.addFeature(new Feature(here ? new Point(target) : new LineString([at, target])));
+      if (!frame || disposed) return;
+      // The first view holds both ends: the reader and the unit they are nearest to, however far apart.
+      const extent = disc.getExtent().slice(); if (target) extend(extent, [target[0], target[1], target[0], target[1]]);
+      map.getView().fit(extent, { padding: padding().map(side => side + 24), maxZoom: 18, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600 });
+      if (target) feedback.pulse(target);
     },
     dispose() { disposed = true; cancelAnimationFrame(positionFrame); observer.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
   };
