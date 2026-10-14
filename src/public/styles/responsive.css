@@ -963,8 +963,9 @@ body.is-sidebar-collapsed .map-legend {
        parent of #popup) with inline left/top/transform. A transform on an
        ancestor re-roots position:fixed, so neutralize the wrapper on mobile
        and dock the card against the real viewport. (!important is required
-       to beat OL's inline styles.) */
-    .ol-overlay-container {
+       to beat OL's inline styles.) Only the popup's wrapper: the reader's
+       location dot is an overlay too and has to stay on its coordinate. */
+    .ol-overlay-container:has(> #popup) {
         position: static !important;
         transform: none !important;
         pointer-events: none;

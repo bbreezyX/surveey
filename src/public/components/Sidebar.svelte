@@ -10,8 +10,10 @@
   import PointList from './PointList.svelte';
   import { lambang, lambangSrcset } from '../assets/lambang';
   import Icon from './Icon.svelte';
-  let { state, onfit }: { state: SurveyState; onfit: () => void } = $props();
-  let sidebar: HTMLElement, scroller: HTMLDivElement, search: HTMLInputElement;
+  import NearbyList from './NearbyList.svelte';
+  import type { Locator as GpsLocator } from '../state/locate.svelte';
+  let { state, onfit, locator }: { state: SurveyState; onfit: () => void; locator: GpsLocator } = $props();
+  let sidebar: HTMLElement, scroller: HTMLDivElement, search: HTMLInputElement, near: HTMLDivElement;
   const gesture = createSheetGesture(() => sidebar, () => state.panelOpen, open => { state.panelOpen = open; state.select(null); }, () => document.body.classList.remove('is-sheet-hinting', 'is-sheet-nudging'));
   const regionPoints = $derived(state.points.filter(point => point.kabupaten === state.activeRegion));
   const filterFlags = $derived((['duplikat', 'belum'] as const).filter(key => regionPoints.some(point => point[key] && !point.cadangan)));
@@ -28,8 +30,8 @@
     else [...sidebar.querySelectorAll<HTMLButtonElement>('[data-region]')].find(button => button.dataset.region === previous)?.focus({ preventScroll: true });
   }
   async function collapse() { state.sidebarCollapsed = true; await tick(); document.getElementById('panel-toggle')?.focus({ preventScroll: true }); }
-  function measurePeek() { if (sidebar && window.innerWidth < 960) { const label = sidebar.querySelector('.panel-search'); if (label instanceof HTMLElement) document.documentElement.style.setProperty('--sheet-peek', `${Math.round(label.offsetTop + label.offsetHeight + 14)}px`); } }
-  onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#panel-top')!); window.addEventListener('resize', measurePeek); measurePeek(); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); }; });
+  function measurePeek() { if (sidebar && window.innerWidth < 960) { const search = sidebar.querySelector('.panel-search'), card = near?.firstElementChild, label = card instanceof HTMLElement && card.offsetHeight ? card : search; if (label instanceof HTMLElement) document.documentElement.style.setProperty('--sheet-peek', `${Math.round(label.offsetTop + label.offsetHeight + 14)}px`); } }
+  onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(near); window.addEventListener('resize', measurePeek); measurePeek(); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); }; });
   $effect(() => { state.activeRegion; state.statusFilter; state.query; if (scroller) scroller.scrollTop = 0; });
   function syncScroll() {
     sidebar.classList.toggle('is-scrolled', scroller.scrollTop > 2);
@@ -48,7 +50,9 @@
         <div class="atlas-detail__main"><div><h1>{state.activeRegion}</h1><p><b>{countOfficialPoints(regionPoints)}</b> titik di <b>{new Set(regionPoints.filter(p => !p.cadangan).map(p => p.display.kecamatan)).size}</b> kecamatan</p></div><div class="atlas-locator" role="img" aria-label={`Letak ${state.activeRegion} di Provinsi Jambi`}><Locator regions={state.dataset.boundaries} active={state.activeRegion}/></div></div></div>
     {:else}<div class="atlas-head"><img src={lambang} srcset={lambangSrcset} sizes="38px" alt="Lambang Provinsi Jambi" width="38" height="39" decoding="async"/><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar" onclick={collapse}><Icon name="collapse"/></button></div>{/if}
   </div>
-  <div class="panel-search"><span class="panel-search__icon"><Icon name="search" size={18}/></span><input id="list-search" type="search" aria-label="Cari titik PUTS" placeholder={state.activeRegion ? `Cari dalam ${state.activeRegion}…` : "Cari lokasi atau kabupaten…"} title="Cari titik, lokasi, kabupaten, atau koordinat" autocomplete="off" bind:value={state.query} bind:this={search} onfocus={() => { if (innerWidth < 960) state.panelOpen = true; }}/>{#if state.query}<button class="panel-search__clear" id="list-search-clear" type="button" aria-label="Hapus pencarian" onclick={() => { state.query = ''; search.focus({ preventScroll: true }); }}><Icon name="close" size={16}/></button>{/if}</div>
+  <div class="panel-search-row"><div class="panel-search"><span class="panel-search__icon"><Icon name="search" size={18}/></span><input id="list-search" type="search" aria-label="Cari titik PUTS" placeholder={state.activeRegion ? `Cari dalam ${state.activeRegion}…` : "Cari lokasi atau kabupaten…"} title="Cari titik, lokasi, kabupaten, atau koordinat" autocomplete="off" bind:value={state.query} bind:this={search} onfocus={() => { if (innerWidth < 960) state.panelOpen = true; }}/>{#if state.query}<button class="panel-search__clear" id="list-search-clear" type="button" aria-label="Hapus pencarian" onclick={() => { state.query = ''; search.focus({ preventScroll: true }); }}><Icon name="close" size={16}/></button>{/if}</div><button class="locate-btn" class:is-seeking={locator.status === 'seeking'} type="button" aria-label="Titik di dekatku" title={locator.status === 'off' ? 'Tampilkan titik di dekat lokasiku' : 'Matikan lokasi'} aria-pressed={locator.status !== 'off'} onclick={locator.toggle}><Icon name="locate" size={22}/></button></div>
+  <!-- Under the search so the phone sheet's peek carries the nearest unit, not just the search field. -->
+  <div class="sheet-near" bind:this={near}><NearbyList {state} {locator}/></div>
   <div class="panel-meta" id="panel-meta">
     {#if state.activeRegion}
       {#if filterFlags.length}<div class="atlas-pills" role="group" aria-label="Saring menurut status">

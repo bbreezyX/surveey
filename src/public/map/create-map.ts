@@ -2,6 +2,7 @@ import OlMap from 'ol/Map';
 import View from 'ol/View';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
+import Circle from 'ol/geom/Circle';
 import GeoJSON from 'ol/format/GeoJSON';
 import VectorSource from 'ol/source/Vector';
 import XYZ from 'ol/source/XYZ';
@@ -15,6 +16,7 @@ import { inAndOut } from 'ol/easing';
 import { fromLonLat } from 'ol/proj';
 import { createEmpty, extendCoordinate } from 'ol/extent';
 import type { SurveyDataset, SurveyPoint } from '../../shared/survey/types';
+import type { Fix } from '../state/nearby';
 import { attachPointFeedback } from './feedback';
 import { attachControlLayout } from './controls';
 import { unByKey } from 'ol/Observable';
@@ -28,6 +30,7 @@ export interface SurveyMapAdapter {
   fitToPoints(ids: ReadonlySet<string>, options?: FitOptions): void;
   setLayerVisibility(key: LayerKey, visible: boolean): void;
   updateSize(): void;
+  setUserLocation(fix: Fix | null, frame?: boolean): void;
   dispose(): void;
 }
 export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null, nearby?: boolean) => void }): SurveyMapAdapter {
@@ -54,9 +57,16 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     if (!point || !visibleIds.has(id) || !shown(point) && id !== selected) return undefined;
     return pointStyle(point, resolution, id === selected);
   } });
+  // The accuracy disc is drawn under the pins so it never hides the unit the reader is standing at.
+  const userSource = new VectorSource();
+  const userLayer = new VectorLayer({ source: userSource, declutter: false, style: { 'fill-color': 'rgba(0,114,188,.14)', 'stroke-color': 'rgba(0,114,188,.55)', 'stroke-width': 1.25 } });
+  // The dot is a DOM overlay, not a canvas feature, so its pulse runs on the compositor instead of
+  // re-rendering the whole map every frame on a phone already busy with GPS.
+  const userDot = document.createElement('div'); userDot.className = 'user-dot'; userDot.setAttribute('aria-hidden', 'true');
+  const userOverlay = new Overlay({ element: userDot, positioning: 'center-center', stopEvent: false });
   const overlay = new Overlay({ element: options.popup, positioning: 'bottom-center', offset: [0, 0], stopEvent: true });
   const scaleControl = new FullWidthScaleLine();
-  const map = new OlMap({ target: options.target, layers: [esri, google, mask, area, regionLayer, pointLayer], overlays: [overlay], view: new View({ maxZoom: 28, minZoom: 1 }), interactions: defaultInteractions({ doubleClickZoom: false }), controls: defaultControls({ attributionOptions: { collapsible: false, className: 'bottom-attribution' }, zoomOptions: { zoomInTipLabel: 'Perbesar', zoomOutTipLabel: 'Perkecil' } }).extend([scaleControl]) });
+  const map = new OlMap({ target: options.target, layers: [esri, google, mask, area, regionLayer, userLayer, pointLayer], overlays: [userOverlay, overlay], view: new View({ maxZoom: 28, minZoom: 1 }), interactions: defaultInteractions({ doubleClickZoom: false }), controls: defaultControls({ attributionOptions: { collapsible: false, className: 'bottom-attribution' }, zoomOptions: { zoomInTipLabel: 'Perbesar', zoomOutTipLabel: 'Perkecil' } }).extend([scaleControl]) });
   const controlCleanup = attachControlLayout(map);
   function shown(point: SurveyPoint) { return visibleIds.has(point.nomor) && (point.cadangan ? flags.cadangan : point.belum ? flags.belum : flags.sk); }
   const feedback = attachPointFeedback(map, pointLayer, points, shown, () => selected);
@@ -122,6 +132,15 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       else ({ boundaries: regionLayer, mask, area })[key].setVisible(visible);
     },
     updateSize: resize,
+    setUserLocation(fix, frame = false) {
+      userSource.clear();
+      if (!fix) { userOverlay.setPosition(undefined); return; }
+      const at = fromLonLat([fix.lon, fix.lat]);
+      // Web Mercator stretches distance by 1/cos(latitude); Jambi is near the equator, but the radius is kept true anyway.
+      const disc = new Circle(at, fix.accuracy / Math.cos(fix.lat * Math.PI / 180));
+      userSource.addFeature(new Feature(disc)); userOverlay.setPosition(at);
+      if (frame && !disposed) map.getView().fit(disc.getExtent(), { padding: padding(), maxZoom: 17, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600 });
+    },
     dispose() { disposed = true; cancelAnimationFrame(positionFrame); observer.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
   };
 }

@@ -1027,3 +1027,424 @@ body.is-data-unavailable .atlas-summary {
     font-size: 11.5px;
     line-height: 1.45;
 }
+
+/* ---------- Titik di dekatku ---------- */
+
+/* The location toggle sits beside the search pill rather than inside it: on
+   phones this row is the sheet's peek, the one strip always under the
+   thumb, so it gets a full 44px round target with its own fill instead of
+   a ghost icon that read as decoration next to the query. Off it is the
+   blue of the reader's own position (the map dot, the block below); on it
+   takes the map chrome's "on" pairing, ink with yellow, the same as the
+   open layer chip. */
+.panel-search-row {
+    display: flex;
+    flex: none;
+    gap: 8px;
+    margin: 0 16px 12px;
+}
+
+.panel-search-row > .panel-search {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.locate-btn {
+    position: relative;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid #b9d6ee;
+    border-radius: 999px;
+    background: var(--blue-tint);
+    color: var(--blue);
+    cursor: pointer;
+    scale: 1;
+    transition:
+        background-color var(--dur) var(--ease-out),
+        border-color var(--dur) var(--ease-out),
+        color var(--dur) var(--ease-out),
+        scale var(--dur-state) var(--ease-spring);
+}
+
+@media (hover: hover) {
+    .locate-btn:hover {
+        border-color: var(--blue);
+        background: #dcecfb;
+        color: var(--blue-deep);
+    }
+}
+
+.locate-btn:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.locate-btn:active {
+    scale: var(--ctl-press-scale);
+    transition-duration: var(--dur-press);
+}
+
+.locate-btn[aria-pressed="true"],
+.locate-btn[aria-pressed="true"]:hover {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--yellow);
+}
+
+/* While the phone looks for satellites the button keeps sending out a ring,
+   so a slow first fix reads as working rather than stuck. */
+.locate-btn.is-seeking::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border: 2px solid var(--blue);
+    border-radius: inherit;
+    opacity: 0;
+    animation: locate-seek 1.2s var(--ease-out) infinite;
+}
+
+@keyframes locate-seek {
+    from {
+        scale: 0.85;
+        opacity: 0.9;
+    }
+    to {
+        scale: 1.55;
+        opacity: 0;
+    }
+}
+
+/* Blue, not yellow: yellow means "selected on the map", and this block is
+   about the reader's own position, which the map draws in the same blue. */
+.nearby {
+    margin: 0 16px 12px;
+    padding: 10px 12px 6px;
+    border: 1px solid #cde2f3;
+    border-radius: var(--radius-md);
+    background: var(--blue-tint);
+    animation: nearby-in var(--dur-state) var(--ease-out);
+}
+
+@keyframes nearby-in {
+    from {
+        opacity: 0;
+        translate: 0 -6px;
+    }
+}
+
+.nearby__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+}
+
+.nearby__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--blue-deep);
+    font: 700 14px/1.2 var(--font-ui);
+}
+
+/* A small copy of the map's dot: gray while seeking, blue and breathing
+   once a fix is in. */
+.nearby__live {
+    position: relative;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--disabled-ink);
+}
+
+.nearby.is-live .nearby__live {
+    background: var(--blue);
+}
+
+.nearby.is-live .nearby__live::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--blue);
+    animation: user-pulse 2s ease-out infinite;
+}
+
+.nearby__acc {
+    color: var(--muted-2);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.nearby__off {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.nearby__off:hover {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.nearby__note {
+    margin: 4px 0 6px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.nearby__retry {
+    margin: 0 0 8px;
+    padding: 6px 14px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font: 600 13px var(--font-ui);
+    cursor: pointer;
+}
+
+.nearby__rows {
+    display: flex;
+    flex-direction: column;
+    margin: 2px -6px 0;
+}
+
+.nearby__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin: 0;
+    padding: 7px 6px;
+    border: 0;
+    border-top: 1px solid #d3e5f4;
+    border-radius: 0;
+    background: none;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--dur);
+}
+
+.nearby__row:first-child {
+    border-top: 0;
+}
+
+.nearby__row:hover {
+    background: rgba(255, 255, 255, 0.65);
+}
+
+.nearby__row:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: -2px;
+}
+
+.nearby__info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.nearby__place,
+.nearby__area {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nearby__place {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.nearby__area {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.nearby__dist {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: flex-end;
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.nearby__dist small {
+    color: var(--blue-deep);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* The unit the reader is standing at: its tile gets the halo the list uses
+   for "you were just here", held instead of fading. */
+.nearby__row.is-here .nearby__dist {
+    color: var(--blue-deep);
+    font-weight: 700;
+}
+
+.nearby__row.is-here .atlas-unit:not(.is-active) {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue);
+}
+
+/* Phones only (the round button covers desktop): the location control in
+   the sheet's peek, sized and tinted like the block it turns into, so the
+   collapsed sheet already reads as "your nearest unit" before any tap. */
+.nearby-cta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: calc(100% - 32px);
+    margin: 0 16px 12px;
+    padding: 10px 12px;
+    border: 1px solid #cde2f3;
+    border-radius: var(--radius-md);
+    background: var(--blue-tint);
+    color: var(--blue-deep);
+    text-align: left;
+    cursor: pointer;
+    scale: 1;
+    transition:
+        background-color var(--dur),
+        scale var(--dur-state) var(--ease-spring);
+}
+
+.nearby-cta:active {
+    background: #dcecfb;
+    scale: 0.98;
+    transition-duration: var(--dur-press);
+}
+
+.nearby-cta:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.nearby-cta__icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--blue);
+}
+
+.nearby-cta__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.nearby-cta__text b {
+    font-size: 14px;
+}
+
+.nearby-cta__text span {
+    color: var(--muted);
+    font-size: 12.5px;
+}
+
+/* The "back" chevron, turned to point onward. */
+.nearby-cta > svg:last-child {
+    flex: none;
+    rotate: 180deg;
+}
+
+@media (min-width: 960px) {
+    .nearby-cta {
+        display: none;
+    }
+}
+
+@media (max-width: 959px) {
+    /* The peek card replaces the round button on phones: one location
+       control, where the thumb already is. */
+    .locate-btn {
+        display: none;
+    }
+
+    /* Collapsed, the peek shows only the answer: the nearest unit, or the
+       one-line status while there is none yet. The header, the off switch
+       and the runners-up come with the opened sheet. */
+    body:not(.is-panel-open) .nearby {
+        padding: 2px 8px;
+    }
+
+    body:not(.is-panel-open) .nearby__head,
+    body:not(.is-panel-open) .nearby__row:not(:first-child) {
+        display: none;
+    }
+
+    body:not(.is-panel-open) .nearby__note {
+        margin: 8px 4px;
+    }
+}
+
+/* ---------- Reader's position on the map ---------- */
+
+/* The usual phone-map dot: white-rimmed blue with a slow ring, so it stands
+   apart from the yellow unit pins at any zoom. */
+.user-dot {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: var(--blue);
+    box-shadow: 0 1px 4px rgba(20, 38, 53, 0.45);
+    pointer-events: none;
+}
+
+.user-dot::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: var(--blue);
+    animation: user-pulse 2s ease-out infinite;
+}
+
+@keyframes user-pulse {
+    from {
+        scale: 1;
+        opacity: 0.55;
+    }
+    to {
+        scale: 3;
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nearby,
+    .nearby.is-live .nearby__live::after,
+    .locate-btn.is-seeking::after,
+    .user-dot::after {
+        animation: none;
+    }
+}
