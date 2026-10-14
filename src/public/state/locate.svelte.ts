@@ -1,9 +1,9 @@
 import type { Fix } from './nearby';
 export type LocateStatus = 'off' | 'seeking' | 'on' | 'denied' | 'error';
 const OFF_KEY = 'puts.locateOff';
-// The first request is always an explicit tap: prompting every visitor of a public map on load mostly
-// earns a reflexive "block", which the browser remembers and which then locks out the field crews too.
-// Once a phone has granted access, later visits start straight away without asking again.
+// GPS is requested as soon as the map opens, so field crews see their nearest unit without a tap. The
+// trade-off is accepted knowingly: casual visitors of a public map often answer a load-time prompt with
+// "block", and the browser remembers that until it is reset in site settings.
 export function createLocator() {
   let status = $state<LocateStatus>('off'), fix = $state.raw<Fix | null>(null), watch: number | null = null, disposed = false;
   function remember(off: boolean) { try { if (off) localStorage.setItem(OFF_KEY, '1'); else localStorage.removeItem(OFF_KEY); } catch { /* Storage disabled: auto-start just keeps happening. */ } }
@@ -26,9 +26,10 @@ export function createLocator() {
     toggle() { if (status === 'off') start(); else { stop(); status = 'off'; fix = null; remember(true); } },
     async resume() {
       try { if (localStorage.getItem(OFF_KEY)) return; } catch { /* Storage disabled: treat as not switched off. */ }
-      // Older Safari has no Permissions API; there the first tap stays the only way in.
+      // A site already blocked would only greet every visit with the "izin ditolak" line, so it keeps the
+      // card instead. Older Safari has no Permissions API and simply gets the prompt.
       const permission = await navigator.permissions?.query({ name: 'geolocation' }).catch(() => null);
-      if (permission?.state === 'granted' && status === 'off' && !disposed) start();
+      if (permission?.state !== 'denied' && status === 'off' && !disposed) start();
     },
     dispose() { disposed = true; stop(); },
   };
