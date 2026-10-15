@@ -102,6 +102,24 @@ class MediaCacheTests(PrivateMediaBoundaryTests):
         call_command('warm_media_cache', stdout=io.StringIO())
         self.assertEqual(self.cached.read_bytes(), b'published jpeg fixture')
 
+    def test_warm_command_retries_while_the_broker_restarts(self):
+        from unittest import mock
+        from django.core.management import call_command
+        from .management.commands import warm_media_cache
+        attempts = iter([ConnectionError('broker restarting')])
+        real_open = warm_media_cache.open_media
+        def flaky_open(record):
+            error = next(attempts, None)
+            if error:
+                raise error
+            return real_open(record)
+        with mock.patch.object(warm_media_cache, 'open_media', flaky_open), \
+                mock.patch.object(warm_media_cache, 'ROUND_DELAY_SECONDS', 0):
+            output = io.StringIO()
+            call_command('warm_media_cache', stdout=output)
+        self.assertIn('1/1 ready', output.getvalue())
+        self.assertTrue(self.cached.is_file())
+
 
 class StorageConnectionTests(SimpleTestCase):
     def test_manifest_checks_reuse_the_storage_connection(self):
