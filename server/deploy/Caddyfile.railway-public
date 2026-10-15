@@ -26,7 +26,7 @@
 
     @public not path /admin /admin/*
     header @public {
-        Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https://mt1.google.com https://*.google.com https://*.gstatic.com https://services.arcgisonline.com; connect-src 'self' https://mt1.google.com https://*.google.com; frame-ancestors 'self'; form-action 'self'"
+        Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https://tile.googleapis.com https://*.google.com https://*.gstatic.com https://services.arcgisonline.com; connect-src 'self' https://tile.googleapis.com https://*.google.com; frame-ancestors 'self'; form-action 'self'"
         Strict-Transport-Security "max-age=31536000"
         Permissions-Policy "camera=(), microphone=(), geolocation=(self), payment=(), usb=(), browsing-topics=()"
         Cross-Origin-Opener-Policy "same-origin"

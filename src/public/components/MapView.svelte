@@ -24,7 +24,7 @@
     card.focus({ preventScroll: true });
   }
   onMount(() => {
-    const instance = createSurveyMap({ target, popup, dataset: state.dataset, onSelect: (id, nearby) => id ? state.select(id, null, nearby) : closeDetail() }); adapter = instance;
+    const instance = createSurveyMap({ target, popup, dataset: state.dataset, onSelect: (id, nearby) => id ? state.select(id, null, nearby) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; } }); adapter = instance;
     const observer = new ResizeObserver(scrollHint); observer.observe(content);
     return () => { observer.disconnect(); instance.dispose(); adapter = null; };
   });

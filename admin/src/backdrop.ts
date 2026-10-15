@@ -4,14 +4,13 @@ import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import GeoJSON from 'ol/format/GeoJSON';
 import VectorSource from 'ol/source/Vector';
-import XYZ from 'ol/source/XYZ';
 import VectorLayer from 'ol/layer/Vector';
-import TileLayer from 'ol/layer/Tile';
 import Attribution from 'ol/control/Attribution';
 import { fromLonLat } from 'ol/proj';
 import { unByKey } from 'ol/Observable';
 import type { SurveyPoint } from '../../src/shared/survey/types';
 import { pointStyle, boundaryStyle, maskStyle } from '../../src/public/map/styles';
+import { satelliteLayers } from '../../src/public/map/google-tiles';
 
 // The public map drawn behind the login sheet and the dashboard, using the
 // public map's own pin and boundary styles so both read as the same map.
@@ -25,6 +24,7 @@ export function createBackdrop(target: HTMLElement, options: { onSelect?: (id: s
   const mask = new VectorLayer({ source: new VectorSource() });
   const regions = new VectorLayer({ source: new VectorSource({ attributions: 'Batas &copy; BIG' }), style: boundaryStyle });
   const pins = new VectorSource();
+  const satellite = satelliteLayers();
   let selected: string | null = null;
   const pinLayer = new VectorLayer({ source: pins, style: (feature, resolution) => {
     // pointStyle only reads the three status flags.
@@ -33,11 +33,12 @@ export function createBackdrop(target: HTMLElement, options: { onSelect?: (id: s
   } });
   const map = new OlMap({
     target,
-    layers: [new TileLayer({ source: new XYZ({ url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', maxZoom: 21, attributions: 'Tiles &copy; Google' }) }), mask, regions, pinLayer],
+    layers: [satellite.esri, satellite.google, mask, regions, pinLayer],
     view: new View({ center: fromLonLat([102.85, -1.62]), zoom: 8 }),
     controls: [new Attribution({ collapsible: false })],
     interactions: [],
   });
+  const satelliteCleanup = satellite.attach(map);
   const frame = () => {
     const extent = mask.getSource()!.getExtent();
     if (!Number.isFinite(extent[0])) return;
@@ -76,7 +77,7 @@ export function createBackdrop(target: HTMLElement, options: { onSelect?: (id: s
     dispose() {
       disposed = true;
       removeEventListener('resize', frame);
-      unByKey([click, hover]);
+      unByKey([click, hover]); satelliteCleanup();
       map.setTarget(undefined); map.dispose();
     },
   };

@@ -2,16 +2,15 @@
   import { onMount } from 'svelte';
   import Map from 'ol/Map';
   import View from 'ol/View';
-  import TileLayer from 'ol/layer/Tile';
   import VectorLayer from 'ol/layer/Vector';
   import VectorSource from 'ol/source/Vector';
-  import XYZ from 'ol/source/XYZ';
   import Feature from 'ol/Feature';
   import Point from 'ol/geom/Point';
   import Modify from 'ol/interaction/Modify';
   import { fromLonLat, toLonLat } from 'ol/proj';
   import { containsCoordinate } from 'ol/extent';
   import { Style, Circle, Fill, Stroke } from 'ol/style';
+  import { satelliteLayers } from '../../src/public/map/google-tiles';
   let { lat = $bindable(), lon = $bindable(), original }: { lat: number; lon: number; original?: { lat: number; lon: number } } = $props();
   let target: HTMLDivElement;
   let map = $state<Map>();
@@ -25,8 +24,10 @@
     if (old) old.setStyle(oldStyle);
     const oldSource = new VectorSource({ features: old ? [old] : [] });
     const center = Number.isFinite(lon) && Number.isFinite(lat) ? [lon, lat] : [103.6, -1.6];
-    map = new Map({ target, layers: [new TileLayer({ source: new XYZ({ url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', maxZoom: 21, attributions: 'Tiles © Google' }) }),
+    const satellite = satelliteLayers();
+    map = new Map({ target, layers: [satellite.esri, satellite.google,
       new VectorLayer({ source: oldSource }), new VectorLayer({ source, style })], view: new View({ center: fromLonLat(center), zoom: 17 }) });
+    const satelliteCleanup = satellite.attach(map);
     const modify = new Modify({ source });
     map.addInteraction(modify);
     modify.on('modifyend', () => {
@@ -35,7 +36,7 @@
     });
     map.on('singleclick', event => { const next = toLonLat(event.coordinate); lon = +next[0].toFixed(8); lat = +next[1].toFixed(8); });
     const observer = new ResizeObserver(() => map?.updateSize()); observer.observe(target);
-    return () => { observer.disconnect(); map?.setTarget(undefined); map?.dispose(); map = undefined; };
+    return () => { observer.disconnect(); satelliteCleanup(); map?.setTarget(undefined); map?.dispose(); map = undefined; };
   });
   $effect(() => {
     if (map && Number.isFinite(lon) && Number.isFinite(lat) && Math.abs(lon) <= 180 && Math.abs(lat) <= 90) {

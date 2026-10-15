@@ -10,9 +10,7 @@ import Stroke from 'ol/style/Stroke';
 import CircleStyle from 'ol/style/Circle';
 import GeoJSON from 'ol/format/GeoJSON';
 import VectorSource from 'ol/source/Vector';
-import XYZ from 'ol/source/XYZ';
 import VectorLayer from 'ol/layer/Vector';
-import TileLayer from 'ol/layer/Tile';
 import Overlay from 'ol/Overlay';
 import { defaults as defaultInteractions } from 'ol/interaction/defaults';
 import { defaults as defaultControls } from 'ol/control/defaults';
@@ -27,6 +25,7 @@ import { attachControlLayout } from './controls';
 import { unByKey } from 'ol/Observable';
 import { pointStyle, boundaryStyle, maskStyle } from './styles';
 import { projectRegions } from '../data/regions';
+import { satelliteLayers } from './google-tiles';
 export type LayerKey = 'google' | 'esri' | 'boundaries' | 'mask' | 'area' | 'sk' | 'cadangan' | 'belum';
 export interface FitOptions { duration?: number; maxZoom?: number; padding?: number[] }
 export interface SurveyMapAdapter {
@@ -38,7 +37,7 @@ export interface SurveyMapAdapter {
   setUserLocation(fix: Fix | null, nearest: SurveyPoint | null, here?: boolean, frame?: boolean): void;
   dispose(): void;
 }
-export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null, nearby?: boolean) => void }): SurveyMapAdapter {
+export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null, nearby?: boolean) => void; onBasemapFallback?: () => void }): SurveyMapAdapter {
   const { points, boundaries, dissolved } = options.dataset;
   const byId = new Map(points.map(point => [point.nomor, point]));
   const coordinateKey = (point: SurveyPoint) => `${point.latNum.toFixed(6)},${point.lonNum.toFixed(6)}`;
@@ -52,8 +51,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const regions = projectRegions(boundaries);
   const dissolvedFeatures = format.readFeatures(dissolved, projection);
   const source = new VectorSource({ features: points.map(point => { const feature = new Feature(new Point(fromLonLat([point.lonNum, point.latNum]))); feature.setId(point.nomor); return feature; }) });
-  const google = new TileLayer({ source: new XYZ({ url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', maxZoom: 21, attributions: 'Tiles &copy; Google' }) });
-  const esri = new TileLayer({ visible: false, source: new XYZ({ url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 18, attributions: 'Citra &copy; Esri, Vantor, Earthstar Geographics, and the GIS User Community' }) });
+  const satellite = satelliteLayers(options.onBasemapFallback), { google, esri } = satellite;
   const mask = new VectorLayer({ source: new VectorSource({ features: dissolvedFeatures }), style: maskStyle(dissolvedFeatures), declutter: false });
   const area = new VectorLayer({ visible: false, source: new VectorSource({ features: dissolvedFeatures }), style: { 'stroke-color': 'rgba(245,158,11,.6)', 'stroke-width': 1.5, 'stroke-line-dash': [6, 4], 'fill-color': 'rgba(245,158,11,.1)' }, declutter: false });
   const regionLayer = new VectorLayer({ source: new VectorSource({ features: regions, attributions: 'Batas &copy; <a href="https://geoservices.big.go.id/rbi/rest/services/BATASWILAYAH/BATAS_KABKOTA_AR/MapServer" target="_blank" rel="noopener">BIG</a> &middot; Juni 2026' }), style: boundaryStyle, declutter: false });
@@ -79,6 +77,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const scaleControl = new FullWidthScaleLine();
   const map = new OlMap({ target: options.target, layers: [esri, google, mask, area, regionLayer, userLayer, pointLayer], overlays: [userOverlay, overlay], view: new View({ maxZoom: 28, minZoom: 1 }), interactions: defaultInteractions({ doubleClickZoom: false }), controls: defaultControls({ attributionOptions: { collapsible: false, className: 'bottom-attribution' }, zoomOptions: { zoomInTipLabel: 'Perbesar', zoomOutTipLabel: 'Perkecil' } }).extend([scaleControl]) });
   const controlCleanup = attachControlLayout(map);
+  const satelliteCleanup = satellite.attach(map);
   function shown(point: SurveyPoint) { return visibleIds.has(point.nomor) && (point.cadangan ? flags.cadangan : point.belum ? flags.belum : flags.sk); }
   const feedback = attachPointFeedback(map, pointLayer, points, shown, () => selected);
   const padding = () => {
@@ -157,6 +156,6 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       map.getView().fit(extent, { padding: padding().map(side => side + 24), maxZoom: 18, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600 });
       if (target) feedback.pulse(target);
     },
-    dispose() { disposed = true; cancelAnimationFrame(positionFrame); observer.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
+    dispose() { disposed = true; cancelAnimationFrame(positionFrame); observer.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); satelliteCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
   };
 }

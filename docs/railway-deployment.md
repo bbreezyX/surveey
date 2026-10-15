@@ -34,6 +34,8 @@ Admin also needs `ADMIN_ORIGIN`, `PUBLIC_ORIGIN` for private broker settings, an
 
 Public delivery also needs `PUBLIC_ORIGIN=https://survey.esdm.cloud`, both existing map hostnames in its allowlist, and `MEDIA_BROKER_URL=http://survey-admin.railway.internal:9001`. Its image selects public settings and receives no `S3_*` credentials. Public map needs `PORT=8080`, `PUBLIC_DATA_HOST=survey-public-data.railway.internal`, `PUBLIC_DATA_PORT=8080`, `PUBLIC_ADMIN_HOST=survey-admin.railway.internal`, `PUBLIC_ADMIN_PORT=8080`. Admin healthcheck uses `/admin/`; delivery uses `/health`, which requires an active publication. `healthcheck.railway.app` is explicitly allowed.
 
+Public map and admin both need `VITE_GOOGLE_MAPS_KEY`, the Map Tiles API key. Their Dockerfiles declare it as a build `ARG`, so a change takes effect on the next build, not a restart. It is visible in the bundle by design and guarded by its Google Cloud restrictions: HTTP referrer `https://survey.esdm.cloud/*` (plus local dev origins), API Map Tiles API only, and a daily request quota. Without the key, or once Google refuses it, both maps fall back to Esri. See docs/basemaps.md.
+
 ## Operator access and recovery
 
 The explicitly approved first owner is `danny`. Its generated initial password is stored only in ignored `.local/railway-admin-login.txt`, restricted to the local Windows user. Change it through the password form after login. No public signup/default account exists. Normal recovery uses `python manage.py provision_account <approved username> --role owner` with private password prompts; never place passwords in shell arguments, Git or chat.

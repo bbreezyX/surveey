@@ -28,7 +28,8 @@ function mapGeometry(): Plugin {
 }
 
 export default defineConfig({
-  base: '/admin/', root: 'admin', plugins: [svelte(), mapGeometry()], publicDir: false,
+  // The Google tile key lives in the repository root's .env.local, shared with the public build.
+  base: '/admin/', root: 'admin', envDir: import.meta.dirname, plugins: [svelte(), mapGeometry()], publicDir: false,
   build: {
     outDir: '../dist/admin', target: 'es2022', sourcemap: false, emptyOutDir: true,
     // The server reads the manifest to find the login entry's hashed files,

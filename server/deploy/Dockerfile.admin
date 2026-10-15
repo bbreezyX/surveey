@@ -1,4 +1,6 @@
 FROM node:24-alpine AS admin-build
+# Railway passes the service variable in; Vite bakes it into the bundle. Restricted by referrer, not secret.
+ARG VITE_GOOGLE_MAPS_KEY
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

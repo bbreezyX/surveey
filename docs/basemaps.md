@@ -41,10 +41,31 @@ World Imagery is the licensed route to substantially the same commercial
 imagery, so a single radio click keeps the page showing a map on the day the
 Google endpoint starts refusing us.
 
-The fully supported alternative is Google's **Map Tiles API** (2D tiles): a
-billed API key, a session token per viewer, mandatory Google attribution, and
-no caching or pre-fetching of tiles. That is a larger change than a layer swap
-and has not been made.
+## Map Tiles API (October 2026)
+
+The Google layer now uses Google's **Map Tiles API** (2D satellite) through
+`src/public/map/google-tiles.ts`, shared by the public map and the admin. The
+mt1 endpoint and the table above describe the earlier setup.
+
+- Key: `VITE_GOOGLE_MAPS_KEY`, baked in at build time (`.env.local` locally,
+  a Railway build variable in production). Restricted to the
+  `https://survey.esdm.cloud/*` referrer and the Map Tiles API, with a daily
+  quota cap so the free monthly tier cannot be exceeded silently.
+- Billing is per 256 px tile. The session token is kept in `localStorage`
+  until an hour before it expires, so tile URLs stay identical across visits
+  and the browser serves repeat views from its HTTP cache under Google's
+  `Cache-Control` headers (`private, max-age=86400, must-revalidate`, with an
+  ETag) instead of requesting them again. Nothing is pre-fetched.
+- Capped at z20: Google's imagery over Jambi stops there (viewport
+  `maxZoomRects`, probed October 2026), and its z21 tiles are upscaled z20.
+- Attribution: "Google Maps" plus the viewport `copyright` string, as Google's
+  policy requires. The viewport is asked for a buffered extent, so panning
+  within it needs no new request.
+- Requests carry `Referrer-Policy: strict-origin`, because the admin's pages
+  send no referrer cross-origin and the key would otherwise refuse them.
+- Fallback: no key, a refused session, or a run of failed tiles that a probe
+  of the world tile confirms is not just missing imagery all switch the map to
+  Esri, and the layer panel follows.
 
 ## Attribution
 

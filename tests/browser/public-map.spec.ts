@@ -1,9 +1,24 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { loadEnv } from 'vite';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 // Reuse the PNG reader shipped with this pinned Playwright version.
 const { PNG } = createRequire(resolve('package.json'))('playwright-core/lib/utilsBundle') as { PNG: { sync: { read(input: Buffer): { data: Buffer } } } };
+// The bundle carries a Google key only when the build saw one in .env.local or the environment.
+const googleKey = !!(process.env.VITE_GOOGLE_MAPS_KEY || loadEnv('production', process.cwd(), 'VITE_').VITE_GOOGLE_MAPS_KEY);
+// Google is stubbed so browser runs never spend the tile quota or depend on the key's referrers.
+async function stubGoogle(page: Page, session: number) {
+  const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' };
+  const tile = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  await page.route('https://tile.googleapis.com/**', route => {
+    const url = route.request().url();
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    if (url.includes('/createSession')) return session === 200 ? route.fulfill({ headers: cors, json: { session: 'e2e', expiry: String(Math.floor(Date.now() / 1000) + 14 * 86400) } }) : route.fulfill({ status: session, headers: cors, json: { error: { code: session } } });
+    if (url.includes('/viewport')) return route.fulfill({ headers: cors, json: { copyright: 'Imagery ©2026 E2E' } });
+    return route.fulfill({ headers: cors, contentType: 'image/png', body: tile });
+  });
+}
 
 test('retains the original layer switches, symbols, grouping and basemap capsules', async ({ page }) => {
   await page.goto('/'); await expect(page.locator('.atlas-total__num')).toHaveText('500');
@@ -216,13 +231,25 @@ test('opens regions, filters, and layer options without mounting duplicate maps'
   await expect(page.locator('.ol-viewport')).toHaveCount(1);
 });
 
+test('falls back to Esri and says so in the layer panel when Google refuses the key', async ({ page }) => {
+  await stubGoogle(page, 403);
+  const tiles: string[] = []; page.on('request', request => { if (/tile.googleapis.com\/v1\/2dtiles|arcgisonline.com/.test(request.url())) tiles.push(request.url()); });
+  await page.goto('/'); await expect(page.locator('.atlas-total__num')).toHaveText('500');
+  await expect.poll(() => tiles.filter(url => url.includes('arcgisonline.com')).length).toBeGreaterThan(0);
+  expect(tiles.filter(url => url.includes('tile.googleapis.com'))).toHaveLength(0);
+  await page.getByRole('button', { name: 'Tampilkan pilihan layer' }).click();
+  await expect(page.getByLabel('Esri Satelit', { exact: true })).toBeChecked();
+});
+
 test('starts on Google, preserves original mobile controls and drags the sheet without a second toggle', async ({ page }) => {
+  test.skip(!googleKey, 'Build with VITE_GOOGLE_MAPS_KEY to exercise the Google basemap.');
+  await stubGoogle(page, 200);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const tiles: string[] = [];
-  page.on('request', request => { if (/mt1.google.com|arcgisonline.com/.test(request.url())) tiles.push(request.url()); });
+  page.on('request', request => { if (/tile.googleapis.com\/v1\/2dtiles|arcgisonline.com/.test(request.url())) tiles.push(request.url()); });
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.atlas-total__num')).toHaveText('500');
-  await expect.poll(() => tiles.filter(url => url.includes('mt1.google.com')).length).toBeGreaterThan(0);
+  await expect.poll(() => tiles.filter(url => url.includes('session=e2e')).length).toBeGreaterThan(0);
   expect(tiles.filter(url => url.includes('arcgisonline.com'))).toHaveLength(0);
   await expect(page.locator('.bottom-attribution')).toBeHidden();
   // Fonts and the introductory motion can move the handle after raw coordinates are read.
