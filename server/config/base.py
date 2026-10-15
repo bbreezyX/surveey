@@ -78,6 +78,8 @@ STORAGE_BACKEND = 'filesystem' if TESTING else 's3'
 STORAGE_ROOT = ROOT / '.local/private-media'
 MEDIA_BROKER_TOKEN = os.environ.get('MEDIA_BROKER_TOKEN', '')
 MEDIA_BROKER_URL = os.environ.get('MEDIA_BROKER_URL', '')
+# Content-addressed copies of published derivatives; None disables the cache.
+MEDIA_CACHE_ROOT = None
 broker_client = RAILWAY and public_service
 if broker_client:
     parsed_broker = urlparse(required('MEDIA_BROKER_URL'))
@@ -87,6 +89,10 @@ if broker_client:
             parsed_broker.query or parsed_broker.fragment):
         raise ImproperlyConfigured('MEDIA_BROKER_URL must address the private Railway media port only.')
     STORAGE_BACKEND = 'broker'
+    # Each broker fetch crosses two private services and the bucket (~1.5 s per photo
+    # measured from Singapore). The container disk is ephemeral, which is fine for a
+    # cache: published bytes are immutable and verified against their checksum.
+    MEDIA_CACHE_ROOT = Path('/tmp/survey-media-cache')
 if RAILWAY and len(MEDIA_BROKER_TOKEN) < 50:
     raise ImproperlyConfigured('A private MEDIA_BROKER_TOKEN of at least 50 characters is required.')
 if STORAGE_BACKEND == 's3':

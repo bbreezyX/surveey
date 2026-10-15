@@ -1,4 +1,5 @@
 import hashlib
+import io
 import tempfile
 import uuid
 from pathlib import Path
@@ -65,6 +66,41 @@ class PrivateMediaBoundaryTests(TestCase):
         self.assertEqual(response.status_code, 200)
         ActivePublication.objects.filter(id=1).update(publication=None)
         self.assertEqual(views.readiness(request).status_code, 503)
+
+
+class MediaCacheTests(PrivateMediaBoundaryTests):
+    def setUp(self):
+        super().setUp()
+        self.cache = tempfile.TemporaryDirectory()
+        self.addCleanup(self.cache.cleanup)
+        cache_override = override_settings(MEDIA_CACHE_ROOT=self.cache.name)
+        cache_override.enable()
+        self.addCleanup(cache_override.disable)
+        self.stored = Path(self.directory.name) / 'display' / self.id.hex
+        self.cached = Path(self.cache.name) / self.record.checksum
+
+    def test_first_fetch_fills_cache_and_later_fetches_skip_storage(self):
+        self.assertEqual(b''.join(self.fetch('a' * 64).streaming_content), b'published jpeg fixture')
+        self.assertTrue(self.cached.is_file())
+        self.stored.unlink()
+        self.assertEqual(b''.join(self.fetch('a' * 64).streaming_content), b'published jpeg fixture')
+
+    def test_revocation_removes_the_cached_copy(self):
+        self.fetch('a' * 64)
+        self.record.revoked = True
+        self.record.save()
+        self.assertEqual(self.fetch('a' * 64).status_code, 404)
+        self.assertFalse(self.cached.exists())
+
+    def test_bytes_that_do_not_match_the_checksum_are_not_cached(self):
+        self.stored.write_bytes(b'tampered')
+        self.assertEqual(self.fetch('a' * 64).status_code, 200)
+        self.assertFalse(self.cached.exists())
+
+    def test_warm_command_caches_the_active_publication(self):
+        from django.core.management import call_command
+        call_command('warm_media_cache', stdout=io.StringIO())
+        self.assertEqual(self.cached.read_bytes(), b'published jpeg fixture')
 
 
 class StorageConnectionTests(SimpleTestCase):

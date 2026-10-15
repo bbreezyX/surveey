@@ -22,6 +22,9 @@ elif application == 'config.public_wsgi:application':
     # Bind IPv6 for Railway private DNS; never attach a public domain to this service.
     children.append(subprocess.Popen(['gunicorn', application, '--bind', f'[::]:{port}', '--workers', '2',
         '--threads', '1', '--timeout', '60', '--forwarded-allow-ips=', '--no-control-socket', '--access-logfile', '-', '--error-logfile', '-']))
+    # Fill the photo cache in the background so the first popup after a deploy is fast too.
+    # Not a supervised child: its normal exit must not stop the service.
+    subprocess.Popen([sys.executable, '-m', 'django', 'warm_media_cache'])
 else:
     raise SystemExit('Unknown service application.')
 
