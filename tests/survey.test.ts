@@ -3,6 +3,7 @@ import { getPointFlags, countOfficialPoints } from '../src/shared/survey/status'
 import { parseCoordinateQuery, formatCoordPair } from '../src/shared/survey/coordinates';
 import { legacyPhotoUrl } from '../src/shared/survey/media';
 import { latestDocumentationDate } from '../src/shared/survey/dates';
+import { progressReportUrl } from '../src/shared/survey/report';
 describe('survey evidence and counting', () => {
   it('ignores malformed and impossible optional dates without normalizing them', () => {
     expect(latestDocumentationDate(['32/13/2026', '31/02/9999', '29/02/2025', ''])).toBeNull();
@@ -23,5 +24,11 @@ describe('survey evidence and counting', () => {
     expect(legacyPhotoUrl('')).toBeNull();
     expect(legacyPhotoUrl('D:/Survey/X.jpg')).toBe('/images/D__Survey_X.jpg');
     expect(legacyPhotoUrl('A #1.jpg')).toBe('/images/A%20%231.jpg');
+  });
+});
+
+describe('progress report link', () => {
+  it('names the point by its Nomor, spaces and all', () => {
+    expect(progressReportUrl('KERINCI-SIULAK-DUSUN DALAM-001')).toBe('https://www.esdm.cloud/lapangan?nomor=KERINCI-SIULAK-DUSUN%20DALAM-001');
   });
 });

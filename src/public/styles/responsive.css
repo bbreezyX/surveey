@@ -1558,6 +1558,92 @@ body.is-sidebar-collapsed .map-legend {
     background: var(--blue-deep);
 }
 
+/* Route and Lapor share one row: the route keeps the room and stays the
+   primary action for a crew on the way; Lapor is a short outline pill beside it,
+   used once on site. With the route hidden (Belum Ditetapkan) it stands alone. */
+.feature-popup__actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* One line each, 40px tall: the popup is read on a phone over the map, and two
+   tall stacked pills pushed the photo and details out of view. */
+.feature-popup__actions .feature-popup__route {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 40px;
+    gap: 8px;
+    padding: 4px 12px 4px 5px;
+}
+
+.feature-popup__actions .feature-popup__route-icon {
+    flex-basis: 30px;
+    height: 30px;
+}
+
+.feature-popup__actions .feature-popup__route-icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.feature-popup__actions .feature-popup__route-text strong {
+    font-size: 13px;
+}
+
+/* In the shared row the route's corner arrow costs the room its title needs;
+   the pill itself already reads as a link. */
+.feature-popup__actions:has(.feature-popup__report) .feature-popup__route-ext {
+    display: none;
+}
+
+.feature-popup__actions .feature-popup__route-text strong,
+.feature-popup__actions .feature-popup__route-text small {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.feature-popup__report {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 14px 0 12px;
+    border: 1px solid var(--blue);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--blue-deep);
+    font: 700 13px/1.2 var(--font-ui);
+    text-decoration: none;
+    transition: background-color 0.18s, border-color 0.18s;
+}
+
+.feature-popup__report:hover {
+    border-color: var(--blue-deep);
+    background: #f2f6fb;
+    color: var(--blue-deep);
+}
+
+.feature-popup__report:active {
+    transform: scale(0.97);
+}
+
+.feature-popup__report:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .feature-popup__report {
+        transition: none;
+    }
+
+    .feature-popup__report:active {
+        transform: none;
+    }
+}
+
 .feature-popup__route-icon {
     border-radius: 999px;
 }

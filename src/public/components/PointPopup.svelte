@@ -2,6 +2,7 @@
   import type { SurveyPoint, SurveyDataset } from '../../shared/survey/types';
   import { legacyPhotoUrl } from '../../shared/survey/media';
   import { directionsUrl } from '../../shared/survey/coordinates';
+  import { progressReportUrl } from '../../shared/survey/report';
   import { STATUS_LABEL } from '../../shared/survey/status';
   import { regionKey } from '../data/regions';
   import Shape from './Shape.svelte';
@@ -31,6 +32,7 @@
       {/each}
     </dl>
     <div class="feature-popup__rule"></div>
-    {#if !point.belum}<div class="feature-popup__actions"><a class="feature-popup__route" href={directionsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka Google Maps: rute dari posisi Anda ke titik ini"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>Rute ke titik ini</strong><small>Buka di Google Maps</small></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a></div>{/if}
+    <!-- Cadangan points are outside the allocation, so they have no construction to report. -->
+    {#if !point.belum || !point.cadangan}<div class="feature-popup__actions">{#if !point.belum}<a class="feature-popup__route" href={directionsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka Google Maps: rute dari posisi Anda ke titik ini"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>Buka di Google Maps</strong></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a>{/if}{#if !point.cadangan}<a class="feature-popup__report" href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Lapor progres galian, cor, tiang, atau lampu untuk titik ini" aria-label="Lapor progres titik ini"><Icon name="camera" size={16}/><span>Lapor</span></a>{/if}</div>{/if}
   </div>
 </div>
