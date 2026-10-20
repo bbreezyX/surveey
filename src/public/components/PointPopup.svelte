@@ -35,15 +35,17 @@
       {/each}
     </dl>
     {#if stage !== null && !point.cadangan}
-      <section class="feature-popup__progress" class:is-started={stage > 0} aria-label="Progres pembangunan">
-        <p class="feature-popup__progress-head"><span>Progres pembangunan</span><strong>{stageSummary(stage)}<span class="feature-popup__progress-count" aria-hidden="true">{Math.min(stage, BUILD_STAGES.length)}/{BUILD_STAGES.length}</span></strong></p>
+      <!-- The whole block opens the point on esdm.cloud/lapangan, which lists its stages and every report
+           behind them, so a reader who wonders "since when?" reaches the evidence in one tap. -->
+      <a class="feature-popup__progress" class:is-started={stage > 0} href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Buka riwayat tahap titik ini di esdm.cloud">
+        <p class="feature-popup__progress-head"><span>Progres pembangunan</span><strong>{stageSummary(stage)}<span class="feature-popup__progress-count" aria-hidden="true">{Math.min(stage, BUILD_STAGES.length)}/{BUILD_STAGES.length}</span><span class="feature-popup__progress-go" aria-hidden="true"></span></strong></p>
         <!-- One bar segment per stage with its name beneath: the fill reads at a glance, the label says which step it is. -->
         <ol class="feature-popup__stages">
           {#each BUILD_STAGES as name, index (name)}
             <li class:is-done={index < stage} class:is-next={index === stage}>{name}<span class="visually-hidden">{index < stage ? ' selesai' : ' belum'}</span></li>
           {/each}
         </ol>
-      </section>
+      </a>
     {/if}
     <div class="feature-popup__rule"></div>
   </div>

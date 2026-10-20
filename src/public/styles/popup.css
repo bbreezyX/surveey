@@ -667,9 +667,51 @@
    named beneath it. Green only on what is done, so an untouched unit reads
    quiet; the next stage gets a faint tint so the eye knows where work resumes. */
 .feature-popup__progress {
+    display: block;
     margin-top: 12px;
     padding-top: 10px;
     border-top: 1px solid var(--divider);
+    color: inherit;
+    text-decoration: none;
+    border-radius: 2px;
+}
+
+/* No label: a small chevron after the count is the only cue that the block
+   opens the point's stage history; it darkens on hover. */
+.feature-popup__progress-go {
+    align-self: center;
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
+    border: solid var(--muted-2);
+    border-width: 1.6px 1.6px 0 0;
+    transform: rotate(45deg);
+}
+
+.feature-popup__progress:hover .feature-popup__progress-go {
+    border-color: var(--ink);
+}
+
+/* Phones have no hover, so a press tints the block to confirm the tap landed
+   before the new tab opens. The tint spreads past the text with a same-colour
+   shadow, so the block keeps its alignment with the rows above. */
+.feature-popup__progress {
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.feature-popup__progress:active {
+    background: var(--row-hover);
+    box-shadow: 0 0 0 6px var(--row-hover);
+}
+
+.feature-popup__progress:active .feature-popup__progress-go {
+    border-color: var(--ink);
+}
+
+.feature-popup__progress:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 3px;
 }
 
 .feature-popup__progress-head {
