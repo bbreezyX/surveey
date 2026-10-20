@@ -1056,6 +1056,35 @@ body.is-data-unavailable .atlas-summary {
     line-height: 1.45;
 }
 
+/* Offline/slow-link notice. Same quiet footer type as the date line, so it
+   reads as provenance ("which data am I looking at") rather than an alarm;
+   the link-style button keeps a 44px-tall tap target through its padding. */
+.sidebar-footer__stored {
+    display: block;
+    margin-top: 6px;
+    color: var(--ink-soft);
+    font-size: 11.5px;
+    line-height: 1.45;
+}
+
+.sidebar-footer__stored button {
+    margin: -14px 0;
+    padding: 14px 4px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.sidebar-footer__stored button:disabled {
+    text-decoration: none;
+    cursor: progress;
+}
+
 /* ---------- Titik di dekatku ---------- */
 
 /* The location toggle sits beside the search pill rather than inside it: on

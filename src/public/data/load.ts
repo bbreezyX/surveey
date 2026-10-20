@@ -17,24 +17,42 @@ function decodeRegionCollection(value: unknown, regions?: RegionFeature[]): unkn
   if (!isRecord(value) || !Array.isArray(value.features)) return value;
   return { ...value, features: value.features.map(feature => isRecord(feature) && isRecord(feature.geometry) ? { ...feature, geometry: { ...feature.geometry, coordinates: decodeCoordinates(feature.geometry.coordinates, regions) } } : feature) };
 }
-async function loadJson(url: string, signal: AbortSignal): Promise<unknown> {
+// The service worker (scripts/service-worker.js) marks a response it answered
+// from its own copy with the time it stored it.
+const STORED_AT = 'x-puts-stored-at';
+// FNV-1a over the text: enough to notice that a reload brought the same file, not a security check.
+function fingerprint(text: string) { let hash = 0x811c9dc5; for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193); return `${text.length}-${(hash >>> 0).toString(36)}`; }
+async function loadJson(url: string, signal: AbortSignal, onProgress: () => void): Promise<{ value: unknown; storedAt: number | null; signature: string }> {
   const response = await fetch(url, { signal });
+  onProgress();
   if (!response.ok) throw new Error(`Data ${url} gagal dimuat (${response.status}).`);
-  return response.json();
+  const stored = Number(response.headers.get(STORED_AT)), storedAt = stored > 0 ? stored : null;
+  // Every chunk counts as progress, so a slow link that keeps delivering is never cut off.
+  const body = response.body && typeof TransformStream !== 'undefined' ? new Response(response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) { onProgress(); controller.enqueue(chunk); } }))) : response;
+  const text = await body.text();
+  return { value: JSON.parse(text), storedAt, signature: fingerprint(text) };
 }
+// A stall, not a total, ends the attempt. The old fixed 20 s total cut off a
+// healthy 2G/EDGE download (~170 KB at ~8 KB/s), and the retry started from
+// zero; now only 20 s without a single byte from either request gives up.
+const STALL_MS = 20_000;
 export async function loadSurveyDataset(signal: AbortSignal): Promise<SurveyDataset> {
   const attempt = new AbortController();
   const abort = () => attempt.abort(signal.reason);
   if (signal.aborted) abort(); else signal.addEventListener('abort', abort, { once: true });
-  const deadline = setTimeout(() => attempt.abort(new Error('Memuat data terlalu lama. Silakan coba lagi.')), 20_000);
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  const progress = () => { clearTimeout(deadline); deadline = setTimeout(() => attempt.abort(new Error('Koneksi terlalu lambat atau terputus. Silakan coba lagi.')), STALL_MS); };
+  progress();
   try {
     // Both URLs are preloaded by index.html and must stay byte-identical to those hrefs.
-    const [rawPoints, rawRegions] = await Promise.all(['/data/points.geojson', '/data/regions.json'].map(url => loadJson(url, attempt.signal)));
+    const [pointFile, regionFile] = await Promise.all(['/data/points.geojson', '/data/regions.json'].map(url => loadJson(url, attempt.signal, progress)));
+    const rawPoints = pointFile.value, rawRegions = regionFile.value;
     if (!isRecord(rawRegions) || rawRegions.encoding !== 'delta-1e-6') throw new Error('Format data batas wilayah tidak dikenal.');
     const points = parseSurveyCollection(rawPoints), boundaries = parseRegions(decodeRegionCollection(rawRegions.kabupaten));
     const dissolved = { type: 'FeatureCollection' as const, features: parseRegions(decodeRegionCollection(rawRegions.dissolved, boundaries)) };
     assignRegions(points, boundaries);
-    return { points, boundaries, dissolved };
+    // Only the points' age matters to a reader: boundaries change once a year, not between visits.
+    return { points, boundaries, dissolved, storedAt: pointFile.storedAt, signature: `${pointFile.signature}/${regionFile.signature}` };
   } finally {
     clearTimeout(deadline); signal.removeEventListener('abort', abort); attempt.abort();
   }

@@ -28,6 +28,7 @@
     const observer = new ResizeObserver(scrollHint); observer.observe(content);
     return () => { observer.disconnect(); instance.dispose(); adapter = null; };
   });
+  $effect(() => { adapter?.setPoints(state.points); });
   $effect(() => { adapter?.setVisiblePoints(state.visibleIds); if (state.selectedNomor && !state.visibleIds.has(state.selectedNomor)) state.select(null); });
   $effect(() => {
     const id = state.selectedNomor;

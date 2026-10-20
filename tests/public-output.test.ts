@@ -29,6 +29,13 @@ it('builds a hashed public entry without legacy vendors, write routes or source 
   const files = walk('dist/public');
   expect(files.filter(file => /\.map$|\.env|(?:^|[\\/])(?:docs|scripts|admin|node_modules)(?:[\\/]|$)/.test(file))).toEqual([]);
   for (const file of files.filter(file => /\.js$/.test(file))) expect(readFileSync(file, 'utf8')).not.toMatch(/\/api\/flag|NEVER_PUBLISH_THIS_SENTINEL|CF_ACCESS_CLIENT_SECRET/);
+  // The worker is filled in after the bundle exists and must name only files the image will serve.
+  const worker = readFileSync('dist/public/sw.js', 'utf8'), precache = JSON.parse(worker.match(/const PRECACHE = (\[.*\]);/)![1]) as string[];
+  expect(worker).not.toContain('__PUTS_');
+  expect(precache).toContain(html.match(/\/assets\/index-[\w-]+\.js/)![0]);
+  for (const entry of precache) expect(existsSync(path.join('dist/public', entry))).toBe(true);
+  const railway = readFileSync('server/deploy/Dockerfile.railway-public-map', 'utf8');
+  for (const file of ['sw.js', 'sw.js.br', 'data/regions.json.br']) { expect(existsSync(path.join('dist/public', file))).toBe(true); expect(railway).toContain(path.basename(file)); }
   expect(readFileSync('Dockerfile', 'utf8')).toContain('COPY --from=build /app/dist/public/ /srv/');
   expect(readFileSync('Dockerfile', 'utf8')).not.toMatch(/COPY\s+\.\s+\/srv/);
 });

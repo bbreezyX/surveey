@@ -3,7 +3,10 @@ import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints } from '../../shared/survey/status';
 import type { SurveyProgress } from '../../shared/survey/progress';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
-export function createSurveyState(dataset: SurveyDataset) {
+export function createSurveyState(initial: SurveyDataset) {
+  // Replaced in place when a reconnect brings newer data, so the open region, search, filter, selected
+  // point and layer switches all survive; only the points under them change.
+  let dataset = $state.raw(initial), storedAt = $state(initial.storedAt ?? null);
   let query = $state(''), activeRegion = $state<string | null>(null), statusFilter = $state<StatusFilter>(null), selectedNomor = $state<string | null>(null);
   let selectionOrigin = $state.raw<HTMLElement | null>(null);
   // Null until esdm.cloud answers; the map, list and popup show no build status before then.
@@ -15,13 +18,21 @@ export function createSurveyState(dataset: SurveyDataset) {
   // The card of the detail just closed is marked briefly so the eye lands on it, then lets go.
   let recentNomor = $state<string | null>(null), recentTimer: ReturnType<typeof setTimeout> | undefined;
   const layers = $state({ google: true, esri: false, boundaries: true, mask: true, area: false, sk: true, cadangan: false, belum: true });
-  const points = [...dataset.points].sort((a, b) => collator.compare(a.nomor, b.nomor));
-  const regionNames = [...new Set(points.map(point => point.kabupaten))].sort((a, b) => Number(/^Kota\s/i.test(b)) - Number(/^Kota\s/i.test(a)) || collator.compare(a, b));
+  const points = $derived([...dataset.points].sort((a, b) => collator.compare(a.nomor, b.nomor)));
+  const regionNames = $derived([...new Set(points.map(point => point.kabupaten))].sort((a, b) => Number(/^Kota\s/i.test(b)) - Number(/^Kota\s/i.test(a)) || collator.compare(a, b)));
   const visiblePoints = $derived(points.filter(point => (!activeRegion || point.kabupaten === activeRegion) && (!statusFilter || point[statusFilter]) && matchesQuery(point, query)));
   const visibleIds = $derived(new Set(visiblePoints.map(point => point.nomor)));
   const selected = $derived(points.find(point => point.nomor === selectedNomor) ?? null);
   return {
-    dataset, points, regionNames, layers,
+    layers,
+    get dataset() { return dataset; }, get points() { return points; }, get regionNames() { return regionNames; },
+    // When the points on screen are the service worker's stored copy (ms since epoch); null when fresh.
+    get storedAt() { return storedAt; },
+    replaceDataset(next: SurveyDataset) {
+      storedAt = next.storedAt ?? null;
+      // Unchanged points keep their objects, so nothing downstream (map features, list) rebuilds.
+      if (!next.signature || next.signature !== dataset.signature) dataset = next;
+    },
     get query() { return query; }, set query(value: string) { if (value !== query) { query = value; recentNomor = null; fitReason = 'search'; fitRevision++; } },
     get fitRevision() { return fitRevision; }, get fitReason() { return fitReason; },
     get activeRegion() { return activeRegion; }, get statusFilter() { return statusFilter; },

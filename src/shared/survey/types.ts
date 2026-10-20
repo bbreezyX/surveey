@@ -11,4 +11,6 @@ export interface SurveyPoint extends PointFlags {
   koordinat: string; koordinatSingkat: string; searchText: string;
 }
 export type RegionFeature = Feature<Polygon | MultiPolygon, Record<string, unknown>>;
-export interface SurveyDataset { points: SurveyPoint[]; boundaries: RegionFeature[]; dissolved: FeatureCollection }
+// storedAt: when the offline copy being shown was saved (ms since epoch); null when the data came from the network.
+// signature: a hash of the points file as received, so a reload can tell whether anything actually changed.
+export interface SurveyDataset { points: SurveyPoint[]; boundaries: RegionFeature[]; dissolved: FeatureCollection; storedAt?: number | null; signature?: string }

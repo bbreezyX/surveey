@@ -33,6 +33,8 @@ export interface SurveyMapAdapter {
   setSelection(nomor: string | null): void;
   setProgress(progress: SurveyProgress): void;
   setVisiblePoints(ids: ReadonlySet<string>): void;
+  // Newer points after a reconnect; the view, layers and selection stay as the reader left them.
+  setPoints(points: SurveyPoint[]): void;
   fitToPoints(ids: ReadonlySet<string>, options?: FitOptions): void;
   setLayerVisibility(key: LayerKey, visible: boolean): void;
   updateSize(): void;
@@ -40,11 +42,16 @@ export interface SurveyMapAdapter {
   dispose(): void;
 }
 export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null, nearby?: boolean) => void; onBasemapFallback?: () => void }): SurveyMapAdapter {
-  const { points, boundaries, dissolved } = options.dataset;
-  const byId = new Map(points.map(point => [point.nomor, point]));
+  const { boundaries, dissolved } = options.dataset;
+  let points = options.dataset.points;
   const coordinateKey = (point: SurveyPoint) => `${point.latNum.toFixed(6)},${point.lonNum.toFixed(6)}`;
-  const atCoordinate = new Map<string, SurveyPoint[]>();
-  for (const point of points) { const key = coordinateKey(point), group = atCoordinate.get(key) ?? []; group.push(point); atCoordinate.set(key, group); }
+  let byId = new Map<string, SurveyPoint>(), atCoordinate = new Map<string, SurveyPoint[]>();
+  function index() {
+    byId = new Map(points.map(point => [point.nomor, point])); atCoordinate = new Map();
+    for (const point of points) { const key = coordinateKey(point), group = atCoordinate.get(key) ?? []; group.push(point); atCoordinate.set(key, group); }
+  }
+  index();
+  const pointFeatures = () => points.map(point => { const feature = new Feature(new Point(fromLonLat([point.lonNum, point.latNum]))); feature.setId(point.nomor); return feature; });
   let visibleIds: ReadonlySet<string> = new Set(points.map(point => point.nomor));
   let selected: string | null = null, disposed = false;
   let progress: SurveyProgress = new Map();
@@ -53,7 +60,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const projection = { featureProjection: 'EPSG:3857' };
   const regions = projectRegions(boundaries);
   const dissolvedFeatures = format.readFeatures(dissolved, projection);
-  const source = new VectorSource({ features: points.map(point => { const feature = new Feature(new Point(fromLonLat([point.lonNum, point.latNum]))); feature.setId(point.nomor); return feature; }) });
+  const source = new VectorSource({ features: pointFeatures() });
   const satellite = satelliteLayers(options.onBasemapFallback), { google, esri } = satellite;
   const mask = new VectorLayer({ source: new VectorSource({ features: dissolvedFeatures }), style: maskStyle(dissolvedFeatures), declutter: false });
   const area = new VectorLayer({ visible: false, source: new VectorSource({ features: dissolvedFeatures }), style: { 'stroke-color': 'rgba(245,158,11,.6)', 'stroke-width': 1.5, 'stroke-line-dash': [6, 4], 'fill-color': 'rgba(245,158,11,.1)' }, declutter: false });
@@ -82,7 +89,8 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const controlCleanup = attachControlLayout(map);
   const satelliteCleanup = satellite.attach(map);
   function shown(point: SurveyPoint) { return visibleIds.has(point.nomor) && (point.cadangan ? flags.cadangan : point.belum ? flags.belum : flags.sk); }
-  const feedback = attachPointFeedback(map, pointLayer, points, shown, () => selected, point => progress.get(point.nomor) ?? 0);
+  const attachFeedback = () => attachPointFeedback(map, pointLayer, points, shown, () => selected, point => progress.get(point.nomor) ?? 0);
+  let feedback = attachFeedback();
   const padding = () => {
     const sidebar = document.getElementById('sidebar')?.getBoundingClientRect();
     if (window.innerWidth < 960) return [72, 24, (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sheet-peek'), 10) || 240) + 24, 24];
@@ -139,6 +147,13 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     },
     setProgress(next) { progress = next; feedback.refresh(); pointLayer.changed(); },
     setVisiblePoints(ids) { visibleIds = ids; feedback.refresh(); pointLayer.changed(); },
+    setPoints(next) {
+      if (disposed || next === points) return;
+      points = next; index(); source.clear(true); source.addFeatures(pointFeatures());
+      feedback.dispose(); feedback = attachFeedback(); pointLayer.changed();
+      // A moved pin takes its open popup with it, without re-running the fly-to.
+      const point = selected ? byId.get(selected) : undefined; if (point) positionPopup(point);
+    },
     fitToPoints,
     setLayerVisibility(key, visible) {
       if (key === 'sk' || key === 'cadangan' || key === 'belum') { flags[key] = visible; feedback.refresh(); pointLayer.changed(); }

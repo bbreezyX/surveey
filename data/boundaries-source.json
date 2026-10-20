@@ -14,9 +14,9 @@
   "crs": "EPSG:4326",
   "processing": {
     "metric_crs": "EPSG:32748",
-    "coverage_simplify_tolerance_m": 2,
+    "coverage_simplify_tolerance_m": 10,
     "coordinate_grid_degrees": 1e-06,
-    "shapely_version": "2.1.2"
+    "shapely_version": "2.2.0"
   },
   "feature_metadata": {
     "15.01": "TASWIL5000020221227KABKOTA",

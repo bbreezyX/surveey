@@ -17,15 +17,45 @@
   const locator = createLocator();
   let fitFrame = 0;
   let fitTimer: ReturnType<typeof setTimeout> | undefined, appliedFit = -1;
+  // When the points last came from the network rather than the service worker's stored copy.
+  let freshAt = 0, refreshing = $state(false);
   async function load() {
     controller?.abort(); const attempt = new AbortController(); controller = attempt;
     error = ''; model = null;
     // Build progress comes from esdm.cloud and never holds up the map; it lands on the pins when it arrives.
     const progress = loadProgress(attempt.signal);
-    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { const state = createSurveyState(dataset); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) state.progress = value; }); } }
+    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) state.progress = value; }); } }
     catch (problem) { if (!disposed && !attempt.signal.aborted) error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; }
   }
-  onMount(() => { load(); return () => { disposed = true; locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); }; });
+  // Fetches again behind the map the reader is using: the list, search, open point and view stay put,
+  // and only points that actually changed are swapped in. A failure leaves everything as it was.
+  async function refresh() {
+    const state = model, attempt = controller; if (!state || !attempt || refreshing) return;
+    refreshing = true;
+    try {
+      const [dataset, progress] = await Promise.all([loadSurveyDataset(attempt.signal).catch(() => null), loadProgress(attempt.signal)]);
+      if (disposed || attempt.signal.aborted || model !== state) return;
+      if (dataset) { if (!dataset.storedAt) freshAt = Date.now(); state.replaceDataset(dataset); }
+      if (progress) state.progress = progress;
+    } finally { refreshing = false; }
+  }
+  // Data stays current without the reader doing anything: a failed first load retries, a stored copy is
+  // swapped for fresh data, and a map left open in a pocket all morning refreshes when it is looked at again.
+  const STALE_MS = 5 * 60_000, RETRY_MS = 30_000;
+  function reconnect(force = false) {
+    // force: the reader pressed Perbarui, or the worker has news; otherwise a phone that knows it is offline waits.
+    if (disposed || document.visibilityState !== 'visible' || (!force && navigator.onLine === false)) return;
+    if (!model) { if (error) load(); return; }
+    if (force || model.storedAt || !model.progress || Date.now() - freshAt > STALE_MS) void refresh();
+  }
+  onMount(() => {
+    load();
+    const wake = () => reconnect(), retry = setInterval(() => { if (!model ? !!error : !!model.storedAt || !model.progress) reconnect(); }, RETRY_MS);
+    // The service worker says when a slow download it was still finishing has landed in its store.
+    const fromWorker = (event: MessageEvent) => { if (event.data?.type === 'puts-data-updated') reconnect(true); };
+    addEventListener('online', wake); document.addEventListener('visibilitychange', wake); navigator.serviceWorker?.addEventListener('message', fromWorker);
+    return () => { disposed = true; clearInterval(retry); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
+  });
   $effect(() => { document.body.classList.toggle('is-popup-open', !!model?.selected); document.body.classList.toggle('is-panel-open', !!model?.panelOpen); document.body.classList.toggle('is-sidebar-collapsed', !!model?.sidebarCollapsed); document.body.classList.toggle('is-data-unavailable', !model); });
   $effect(() => {
     if (!model || !adapter) return;
@@ -45,7 +75,7 @@
 <div class="app-shell">
   <header class="masthead"><img class="masthead-lambang" src={lambang} srcset={lambangSrcset} sizes="30px" alt="Lambang Provinsi Jambi" width="36" height="38"/><div class="masthead-copy"><p class="masthead-kicker">Dinas ESDM Provinsi Jambi</p><h1 class="masthead-title">Sebaran PUTS 2026</h1></div></header>
   {#if model}
-    <Sidebar state={model} onfit={fitAll} {locator}/>
+    <Sidebar state={model} onfit={fitAll} onrefresh={() => reconnect(true)} {refreshing} {locator}/>
     <button id="panel-toggle" class="panel-toggle" type="button" aria-controls="sidebar" aria-expanded={!model.sidebarCollapsed} aria-label="Tampilkan daftar" onclick={expandSidebar}><Icon name="collapse"/></button>
     <main class="map-frame"><MapView state={model} {locator} bind:adapter/><LayerPanel state={model}/></main>
     <Legend state={model}/><MobileHints busy={model.panelOpen || !!model.selected}/>

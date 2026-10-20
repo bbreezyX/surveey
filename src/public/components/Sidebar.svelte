@@ -12,7 +12,7 @@
   import Icon from './Icon.svelte';
   import NearbyList from './NearbyList.svelte';
   import type { Locator as GpsLocator } from '../state/locate.svelte';
-  let { state, onfit, locator }: { state: SurveyState; onfit: () => void; locator: GpsLocator } = $props();
+  let { state, onfit, onrefresh, refreshing = false, locator }: { state: SurveyState; onfit: () => void; onrefresh: () => void; refreshing?: boolean; locator: GpsLocator } = $props();
   let sidebar: HTMLElement, scroller: HTMLDivElement, search: HTMLInputElement, near: HTMLDivElement;
   const gesture = createSheetGesture(() => sidebar, () => state.panelOpen, open => { state.panelOpen = open; state.select(null); }, () => document.body.classList.remove('is-sheet-hinting', 'is-sheet-nudging'));
   const regionPoints = $derived(state.points.filter(point => point.kabupaten === state.activeRegion));
@@ -22,6 +22,8 @@
   const summary = $derived(state.statusFilter ? state.query ? `${state.count} dari ${filterCount} ${STATUS_LABEL[state.statusFilter].count}` : `${filterCount} ${STATUS_LABEL[state.statusFilter].count} dari ${regionCount} titik` : `${state.count} dari ${regionCount} titik`);
   let enterTimer: ReturnType<typeof setTimeout> | undefined;
   const latest = $derived(latestDocumentationDate(state.points.map(point => point.tanggal)));
+  // Set only when the service worker answered from its stored copy (no or too slow a connection).
+  const storedLabel = $derived(state.storedAt ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(state.storedAt) : '');
   const dateLabel = $derived(latest ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(latest) : '2026');
   async function openRegion(name: string | null, filter: StatusFilter = null) {
     const previous = state.activeRegion; state.openRegion(name, filter); await tick();
@@ -67,5 +69,5 @@
     {:else}<div class="atlas-summary atlas-summary--total"><p class="atlas-total" role="status"><b class="atlas-total__num">{state.count}</b><span class="atlas-total__label"><span>titik PUTS</span><span>di <b>{state.regionNames.length}</b> kabupaten/kota</span></span></p><button id="fit-map" type="button" class="atlas-fit" aria-label="Lihat semua" title="Tampilkan semua titik di peta" onclick={onfit}><Icon name="fit" size={16}/><span>Lihat semua</span></button></div>{/if}
   </div>
   <div class="sidebar-scroll" bind:this={scroller} onscroll={syncScroll}><div id="list-data" aria-live="polite">{#if !state.points.length}<p class="list-empty">Belum ada titik untuk ditampilkan.</p>{:else if !state.activeRegion && !state.query}<RegionGrid {state} onopen={openRegion}/>{:else}<PointList {state}/>{/if}</div></div>
-  <p class="sidebar-footer"><span class="sidebar-footer__title">Survey lapangan &amp; pelaksanaan</span><span class="sidebar-footer__meta">s.d. {dateLabel} · Dinas ESDM Jambi</span></p>
+  <p class="sidebar-footer"><span class="sidebar-footer__title">Survey lapangan &amp; pelaksanaan</span><span class="sidebar-footer__meta">s.d. {dateLabel} · Dinas ESDM Jambi</span>{#if storedLabel}<span class="sidebar-footer__stored" role="status">Data tersimpan {storedLabel} — koneksi lemah atau terputus. <button type="button" onclick={onrefresh} disabled={refreshing}>{refreshing ? 'Memperbarui…' : 'Perbarui'}</button></span>{/if}</p>
 </aside>

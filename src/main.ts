@@ -16,4 +16,8 @@ if (!target) throw new Error('Application mount element is missing');
 const app = mount(App, { target });
 export default app;
 
+// Production only: in dev a worker would serve stale modules over Vite's HMR.
+// After `load` so registering never competes with the first render's requests.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => undefined); });
+
 if (import.meta.hot) import.meta.hot.dispose(() => { void unmount(app); });

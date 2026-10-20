@@ -20,10 +20,13 @@ the labels and sidebar. The source's names and administrative codes are also
 preserved. `data/dissolved.geojson` is the union of the same polygons, used by
 both Area Cakupan and Fokus Provinsi. Google satellite tiles are independent.
 
-For web display, shared boundaries are simplified together with a 2 m tolerance
+For web display, shared boundaries are simplified together with a 10 m tolerance
 in UTM 48S (`EPSG:32748`), then returned to `EPSG:4326` on a 0.000001-degree
 coordinate grid. This keeps adjacent boundaries aligned and limits payload
-size. This is a display derivative, not a cadastral or legal boundary survey.
+size: the source is a 1:50,000 product (`TASWIL50000…`), so 10 m stays inside
+its own positional uncertainty, and `/data/regions.json` dropped from about
+123 KB to 78 KB gzipped (the boundaries were the largest file on a phone's
+first load). The earlier 2 m derivative bought no real precision. This is a display derivative, not a cadastral or legal boundary survey.
 The import checks polygon validity, coverage topology, all 11 expected codes,
 and unchanged point membership against the unsimplified BIG geometry.
 

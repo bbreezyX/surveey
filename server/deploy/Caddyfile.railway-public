@@ -17,6 +17,9 @@
     header /favicon.ico Cache-Control "public, max-age=604800"
     header /apple-touch-icon.png Cache-Control "public, max-age=604800"
     header /manifest.json Cache-Control "public, max-age=86400"
+    # The service worker must be rechecked on every visit, or a deploy could
+    # keep serving phones the previous shell for as long as this file is cached.
+    header /sw.js Cache-Control "no-cache"
     header /data/* Cache-Control "no-cache, must-revalidate"
     header /images/* Cache-Control "public, max-age=2592000"
     header /assets/* Cache-Control "public, max-age=604800"
@@ -62,6 +65,10 @@
         }
     }
     handle {
-        file_server
+        # scripts/build-public-assets.mjs writes max-quality .br files beside the
+        # bundle and regions.json; anything without one falls back to `encode`.
+        file_server {
+            precompressed br
+        }
     }
 }

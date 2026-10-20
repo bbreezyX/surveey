@@ -1,4 +1,7 @@
 import { cp, mkdir, readFile, writeFile, readdir, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { brotliCompressSync, constants as zlib } from 'node:zlib';
 import path from 'node:path';
 import { REGION_ENCODING, encodeRegionCollection } from './region-codec.mjs';
 const outputIndex = process.argv.indexOf('--output');
@@ -31,4 +34,26 @@ const dissolved = JSON.parse(await readFile('data/dissolved.geojson', 'utf8'));
 if (dissolved.type !== 'FeatureCollection' || !Array.isArray(dissolved.features)) throw new Error('Invalid dissolved collection');
 // One compact file for both boundary sets; see region-codec.mjs for why and how.
 await writeFile(path.join(destination, 'data', 'regions.json'), JSON.stringify({ encoding: REGION_ENCODING, kabupaten: encodeRegionCollection(boundaries), dissolved: encodeRegionCollection(dissolved, boundaries) }));
+// Only after `vite build` has written the page: the dev staging copy and the
+// output test have no index.html, and in dev a worker would fight Vite's HMR.
+if (existsSync(path.join(destination, 'index.html'))) {
+  const assets = (await readdir(path.join(destination, 'assets'))).sort();
+  // What the first screen loads, fingerprinted as in Caddyfile.railway-public's
+  // immutable rule. Icons and the legacy loader GIF stay out: a precache entry
+  // nothing had already downloaded would cost a weak link the full file again.
+  const precache = assets.filter(name => /-[A-Za-z0-9_-]{8}\.(js|css|webp|woff2)$/.test(name)).map(name => `/assets/${name}`);
+  const version = createHash('sha256').update(await readFile(path.join(destination, 'index.html'))).update(precache.join('\n')).digest('hex').slice(0, 12);
+  const worker = (await readFile('scripts/service-worker.js', 'utf8')).replace("'__PUTS_VERSION__'", JSON.stringify(version)).replace('__PUTS_PRECACHE__', JSON.stringify(precache));
+  if (worker.includes('__PUTS_')) throw new Error('Service worker placeholders were not all replaced');
+  await writeFile(path.join(destination, 'sw.js'), worker);
+  // Brotli at its slowest, best setting, done once here instead of Caddy's
+  // fast on-the-fly gzip per request (Caddyfile `precompressed br`). Measured:
+  // regions.json 78 -> 69 KB and the JS bundle ~144 -> ~120 KB on the wire.
+  const compressible = [...assets.filter(name => /\.(js|css|svg|ico)$/.test(name)).map(name => path.join('assets', name)), 'data/regions.json', 'sw.js'];
+  for (const file of compressible) {
+    const source = await readFile(path.join(destination, file));
+    const packed = brotliCompressSync(source, { params: { [zlib.BROTLI_PARAM_QUALITY]: 11, [zlib.BROTLI_PARAM_SIZE_HINT]: source.length } });
+    if (packed.length < source.length * 0.9) await writeFile(path.join(destination, `${file}.br`), packed);
+  }
+}
 console.log(`Public assets prepared: ${destination}`);

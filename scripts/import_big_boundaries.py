@@ -18,6 +18,14 @@ from shapely.ops import transform
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = "https://geoservices.big.go.id/rbi/rest/services/BATASWILAYAH/BATAS_KABKOTA_AR/MapServer"
 EDITION = "2026-06"
+# Display tolerance in metres. BIG publishes these boundaries at 1:50,000
+# (METADATA "TASWIL50000..."), whose positional accuracy is tens of metres, so
+# 10 m stays well inside the source's own uncertainty. Measured on the June 2026
+# edition: 36,488 -> 20,476 vertices and regions.json 123 KB -> 78 KB gzipped,
+# the largest file on a phone's first load. 2 m bought no real precision, and
+# every point's district membership is still checked below against the
+# unsimplified geometry.
+TOLERANCE_M = 10
 EXPECTED = {
     "15.01": "Kerinci", "15.02": "Merangin", "15.03": "Sarolangun",
     "15.04": "Batanghari", "15.05": "Muaro Jambi",
@@ -66,11 +74,11 @@ def main():
     originals = [shape(f["geometry"]) for f in features]
     validate_coverage(originals)
     # Simplify shared edges together in metres so neighbouring districts stay
-    # aligned. Two metres is for display, not a claim about source accuracy.
+    # aligned. TOLERANCE_M is for display, not a claim about source accuracy.
     project = Transformer.from_crs(4326, 32748, always_xy=True).transform
     unproject = Transformer.from_crs(32748, 4326, always_xy=True).transform
     metric = [transform(project, g) for g in originals]
-    simplified = shapely.coverage_simplify(metric, tolerance=2)
+    simplified = shapely.coverage_simplify(metric, tolerance=TOLERANCE_M)
     geometries = [shapely.set_precision(transform(unproject, g), 0.000001)
                   for g in simplified]
     validate_coverage(geometries)
@@ -105,7 +113,7 @@ def main():
         "query": {"where": "KDPPUM = '15'", "outSR": 4326, "returnZ": False},
         "raw_sha256": hashlib.sha256(raw_bytes).hexdigest(),
         "feature_count": len(output), "crs": "EPSG:4326",
-        "processing": {"metric_crs": "EPSG:32748", "coverage_simplify_tolerance_m": 2,
+        "processing": {"metric_crs": "EPSG:32748", "coverage_simplify_tolerance_m": TOLERANCE_M,
                        "coordinate_grid_degrees": 0.000001,
                        "shapely_version": shapely.__version__},
         "feature_metadata": {f["properties"]["KDPKAB"]: f["properties"]["METADATA"]

@@ -4,8 +4,22 @@ it('turns a stalled request into a retryable error and cancels its other request
   vi.useFakeTimers(); const parent = new AbortController(); let failure: unknown; let aborted = 0;
   vi.stubGlobal('fetch', vi.fn((_url: string, options: { signal: AbortSignal }) => new Promise((_resolve, reject) => { options.signal.addEventListener('abort', () => { aborted++; reject(options.signal.reason); }, { once: true }); })));
   const pending = loadSurveyDataset(parent.signal).catch(error => { failure = error; });
-  try { await vi.advanceTimersByTimeAsync(20_001); expect(failure).toBeInstanceOf(Error); expect(String(failure)).toMatch(/terlalu lama/); expect(aborted).toBe(2); }
+  try { await vi.advanceTimersByTimeAsync(20_001); expect(failure).toBeInstanceOf(Error); expect(String(failure)).toMatch(/terlalu lambat/); expect(aborted).toBe(2); }
   finally { parent.abort(); await pending; vi.unstubAllGlobals(); vi.useRealTimers(); }
+});
+it('keeps a slow download that is still delivering bytes past the stall limit', async () => {
+  vi.useFakeTimers();
+  const { REGION_ENCODING } = await import('../scripts/region-codec.mjs');
+  const empty = { type: 'FeatureCollection', features: [] };
+  const regions = JSON.stringify({ encoding: REGION_ENCODING, kabupaten: empty, dissolved: empty });
+  // 45 s in total, but a chunk every 15 s: a 2G link, not a dead one.
+  const text = JSON.stringify(empty), pieces = [text.slice(0, 10), text.slice(10, 20), text.slice(20)];
+  const slow = () => new ReadableStream<Uint8Array>({ start(controller) { pieces.forEach((piece, i) => setTimeout(() => { controller.enqueue(new TextEncoder().encode(piece)); if (i === pieces.length - 1) controller.close(); }, 15_000 * (i + 1))); } });
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(url.endsWith('regions.json') ? regions : slow(), { headers: url.endsWith('regions.json') ? {} : { 'x-puts-stored-at': '1760000000000' } })));
+  let result: unknown, failure: unknown;
+  const pending = loadSurveyDataset(new AbortController().signal).then(value => { result = value; }, error => { failure = error; });
+  try { await vi.advanceTimersByTimeAsync(46_000); await pending; expect(failure).toBeUndefined(); expect(result).toMatchObject({ points: [], storedAt: 1760000000000 }); }
+  finally { vi.unstubAllGlobals(); vi.useRealTimers(); }
 });
 it('restores the encoded boundary payload to the exact source coordinates', async () => {
   const { REGION_ENCODING, encodeRegionCollection } = await import('../scripts/region-codec.mjs');
