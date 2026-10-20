@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './connection-fixtures';
 test.describe('with the service worker', () => {
   // The rest of the suite blocks the worker so page.route keeps seeing data requests.
   test.use({ serviceWorkers: 'allow' });
@@ -37,16 +37,19 @@ test('loads by itself once the connection comes back after a failed first load',
   fail = false; await page.evaluate(() => dispatchEvent(new Event('online')));
   await expect(page.locator('.atlas-total__num')).toHaveText('500');
 });
-test('tells a phone reader the data is loading, then that the signal is weak', async ({ page }) => {
+test('keeps the loading notice when the data server is slow but connection samples are fast', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   let release: () => void = () => {};
   const held = new Promise<void>(resolve => { release = resolve; });
   await page.route('**/data/points.geojson', async route => { await held; await route.continue(); });
+  let probes = 0;
+  page.on('requestfinished', request => { if (request.url().includes('/favicon.ico?online=')) probes++; });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.connection-chip')).toHaveText('Memuat data titik…');
-  // Past the slow threshold the wait is explained as weak signal, not left looking stuck.
-  await expect(page.locator('.connection-chip')).toContainText('Sinyal lemah. Memuat data titik…', { timeout: 6000 });
-  release();
+  try {
+    await expect.poll(() => probes, { timeout: 18_000 }).toBeGreaterThanOrEqual(3);
+    await expect(page.locator('.connection-chip')).toHaveText('Memuat data titik…');
+  } finally { release(); }
   await expect(page.locator('.atlas-total__num')).toHaveText('500');
   await expect(page.locator('.connection-chip')).toHaveCount(0);
 });

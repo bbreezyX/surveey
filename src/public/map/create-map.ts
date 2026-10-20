@@ -91,7 +91,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const map = new OlMap({ target: options.target, layers: [esri, google, mask, area, regionLayer, userLayer, pointLayer], overlays: [userOverlay, overlay], view: new View({ maxZoom: 28, minZoom: 1 }), interactions: defaultInteractions({ doubleClickZoom: false }), controls: defaultControls({ attributionOptions: { collapsible: false, className: 'bottom-attribution' }, zoomOptions: { zoomInTipLabel: 'Perbesar', zoomOutTipLabel: 'Perkecil' } }).extend([scaleControl]) });
   const controlCleanup = attachControlLayout(map);
   const satelliteCleanup = satellite.attach(map);
-  const tiles = watchTiles([google.getSource()!, esri.getSource()!], { suspect: () => options.onTileTrouble?.(), slow: value => options.onTilesSlow?.(value) });
+  const tiles = watchTiles(map, [google, esri], { suspect: () => options.onTileTrouble?.(), slow: value => options.onTilesSlow?.(value) });
   let imageryOffline = false;
   function shown(point: SurveyPoint) { return visibleIds.has(point.nomor) && (point.cadangan ? flags.cadangan : point.belum ? flags.belum : flags.sk); }
   const attachFeedback = () => attachPointFeedback(map, pointLayer, points, shown, () => selected, point => progress.get(point.nomor) ?? 0);
