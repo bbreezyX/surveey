@@ -72,16 +72,19 @@ export function satelliteLayers(onFallback?: () => void): SatelliteLayers {
     if (token || starting || disposed) return;
     if (!KEY) { fallback(); return; }
     starting = true;
-    try { const next = await session(false); if (!disposed) use(next); } catch { fallback(); } finally { starting = false; }
+    // A TypeError is fetch failing to reach Google at all (no internet), not Google refusing the key:
+    // stay on Google and try again when the connection returns instead of switching to Esri for good.
+    try { const next = await session(false); if (!disposed) use(next); } catch (problem) { if (!(problem instanceof TypeError)) fallback(); } finally { starting = false; }
   }
   // A run of failed tiles is either imagery that stops short (z21 over open country) or a dead token,
   // key or quota. The world tile always exists, so one uncached probe tells the two apart before
   // anything is renewed or switched.
   async function check() {
-    const alive = await fetch(tileUrl(0, 0, 0), { cache: 'no-store', referrerPolicy: REFERRER }).then(response => response.ok, () => false);
+    // null: the request never reached Google (offline). That says nothing about the key or quota.
+    const alive = await fetch(tileUrl(0, 0, 0), { cache: 'no-store', referrerPolicy: REFERRER }).then(response => response.ok, () => null);
     if (disposed) return;
-    if (alive) { misses = 0; return; }
-    if (!refreshed) { refreshed = true; try { use(await session(true)); return; } catch { /* fall through */ } }
+    if (alive !== false) { misses = 0; return; }
+    if (!refreshed) { refreshed = true; try { use(await session(true)); return; } catch (problem) { if (problem instanceof TypeError) { refreshed = false; return; } } }
     fallback();
   }
   source.on('tileloadend', () => { misses = 0; });
@@ -109,8 +112,11 @@ export function satelliteLayers(onFallback?: () => void): SatelliteLayers {
       }
       credit = () => void viewport();
       const keys = [map.on('moveend', credit), google.on('change:visible', () => { if (google.getVisible()) { void start(); credit(); } })];
+      // A first visit made offline has no session yet; get one as soon as the connection is back.
+      const online = () => { if (google.getVisible()) { void start(); credit(); } };
+      addEventListener('online', online);
       if (google.getVisible()) void start();
-      return () => { disposed = true; unByKey(keys); };
+      return () => { disposed = true; unByKey(keys); removeEventListener('online', online); };
     },
   };
 }

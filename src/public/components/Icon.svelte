@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { name, size = 20 }: { name: 'search' | 'close' | 'back' | 'collapse' | 'fit' | 'layers' | 'route' | 'external' | 'location' | 'coordinate' | 'calendar' | 'info' | 'locate' | 'camera'; size?: number } = $props();
+  let { name, size = 20 }: { name: 'search' | 'close' | 'back' | 'collapse' | 'fit' | 'layers' | 'route' | 'external' | 'location' | 'coordinate' | 'calendar' | 'info' | 'locate' | 'camera' | 'offline'; size?: number } = $props();
 </script>
 <svg class:panel-icon={name === 'back' || name === 'fit' || name === 'collapse'} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
   {#if name === 'search'}<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>
@@ -14,6 +14,7 @@
   {:else if name === 'coordinate'}<circle cx="12" cy="12" r="7"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/>
   {:else if name === 'calendar'}<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/>
   {:else if name === 'locate'}<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+  {:else if name === 'offline'}<path d="M3 3l18 18M8.5 16.4a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 4.2-2.4m4.6-.4A10 10 0 0 1 19 12.9M2 9.4a15 15 0 0 1 3.4-2.3m4.4-1.3A15 15 0 0 1 22 9.4"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/>
   {:else if name === 'info'}<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/>
   {:else}<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>{/if}
 </svg>

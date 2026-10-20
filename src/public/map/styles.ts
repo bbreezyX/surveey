@@ -35,21 +35,27 @@ export function pointStyle(point: SurveyPoint, resolution: number, selected = fa
   cache.set(key, styles); return styles;
 }
 const boundaryLine = new Style({ stroke: new Stroke({ color: 'rgba(255,255,255,.8)', width: 1.25 }) });
+// Without imagery the map sits on a pale land colour (#map.is-imagery-offline in layout.css), where
+// the white lines vanish: boundaries turn dark and a little heavier so the kabupaten stay legible.
+const offlineBoundaryLine = new Style({ stroke: new Stroke({ color: 'rgba(41,61,80,.85)', width: 1.75 }) });
+let offlineBasemap = false;
+export function setOfflineBasemap(offline: boolean) { offlineBasemap = offline; }
 const boundaryLabels = new WeakMap<FeatureLike, Map<string, Style>>();
 export function boundaryStyle(feature: FeatureLike, resolution: number): Style[] {
   const alpha = Math.round(Math.max(0, Math.min(1, (resolution - 60) / 80)) * 10) / 10;
   const geometry = feature.getGeometry();
-  if (!alpha || !(geometry instanceof Polygon || geometry instanceof MultiPolygon)) return [boundaryLine];
+  const line = offlineBasemap ? offlineBoundaryLine : boundaryLine;
+  if (!alpha || !(geometry instanceof Polygon || geometry instanceof MultiPolygon)) return [line];
   const name = toDisplayCase(feature.get('KABUPATEN_'));
-  const key = `${name}|${alpha}`;
+  const key = `${name}|${alpha}|${offlineBasemap}`;
   let labels = boundaryLabels.get(feature); if (!labels) { labels = new Map(); boundaryLabels.set(feature, labels); }
   let label = labels.get(key);
   if (!label) {
     const largest = geometry instanceof Polygon ? geometry : geometry.getPolygons().sort((a, b) => b.getArea() - a.getArea())[0];
-    label = new Style({ geometry: largest.getInteriorPoint(), text: new Text({ text: name, font: '600 12.5px Manrope, "Source Sans 3", system-ui, sans-serif', fill: new Fill({ color: `rgba(255,255,255,${alpha * .96})` }), stroke: new Stroke({ color: `rgba(11,41,66,${alpha * .7})`, width: 2.6 }) }) });
+    label = new Style({ geometry: largest.getInteriorPoint(), text: new Text({ text: name, font: '600 12.5px Manrope, "Source Sans 3", system-ui, sans-serif', fill: new Fill({ color: offlineBasemap ? `rgba(41,61,80,${alpha})` : `rgba(255,255,255,${alpha * .96})` }), stroke: new Stroke({ color: offlineBasemap ? `rgba(255,255,255,${alpha * .9})` : `rgba(11,41,66,${alpha * .7})`, width: 2.6 }) }) });
     labels.set(key, label);
   }
-  return [boundaryLine, label];
+  return [line, label];
 }
 export function maskStyle(features: FeatureLike[]): Style {
   const holes: number[][][] = [];

@@ -68,6 +68,71 @@ body {
     background: #14202c;
 }
 
+/* No internet: satellite imagery may not be stored for offline use, so the
+   navy "loading" field would read as a broken map. A pale land colour turns
+   the province mask and the (now dark) kabupaten lines into a plain map. */
+#map.is-imagery-offline {
+    background: #e9ece4;
+}
+
+/* Says why the map is plain. A band like .map-legend's, across the map area
+   right of the panel, so it never sits under the sidebar or the layer button. */
+.connection-chip {
+    position: fixed;
+    top: var(--panel-top);
+    left: calc(var(--panel-left) + var(--panel-width) + 16px);
+    right: 84px;
+    z-index: 21;
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+    width: fit-content;
+    max-width: min(460px, calc(100vw - var(--panel-left) - var(--panel-width) - 100px));
+    gap: 8px;
+    align-items: flex-start;
+    padding: 9px 14px;
+    border-radius: var(--radius-md);
+    background: #293d50;
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.4;
+    box-shadow: var(--ctl-shadow);
+}
+
+.connection-chip svg {
+    flex: none;
+    margin-top: 1px;
+}
+
+.connection-chip__spinner {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fee50f;
+    border-radius: 50%;
+    animation: connection-spin 0.9s linear infinite;
+}
+
+@keyframes connection-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .connection-chip__spinner { animation-duration: 2.4s; }
+}
+
+/* On wide screens the open sidebar already says "Memuat data titik…". */
+@media (min-width: 960px) {
+    body:not(.is-sidebar-collapsed) .connection-chip--loading { display: none; }
+}
+
+body.is-sidebar-collapsed .connection-chip {
+    left: 84px;
+    max-width: calc(100vw - 168px);
+}
+
 /* ---------- Masthead ---------- */
 
 .masthead {

@@ -3,10 +3,11 @@
   import { createSurveyMap, type SurveyMapAdapter, type LayerKey } from '../map/create-map';
   import type { SurveyState } from '../state/survey.svelte';
   import type { Locator } from '../state/locate.svelte';
+  import type { Connection } from '../state/connection.svelte';
   import { nearestPoints, suggestable, isHere } from '../state/nearby';
   import PointPopup from './PointPopup.svelte';
   import Icon from './Icon.svelte';
-  let { state, locator, adapter = $bindable(null) }: { state: SurveyState; locator: Locator; adapter?: SurveyMapAdapter | null } = $props();
+  let { state, locator, connection, adapter = $bindable(null) }: { state: SurveyState; locator: Locator; connection: Connection; adapter?: SurveyMapAdapter | null } = $props();
   // Only the first fix of each session moves the map; after that the reader pans freely while the dot follows.
   let framed = false;
   const nearest = $derived(locator.fix ? nearestPoints(suggestable(state.points, state.layers), locator.fix, 1)[0] ?? null : null);
@@ -24,11 +25,12 @@
     card.focus({ preventScroll: true });
   }
   onMount(() => {
-    const instance = createSurveyMap({ target, popup, dataset: state.dataset, onSelect: (id, nearby) => id ? state.select(id, null, nearby) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; } }); adapter = instance;
+    const instance = createSurveyMap({ target, popup, dataset: state.dataset, onSelect: (id, nearby) => id ? state.select(id, null, nearby) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; }, onTileTrouble: () => connection.suspect(), onTilesSlow: slow => { connection.tilesSlow = slow; } }); adapter = instance;
     const observer = new ResizeObserver(scrollHint); observer.observe(content);
     return () => { observer.disconnect(); instance.dispose(); adapter = null; };
   });
   $effect(() => { adapter?.setPoints(state.points); });
+  $effect(() => { adapter?.setImageryOffline(connection.offline); });
   $effect(() => { adapter?.setVisiblePoints(state.visibleIds); if (state.selectedNomor && !state.visibleIds.has(state.selectedNomor)) state.select(null); });
   $effect(() => {
     const id = state.selectedNomor;

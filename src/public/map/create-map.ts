@@ -24,7 +24,8 @@ import { attachPointFeedback } from './feedback';
 import { attachControlLayout } from './controls';
 import { unByKey } from 'ol/Observable';
 import type { SurveyProgress } from '../../shared/survey/progress';
-import { pointStyle, boundaryStyle, maskStyle } from './styles';
+import { pointStyle, boundaryStyle, maskStyle, setOfflineBasemap } from './styles';
+import { watchTiles } from './imagery-status';
 import { projectRegions } from '../data/regions';
 import { satelliteLayers } from './google-tiles';
 export type LayerKey = 'google' | 'esri' | 'boundaries' | 'mask' | 'area' | 'sk' | 'cadangan' | 'belum';
@@ -33,6 +34,8 @@ export interface SurveyMapAdapter {
   setSelection(nomor: string | null): void;
   setProgress(progress: SurveyProgress): void;
   setVisiblePoints(ids: ReadonlySet<string>): void;
+  // No internet: a pale basemap with dark boundaries instead of the navy field (imagery cannot be kept offline).
+  setImageryOffline(offline: boolean): void;
   // Newer points after a reconnect; the view, layers and selection stay as the reader left them.
   setPoints(points: SurveyPoint[]): void;
   fitToPoints(ids: ReadonlySet<string>, options?: FitOptions): void;
@@ -41,7 +44,7 @@ export interface SurveyMapAdapter {
   setUserLocation(fix: Fix | null, nearest: SurveyPoint | null, here?: boolean, frame?: boolean): void;
   dispose(): void;
 }
-export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null, nearby?: boolean) => void; onBasemapFallback?: () => void }): SurveyMapAdapter {
+export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null, nearby?: boolean) => void; onBasemapFallback?: () => void; onTileTrouble?: () => void; onTilesSlow?: (slow: boolean) => void }): SurveyMapAdapter {
   const { boundaries, dissolved } = options.dataset;
   let points = options.dataset.points;
   const coordinateKey = (point: SurveyPoint) => `${point.latNum.toFixed(6)},${point.lonNum.toFixed(6)}`;
@@ -88,6 +91,8 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const map = new OlMap({ target: options.target, layers: [esri, google, mask, area, regionLayer, userLayer, pointLayer], overlays: [userOverlay, overlay], view: new View({ maxZoom: 28, minZoom: 1 }), interactions: defaultInteractions({ doubleClickZoom: false }), controls: defaultControls({ attributionOptions: { collapsible: false, className: 'bottom-attribution' }, zoomOptions: { zoomInTipLabel: 'Perbesar', zoomOutTipLabel: 'Perkecil' } }).extend([scaleControl]) });
   const controlCleanup = attachControlLayout(map);
   const satelliteCleanup = satellite.attach(map);
+  const tiles = watchTiles([google.getSource()!, esri.getSource()!], { suspect: () => options.onTileTrouble?.(), slow: value => options.onTilesSlow?.(value) });
+  let imageryOffline = false;
   function shown(point: SurveyPoint) { return visibleIds.has(point.nomor) && (point.cadangan ? flags.cadangan : point.belum ? flags.belum : flags.sk); }
   const attachFeedback = () => attachPointFeedback(map, pointLayer, points, shown, () => selected, point => progress.get(point.nomor) ?? 0);
   let feedback = attachFeedback();
@@ -147,6 +152,11 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     },
     setProgress(next) { progress = next; feedback.refresh(); pointLayer.changed(); },
     setVisiblePoints(ids) { visibleIds = ids; feedback.refresh(); pointLayer.changed(); },
+    setImageryOffline(offline) {
+      if (disposed || offline === imageryOffline) return;
+      imageryOffline = offline; options.target.classList.toggle('is-imagery-offline', offline); setOfflineBasemap(offline); regionLayer.changed();
+      if (!offline) tiles.reload();
+    },
     setPoints(next) {
       if (disposed || next === points) return;
       points = next; index(); source.clear(true); source.addFeatures(pointFeatures());
@@ -175,6 +185,6 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       map.getView().fit(extent, { padding: padding().map(side => side + 24), maxZoom: 18, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600 });
       if (target) feedback.pulse(target);
     },
-    dispose() { disposed = true; cancelAnimationFrame(positionFrame); observer.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); satelliteCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
+    dispose() { disposed = true; tiles.dispose(); setOfflineBasemap(false); cancelAnimationFrame(positionFrame); observer.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); satelliteCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
   };
 }

@@ -12,9 +12,11 @@
   import Icon from './components/Icon.svelte';
   import { lambang, lambangSrcset } from './assets/lambang';
   import { createLocator } from './state/locate.svelte';
+  import { createConnection } from './state/connection.svelte';
+  import ConnectionStatus from './components/ConnectionStatus.svelte';
   let model = $state.raw<SurveyState | null>(null), adapter = $state.raw<SurveyMapAdapter | null>(null), error = $state('');
   let controller: AbortController | null = null, disposed = false;
-  const locator = createLocator();
+  const locator = createLocator(), connection = createConnection();
   let fitFrame = 0;
   let fitTimer: ReturnType<typeof setTimeout> | undefined, appliedFit = -1;
   // When the points last came from the network rather than the service worker's stored copy.
@@ -24,8 +26,10 @@
     error = ''; model = null;
     // Build progress comes from esdm.cloud and never holds up the map; it lands on the pins when it arrives.
     const progress = loadProgress(attempt.signal);
+    connection.loading(true);
     try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) state.progress = value; }); } }
-    catch (problem) { if (!disposed && !attempt.signal.aborted) error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; }
+    catch (problem) { if (!disposed && !attempt.signal.aborted) { error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; connection.suspect(); } }
+    finally { if (controller === attempt) connection.loading(false); }
   }
   // Fetches again behind the map the reader is using: the list, search, open point and view stay put,
   // and only points that actually changed are swapped in. A failure leaves everything as it was.
@@ -49,12 +53,13 @@
     if (force || model.storedAt || !model.progress || Date.now() - freshAt > STALE_MS) void refresh();
   }
   onMount(() => {
+    const stopConnection = connection.start();
     load();
     const wake = () => reconnect(), retry = setInterval(() => { if (!model ? !!error : !!model.storedAt || !model.progress) reconnect(); }, RETRY_MS);
     // The service worker says when a slow download it was still finishing has landed in its store.
     const fromWorker = (event: MessageEvent) => { if (event.data?.type === 'puts-data-updated') reconnect(true); };
     addEventListener('online', wake); document.addEventListener('visibilitychange', wake); navigator.serviceWorker?.addEventListener('message', fromWorker);
-    return () => { disposed = true; clearInterval(retry); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
+    return () => { disposed = true; stopConnection(); clearInterval(retry); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
   });
   $effect(() => { document.body.classList.toggle('is-popup-open', !!model?.selected); document.body.classList.toggle('is-panel-open', !!model?.panelOpen); document.body.classList.toggle('is-sidebar-collapsed', !!model?.sidebarCollapsed); document.body.classList.toggle('is-data-unavailable', !model); });
   $effect(() => {
@@ -77,9 +82,10 @@
   {#if model}
     <Sidebar state={model} onfit={fitAll} onrefresh={() => reconnect(true)} {refreshing} {locator}/>
     <button id="panel-toggle" class="panel-toggle" type="button" aria-controls="sidebar" aria-expanded={!model.sidebarCollapsed} aria-label="Tampilkan daftar" onclick={expandSidebar}><Icon name="collapse"/></button>
-    <main class="map-frame"><MapView state={model} {locator} bind:adapter/><LayerPanel state={model}/></main>
+    <main class="map-frame"><MapView state={model} {locator} {connection} bind:adapter/><LayerPanel state={model}/></main>
     <Legend state={model}/><MobileHints busy={model.panelOpen || !!model.selected}/>
   {:else}
     <aside id="sidebar" class="loading-panel" aria-label="Daftar titik PUTS"><div class="atlas-head"><img src={lambang} srcset={lambangSrcset} sizes="38px" alt="Lambang Provinsi Jambi" width="38" height="39"/><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div></div><div class="data-state" role="status">{#if error}<h2>Data titik belum tersedia</h2><p>{error}</p><button type="button" onclick={load}>Coba lagi</button>{:else}<p>Memuat data titik…</p>{/if}</div></aside><main class="map-frame"></main>
   {/if}
+  <ConnectionStatus {connection} hasData={!!model}/>
 </div>

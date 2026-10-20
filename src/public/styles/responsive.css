@@ -1953,3 +1953,17 @@ body.is-sidebar-collapsed .map-legend {
 .is-quiet-focus:focus-visible {
     outline: none;
 }
+
+/* Phones: under the masthead, clear of the layer button, above the sheet. */
+@media (max-width: 959px) {
+    .connection-chip,
+    body.is-sidebar-collapsed .connection-chip {
+        top: calc(env(safe-area-inset-top, 0px) + 72px);
+        left: 12px;
+        right: 12px;
+        max-width: none;
+        width: auto;
+        justify-content: flex-start;
+        font-size: 12.5px;
+    }
+}
