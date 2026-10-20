@@ -26,25 +26,27 @@
   {/if}
   {#if kind}<div class={`feature-popup__note feature-popup__note--${kind}`} role="note"><span class="feature-popup__note-mark" aria-hidden="true">{kind === 'belum' ? '?' : kind === 'duplikat' ? '!' : ''}</span><p><strong class="feature-popup__note-title">{STATUS_LABEL[kind].legend}</strong> {note}</p></div>{/if}
   <div class="feature-popup__body">
-    <p class="feature-popup__eyebrow">Titik {point.display.code} · {point.kabupaten}</p>
+    <!-- Code and region read as one line; the coordinate moves out of the meta list into a compact badge that wraps under them when the region name is long. -->
+    <p class="feature-popup__eyebrow"><span class="feature-popup__id">Titik {point.display.code} · {point.kabupaten}</span><span class="feature-popup__coord" title={point.belum ? 'Koordinat perkiraan' : 'Koordinat'}>{#if point.belum}<span aria-hidden="true">≈ </span><span class="visually-hidden">Koordinat perkiraan </span>{:else}<span class="visually-hidden">Koordinat </span>{/if}{point.koordinat}</span></p>
     <h3 class="feature-popup__title">{point.display.primary}</h3>
     <dl class="feature-popup__meta">
-      {#each [{ label: 'Alamat', value: point.alamat }, { label: point.belum ? 'Koordinat perkiraan' : 'Koordinat', value: point.koordinat }, { label: 'Dokumentasi', value: point.tanggal }, { label: 'Keterangan', value: point.display.showsKeterangan ? '' : point.keterangan }] as row (row.label)}
+      {#each [{ label: 'Alamat', value: point.alamat }, { label: 'Dokumentasi', value: point.tanggal }, { label: 'Keterangan', value: point.display.showsKeterangan ? '' : point.keterangan }] as row (row.label)}
         {#if row.value}<div class="feature-popup__meta-row"><div class="meta-icon" aria-hidden="true"><Icon name={row.label === 'Alamat' ? 'location' : row.label.startsWith('Koordinat') ? 'coordinate' : row.label === 'Dokumentasi' ? 'calendar' : 'info'} size={16}/></div><div><dt>{row.label}</dt><dd>{row.value}</dd></div></div>{/if}
       {/each}
     </dl>
     {#if stage !== null && !point.cadangan}
       <section class="feature-popup__progress" class:is-started={stage > 0} aria-label="Progres pembangunan">
-        <p class="feature-popup__progress-head"><span>Progres pembangunan</span><strong>{stageSummary(stage)}</strong></p>
+        <p class="feature-popup__progress-head"><span>Progres pembangunan</span><strong>{stageSummary(stage)}<span class="feature-popup__progress-count" aria-hidden="true">{Math.min(stage, BUILD_STAGES.length)}/{BUILD_STAGES.length}</span></strong></p>
+        <!-- One bar segment per stage with its name beneath: the fill reads at a glance, the label says which step it is. -->
         <ol class="feature-popup__stages">
           {#each BUILD_STAGES as name, index (name)}
-            <li class:is-done={index < stage}><span class="feature-popup__stage-mark" aria-hidden="true">{#if index < stage}<svg width="10" height="10" viewBox="0 0 10 10"><path d="M2.2 5.2 4.2 7.1 7.9 3.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>{/if}</span>{name}<span class="visually-hidden">{index < stage ? ' selesai' : ' belum'}</span></li>
+            <li class:is-done={index < stage} class:is-next={index === stage}>{name}<span class="visually-hidden">{index < stage ? ' selesai' : ' belum'}</span></li>
           {/each}
         </ol>
       </section>
     {/if}
     <div class="feature-popup__rule"></div>
-    <!-- Cadangan points are outside the allocation, so they have no construction to report. -->
-    {#if !point.belum || !point.cadangan}<div class="feature-popup__actions">{#if !point.belum}<a class="feature-popup__route" href={directionsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka Google Maps: rute dari posisi Anda ke titik ini"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>Buka di Google Maps</strong></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a>{/if}{#if !point.cadangan}<a class="feature-popup__report" href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Lapor progres galian, cor, tiang, atau lampu untuk titik ini" aria-label="Lapor progres titik ini"><Icon name="camera" size={16}/><span>Lapor</span></a>{/if}</div>{/if}
   </div>
+  <!-- Cadangan points are outside the allocation, so they have no construction to report. The row sits outside the body so it can stay pinned to the foot of the whole card on phones. -->
+  {#if !point.belum || !point.cadangan}<div class="feature-popup__actions">{#if !point.belum}<a class="feature-popup__route" href={directionsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka Google Maps: rute dari posisi Anda ke titik ini"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>{point.cadangan ? 'Buka di Google Maps' : 'Google Maps'}</strong></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a>{/if}{#if !point.cadangan}<a class="feature-popup__report" href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Lapor progres galian, cor, tiang, atau lampu untuk titik ini" aria-label="Lapor progres titik ini"><Icon name="camera" size={16}/><span>Lapor</span></a>{/if}</div>{/if}
 </div>

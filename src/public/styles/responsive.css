@@ -1500,10 +1500,31 @@ body.is-sidebar-collapsed .map-legend {
 }
 
 .feature-popup__eyebrow {
+    flex-wrap: wrap;
+    row-gap: 6px;
     color: var(--muted);
     font: 600 13px/1.3 var(--font-ui);
     letter-spacing: 0;
     text-transform: none;
+}
+
+.feature-popup__id {
+    min-width: 0;
+}
+
+/* Compact coordinate badge: tabular digits so values line up between points;
+   it never breaks mid-number, it drops to the next line as a whole instead.
+   No right-push: a wrapped badge then starts at the left edge rather than
+   hanging alone on the right under a long region name. */
+.feature-popup__coord {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--frost);
+    border: 1px solid var(--hairline-strong);
+    font: 600 11px/1.4 var(--font-ui);
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 .feature-popup__title {
@@ -1585,22 +1606,28 @@ body.is-sidebar-collapsed .map-legend {
     background: var(--blue-deep);
 }
 
-/* Route and Lapor share one row: the route keeps the room and stays the
-   primary action for a crew on the way; Lapor is a short outline pill beside it,
-   used once on site. With the route hidden (Belum Ditetapkan) it stands alone. */
+/* Route and Lapor share one row in equal halves, so the row reads as a balanced
+   pair; the filled route still marks the primary action and Lapor stays an
+   outline pill. With either one hidden the other takes the full width. */
+/* Grid, not flex: flex-basis 0 still adds each pill's own padding, so the two
+   halves came out 152px vs 161px. Equal auto columns also let a lone pill fill
+   the row. */
 .feature-popup__actions {
-    display: flex;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 8px;
 }
 
 /* One line each, 40px tall: the popup is read on a phone over the map, and two
    tall stacked pills pushed the photo and details out of view. */
 .feature-popup__actions .feature-popup__route {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
     min-height: 40px;
-    gap: 8px;
-    padding: 4px 12px 4px 5px;
+    /* Tight enough that "Google Maps" fits the desktop card's 135px half. */
+    gap: 6px;
+    padding: 4px 8px 4px 5px;
 }
 
 .feature-popup__actions .feature-popup__route-icon {
@@ -1631,9 +1658,11 @@ body.is-sidebar-collapsed .map-legend {
 }
 
 .feature-popup__report {
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     min-height: 40px;
     padding: 0 14px 0 12px;
@@ -1668,6 +1697,62 @@ body.is-sidebar-collapsed .map-legend {
 
     .feature-popup__report:active {
         transform: none;
+    }
+}
+
+/* Phones: the card is capped at 62dvh and a full detail runs 530-614px, so on
+   most handsets Google Maps and Lapor sat below the fold. The action row now
+   sticks to the card's foot and the details scroll behind it, so both buttons
+   show the moment the card opens on any screen height. */
+@media (max-width: 959px) {
+    /* overflow: hidden would make the card body its own scroll container and
+       pin the sticky row to it instead of to the scrolling card; clip keeps
+       the rounded corners without that side effect. */
+    .feature-popup {
+        overflow: clip;
+    }
+
+    .feature-popup__body {
+        padding-bottom: 4px;
+    }
+
+    .feature-popup__actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        padding: 10px 16px 12px;
+        border-top: 1px solid var(--divider);
+        background: var(--surface);
+    }
+
+    /* The "more below" fade sits just above the pinned row, where the cut-off
+       text actually is, instead of hiding behind the buttons. */
+    .popup-scroll-fade {
+        bottom: 63px;
+    }
+
+    /* Under 360px a half-row is ~130px: the icon disc would push the label
+       into an ellipsis, and the label is what says where the button goes. */
+    @media (max-width: 359px) {
+        .feature-popup__actions .feature-popup__route {
+            justify-content: center;
+            padding-inline: 12px;
+        }
+
+        .feature-popup__actions:has(.feature-popup__report) .feature-popup__route-icon {
+            display: none;
+        }
+
+        .feature-popup__actions .feature-popup__route-text {
+            text-align: center;
+        }
+    }
+
+    /* Short screens give the photo back some height for the details. */
+    @media (max-height: 700px) {
+        .feature-popup__media {
+            height: 104px;
+        }
     }
 }
 
