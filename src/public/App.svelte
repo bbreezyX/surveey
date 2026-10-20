@@ -25,7 +25,7 @@
     try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { const state = createSurveyState(dataset); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) state.progress = value; }); } }
     catch (problem) { if (!disposed && !attempt.signal.aborted) error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; }
   }
-  onMount(() => { load(); void locator.resume(); return () => { disposed = true; locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); }; });
+  onMount(() => { load(); return () => { disposed = true; locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); }; });
   $effect(() => { document.body.classList.toggle('is-popup-open', !!model?.selected); document.body.classList.toggle('is-panel-open', !!model?.panelOpen); document.body.classList.toggle('is-sidebar-collapsed', !!model?.sidebarCollapsed); document.body.classList.toggle('is-data-unavailable', !model); });
   $effect(() => {
     if (!model || !adapter) return;
