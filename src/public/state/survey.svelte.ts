@@ -1,10 +1,13 @@
 import type { SurveyDataset, StatusFilter } from '../../shared/survey/types';
 import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints } from '../../shared/survey/status';
+import type { SurveyProgress } from '../../shared/survey/progress';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
 export function createSurveyState(dataset: SurveyDataset) {
   let query = $state(''), activeRegion = $state<string | null>(null), statusFilter = $state<StatusFilter>(null), selectedNomor = $state<string | null>(null);
   let selectionOrigin = $state.raw<HTMLElement | null>(null);
+  // Null until esdm.cloud answers; the map, list and popup show no build status before then.
+  let progress = $state.raw<SurveyProgress | null>(null);
   let fitRevision = $state(0), fitReason = $state<'initial' | 'region' | 'search' | 'filter'>('initial');
   let panelOpen = $state(false), sidebarCollapsed = $state(false);
   // A detail opened from list cards, or from a map tap that hit several nearby pins, returns to the mobile list when closed.
@@ -23,6 +26,7 @@ export function createSurveyState(dataset: SurveyDataset) {
     get fitRevision() { return fitRevision; }, get fitReason() { return fitReason; },
     get activeRegion() { return activeRegion; }, get statusFilter() { return statusFilter; },
     get selectionOrigin() { return selectionOrigin; },
+    get progress() { return progress; }, set progress(value: SurveyProgress | null) { progress = value; },
     get recentNomor() { return recentNomor; },
     get selectedNomor() { return selectedNomor; }, get selected() { return selected; },
     get visiblePoints() { return visiblePoints; }, get visibleIds() { return visibleIds; },

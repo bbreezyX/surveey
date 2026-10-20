@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { loadSurveyDataset } from './data/load';
+  import { loadProgress } from './data/progress';
   import { createSurveyState, type SurveyState } from './state/survey.svelte';
   import type { SurveyMapAdapter } from './map/create-map';
   import Sidebar from './components/Sidebar.svelte';
@@ -19,7 +20,9 @@
   async function load() {
     controller?.abort(); const attempt = new AbortController(); controller = attempt;
     error = ''; model = null;
-    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) model = createSurveyState(dataset); }
+    // Build progress comes from esdm.cloud and never holds up the map; it lands on the pins when it arrives.
+    const progress = loadProgress(attempt.signal);
+    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { const state = createSurveyState(dataset); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) state.progress = value; }); } }
     catch (problem) { if (!disposed && !attempt.signal.aborted) error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; }
   }
   onMount(() => { load(); void locator.resume(); return () => { disposed = true; locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); }; });
@@ -33,6 +36,7 @@
     const schedule = () => { fitFrame = requestAnimationFrame(() => { if (!disposed && !state.selectedNomor) instance.fitToPoints(state.visibleIds, options); }); };
     if (!untrack(() => state.selectedNomor)) { if (reason === 'search') fitTimer = setTimeout(schedule, 250); else schedule(); }
   });
+  $effect(() => { const progress = model?.progress; if (progress && adapter) adapter.setProgress(progress); });
   $effect(() => { if (model?.selectedNomor) { cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); } });
   function fitAll() { if (model) { clearTimeout(fitTimer); cancelAnimationFrame(fitFrame); model.select(null); adapter?.fitToPoints(model.visibleIds); } }
   async function expandSidebar() { if (model) { model.sidebarCollapsed = false; await tick(); adapter?.updateSize(); document.getElementById('list-search')?.focus({ preventScroll: true }); } }

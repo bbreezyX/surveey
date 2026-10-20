@@ -661,3 +661,74 @@
     /* Coordinates and dates line up column-wise instead of shimmying. */
     font-variant-numeric: tabular-nums;
 }
+
+/* Build progress from esdm.cloud: one line naming the last finished stage over
+   four steps. Green only on what is done, so an untouched unit reads quiet. */
+.feature-popup__progress {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--divider);
+}
+
+.feature-popup__progress-head {
+    margin: 0 0 8px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font: 500 12px/1.3 var(--font-ui);
+    color: var(--muted-2);
+}
+
+.feature-popup__progress-head strong {
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.feature-popup__progress.is-started .feature-popup__progress-head strong {
+    color: var(--green);
+}
+
+.feature-popup__stages {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.feature-popup__stages li {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 28px;
+    padding: 0 4px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 999px;
+    font: 600 11.5px/1 var(--font-ui);
+    color: var(--muted-2);
+    background: var(--surface);
+}
+
+.feature-popup__stages li.is-done {
+    border-color: transparent;
+    background: var(--green-tint);
+    color: var(--green);
+}
+
+.feature-popup__stage-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--hairline-strong);
+    flex: none;
+}
+
+.feature-popup__stages li.is-done .feature-popup__stage-mark {
+    border-color: var(--green);
+    background: var(--green);
+    color: #fff;
+}

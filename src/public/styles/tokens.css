@@ -4,6 +4,9 @@
     --blue: #0072bc;
     --blue-deep: #00458f;
     --yellow: #fee50f;
+    /* Build progress from esdm.cloud: the badge on pins, the popup stages and the list pill. 5.0:1 on white. */
+    --green: #1f8f4e;
+    --green-tint: #eaf6ef;
     /* Duplikat accent: warm so it reads as "check this", not as an error. */
     --orange: #e8731a;
     --orange-deep: #8f4200;

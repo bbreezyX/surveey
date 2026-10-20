@@ -1399,17 +1399,44 @@ body.is-sidebar-collapsed .map-legend {
    it and split by hairlines, it reads as a caption for the map. */
 .map-legend__pill {
     gap: 0;
-    padding: 8px 4px;
+    padding: 5px 2px;
     border: 1px solid var(--atlas-edge);
-    border-radius: 14px;
-    background: rgba(238, 243, 247, 0.96);
-    box-shadow: 0 4px 12px rgba(20, 38, 53, 0.18);
+    border-radius: 12px;
+    background: rgba(238, 243, 247, 0.94);
+    box-shadow: 0 2px 8px rgba(20, 38, 53, 0.14);
+    font-size: 11px;
 }
 
+/* Medium weight and tighter spacing: the key is a caption under the map, not a
+   control, so it should not out-shout the zoom rail or the info box beside it. */
 .map-legend__item {
-    padding: 0 12px;
+    gap: 5px;
+    padding: 0 9px;
     color: var(--ink);
-    font-weight: 600;
+    font-weight: 500;
+}
+
+.map-legend__swatch {
+    width: 12px;
+    height: 12px;
+}
+
+.map-legend__swatch--badge svg {
+    display: block;
+    width: 13px;
+    height: 13px;
+}
+
+/* Four entries in their long form wrap to a second line on a laptop-width map
+   band; the short labels keep the key to one compact row until the map is wide. */
+@media (min-width: 960px) and (max-width: 1439px) {
+    .map-legend__label--long {
+        display: none;
+    }
+
+    .map-legend__label--short {
+        display: inline;
+    }
 }
 
 .map-legend__item + .map-legend__item {

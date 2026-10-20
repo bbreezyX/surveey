@@ -19,7 +19,7 @@ export function codeList(codes: string[]): string {
   const sorted = codes.slice().sort(), nums = sorted.map(Number);
   return sorted.length >= 3 && nums.every((n, i) => i === 0 || n === nums[i - 1] + 1) ? `${sorted[0]}–${sorted.at(-1)}` : sorted.join(', ');
 }
-export function attachPointFeedback(map: OlMap, pointLayer: VectorLayer<VectorSource<Feature<Point>>>, points: SurveyPoint[], shown: (point: SurveyPoint) => boolean, selection: () => string | null) {
+export function attachPointFeedback(map: OlMap, pointLayer: VectorLayer<VectorSource<Feature<Point>>>, points: SurveyPoint[], shown: (point: SurveyPoint) => boolean, selection: () => string | null, stageOf: (point: SurveyPoint) => number) {
   let disposed = false, hovered: string | null = null, frame = 0;
   const byId = new Map(points.map(point => [point.nomor, point]));
   const spots = new Map<string, { at: number[]; units: SurveyPoint[] }>();
@@ -41,7 +41,7 @@ export function attachPointFeedback(map: OlMap, pointLayer: VectorLayer<VectorSo
   });
   map.addLayer(labels);
   const hoverSource = new VectorSource<Feature<Point>>();
-  const hoverLayer = new VectorLayer({ source: hoverSource, declutter: false, zIndex: 4, style: (feature, resolution) => { const point: SurveyPoint = feature.get('point'); return pointStyle(point, resolution, false, true); } });
+  const hoverLayer = new VectorLayer({ source: hoverSource, declutter: false, zIndex: 4, style: (feature, resolution) => { const point: SurveyPoint = feature.get('point'); return pointStyle(point, resolution, false, true, stageOf(point)); } });
   map.addLayer(hoverLayer);
   const tip = document.createElement('div'); tip.className = 'pin-tip'; tip.setAttribute('aria-hidden', 'true');
   const overlay = new Overlay({ element: tip, positioning: 'bottom-center', stopEvent: false, insertFirst: false }); map.addOverlay(overlay);

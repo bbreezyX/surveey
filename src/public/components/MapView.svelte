@@ -41,5 +41,5 @@
 <div id="map" aria-label="Peta sebaran PUTS" bind:this={target}></div>
 <div id="popup" class="ol-popup" class:is-open={!!state.selected} bind:this={popup} onscroll={scrollHint} aria-label="Detail titik PUTS">
   {#if state.selected}<button id="popup-closer" class="ol-popup-closer" type="button" aria-label="Tutup info titik" onclick={closeDetail}></button>{/if}
-  <div id="popup-content" bind:this={content} onscroll={scrollHint}>{#if state.selected}<PointPopup point={state.selected} dataset={state.dataset}/>{/if}<div class="popup-scroll-fade" aria-hidden="true"></div></div>
+  <div id="popup-content" bind:this={content} onscroll={scrollHint}>{#if state.selected}<PointPopup point={state.selected} dataset={state.dataset} stage={state.progress ? state.progress.get(state.selected.nomor) ?? 0 : null}/>{/if}<div class="popup-scroll-fade" aria-hidden="true"></div></div>
 </div>

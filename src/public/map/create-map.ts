@@ -23,6 +23,7 @@ import type { Fix } from '../state/nearby';
 import { attachPointFeedback } from './feedback';
 import { attachControlLayout } from './controls';
 import { unByKey } from 'ol/Observable';
+import type { SurveyProgress } from '../../shared/survey/progress';
 import { pointStyle, boundaryStyle, maskStyle } from './styles';
 import { projectRegions } from '../data/regions';
 import { satelliteLayers } from './google-tiles';
@@ -30,6 +31,7 @@ export type LayerKey = 'google' | 'esri' | 'boundaries' | 'mask' | 'area' | 'sk'
 export interface FitOptions { duration?: number; maxZoom?: number; padding?: number[] }
 export interface SurveyMapAdapter {
   setSelection(nomor: string | null): void;
+  setProgress(progress: SurveyProgress): void;
   setVisiblePoints(ids: ReadonlySet<string>): void;
   fitToPoints(ids: ReadonlySet<string>, options?: FitOptions): void;
   setLayerVisibility(key: LayerKey, visible: boolean): void;
@@ -45,6 +47,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   for (const point of points) { const key = coordinateKey(point), group = atCoordinate.get(key) ?? []; group.push(point); atCoordinate.set(key, group); }
   let visibleIds: ReadonlySet<string> = new Set(points.map(point => point.nomor));
   let selected: string | null = null, disposed = false;
+  let progress: SurveyProgress = new Map();
   const flags = { sk: true, cadangan: false, belum: true };
   const format = new GeoJSON();
   const projection = { featureProjection: 'EPSG:3857' };
@@ -58,7 +61,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const pointLayer = new VectorLayer({ source, declutter: false, style: (feature, resolution) => {
     const id = String(feature.getId()); const point = byId.get(id);
     if (!point || !visibleIds.has(id) || !shown(point) && id !== selected) return undefined;
-    return pointStyle(point, resolution, id === selected);
+    return pointStyle(point, resolution, id === selected, false, progress.get(id) ?? 0);
   } });
   // The accuracy disc and the dashed lead to the nearest unit are drawn under the pins, so neither hides
   // the unit itself. The lead is what answers "which point am I at": the dot alone only says where you are.
@@ -79,7 +82,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const controlCleanup = attachControlLayout(map);
   const satelliteCleanup = satellite.attach(map);
   function shown(point: SurveyPoint) { return visibleIds.has(point.nomor) && (point.cadangan ? flags.cadangan : point.belum ? flags.belum : flags.sk); }
-  const feedback = attachPointFeedback(map, pointLayer, points, shown, () => selected);
+  const feedback = attachPointFeedback(map, pointLayer, points, shown, () => selected, point => progress.get(point.nomor) ?? 0);
   const padding = () => {
     const sidebar = document.getElementById('sidebar')?.getBoundingClientRect();
     if (window.innerWidth < 960) return [72, 24, (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sheet-peek'), 10) || 240) + 24, 24];
@@ -134,6 +137,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       options.popup.style.display = 'block';
       positionFrame = requestAnimationFrame(() => { if (!disposed && selected === nomor) { positionPopup(point); focusPoint(point, zoom, true); } });
     },
+    setProgress(next) { progress = next; feedback.refresh(); pointLayer.changed(); },
     setVisiblePoints(ids) { visibleIds = ids; feedback.refresh(); pointLayer.changed(); },
     fitToPoints,
     setLayerVisibility(key, visible) {
