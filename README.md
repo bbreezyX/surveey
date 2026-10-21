@@ -12,6 +12,24 @@ produksi tersedia di **https://survey.esdm.cloud/admin/**; peta publik di
 **https://survey.esdm.cloud/**. Foto asli disimpan di bucket privat, dan peta
 hanya menerima foto turunan yang sudah diterbitkan.
 
+## Operasional Railway, VPS, dan Mac
+
+Aplikasi produksi menggunakan VPS Niskala melalui Cloudflare Tunnel. Database
+dan media tetap Railway; tiga aplikasi Railway dipertahankan sebagai cadangan.
+Push normal ke `master` memicu deploy VPS melalui GitHub Actions/Tailscale dan
+autodeploy Railway secara terpisah. Keberhasilan terakhir yang tercatat untuk
+VPS tidak membuktikan kesiapan Railway; lihat catatan pengujian.
+
+- [Mulai di sini: handoff Railway–VPS](docs/railway-vps-handoff.md)
+- [Melanjutkan dari Mac: GitHub, Tailscale dan SSH](docs/mac-operations.md)
+- [Autodeploy dan rollback kode VPS](docs/autodeploy-vps.md)
+- [Mengembalikan produksi ke Railway](docs/return-to-railway.md)
+- [Hasil pengujian deploy 21 Oktober 2026](docs/autodeploy-test-2026-10-21.md)
+
+Panduan tidak memuat password/private key. Credential produksi tetap di provider
+dan file privat VPS; tidak perlu menyalinnya ke Mac untuk push kode. Pengujian
+dan verifikasi tambahan hanya dijalankan bila diminta untuk pekerjaan terkait.
+
 ## Mulai cepat
 
 Prasyarat: **Node.js 24** dan npm. Python 3 hanya diperlukan untuk alat data lama.
@@ -147,7 +165,7 @@ pip install openpyxl Pillow "shapely>=2.1" pyproj
 Batas wilayah berasal dari layanan BIG edisi Juni 2026; cara membangun ulang ada di
 [docs/boundary-data.md](docs/boundary-data.md).
 
-## Build lokal dan deploy
+## Build lokal dan riwayat deploy statis
 
 Dockerfile memakai tahap Node untuk `npm ci` dan `npm run build`, kemudian tahap
 Caddy yang **hanya menyalin `dist/public/`**. Skrip build menyalin branding yang
@@ -159,12 +177,15 @@ map tidak masuk artefak publik.
   nama tetap memakai cache satu minggu; data direvalidasi (`no-cache`).
 - URL preload data dan URL fetch tetap sama agar tidak mengunduh dua kali.
 - CSP tetap membatasi skrip ke origin sendiri dan tile ke Google/Esri.
-- Mengubah foto/data memerlukan build baru dalam tahap statis ini. Publikasi tanpa
-  deploy kode memerlukan backend administrasi yang dijelaskan dalam desain berikut.
-- Migrasi ini belum dipush atau dideploy. Docker daemon lokal tidak tersedia saat
-  validasi; runtime Caddy dan hasil build diuji langsung di Windows.
+- Pada tahap statis lama, perubahan snapshot foto/data memerlukan build baru.
+  Produksi kini menerima data/media yang diterbitkan backend melalui Railway;
+  perubahan data melalui admin tidak memerlukan push kode frontend.
+- Catatan migrasi statis/validasi Windows terdahulu merupakan riwayat implementasi.
+  Untuk deploy aktif gunakan panduan Railway–VPS di atas.
 
-Untuk rollback produksi, gunakan kembali rilis statis sebelumnya. `legacy.html`
+Untuk rollback kode VPS, gunakan rilis sebelumnya sesuai panduan autodeploy.
+Pemindahan domain/aplikasi kembali ke Railway mengikuti runbook terpisah karena
+kesiapan target dan kompatibilitas skema perlu dipertimbangkan. `legacy.html`
 hanya tersedia di checkout lokal; halaman itu tidak masuk artefak produksi baru.
 
 ## Dokumentasi lanjutan

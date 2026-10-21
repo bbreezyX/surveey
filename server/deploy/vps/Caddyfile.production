@@ -1,0 +1,67 @@
+# Imported only by the separate Surveey Caddy process, never Niskala's Caddy.
+https://survey.esdm.cloud:18444 {
+    bind 127.0.0.1
+    tls /srv/surveey/tls/production-origin.crt /srv/surveey/tls/production-origin.key
+    root * /srv/surveey/static
+    encode zstd gzip
+
+    # Only this loopback origin consumes Cloudflare's overwritten visitor scheme.
+    @visitor_http header X-Forwarded-Proto http
+    redir @visitor_http https://survey.esdm.cloud{uri} 308
+
+    header / Cache-Control "no-cache, must-revalidate"
+    header /index.html Cache-Control "no-cache, must-revalidate"
+    header /favicon.png Cache-Control "public, max-age=604800"
+    header /favicon.ico Cache-Control "public, max-age=604800"
+    header /apple-touch-icon.png Cache-Control "public, max-age=604800"
+    header /manifest.json Cache-Control "public, max-age=86400"
+    header /sw.js Cache-Control no-cache
+    header /data/* Cache-Control "no-cache, must-revalidate"
+    header /images/* Cache-Control "public, max-age=2592000"
+    header /assets/* Cache-Control "public, max-age=604800"
+    @hashed path_regexp hashed ^/assets/.+-[A-Za-z0-9_-]{8}\.(js|css|json|png|ico|webp|gif|svg|woff2)$
+    header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+    @public not path /admin /admin/*
+    header @public {
+        Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https://tile.googleapis.com https://*.google.com https://*.gstatic.com https://services.arcgisonline.com; connect-src 'self' https://tile.googleapis.com https://*.google.com https://www.esdm.cloud; frame-ancestors 'self'; form-action 'self'"
+        Strict-Transport-Security "max-age=31536000"
+        Permissions-Policy "camera=(), microphone=(), geolocation=(self), payment=(), usb=(), browsing-topics=()"
+        Cross-Origin-Opener-Policy same-origin
+        X-Permitted-Cross-Domain-Policies none
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        X-Frame-Options SAMEORIGIN
+        -Server
+    }
+    handle /admin {
+        redir * /admin/ 308
+    }
+    handle /admin/* {
+        request_body {
+            max_size 21MB
+        }
+        reverse_proxy https://127.0.0.1:18490 {
+            header_up Host {http.request.host}
+            transport http {
+                tls_server_name surveey.localhost
+                tls_trust_pool file /srv/surveey/tls/preview.crt
+            }
+        }
+    }
+    @delivery path /data/points.geojson /media/*
+    handle @delivery {
+        reverse_proxy https://127.0.0.1:18492 {
+            header_up Host {http.request.host}
+            transport http {
+                tls_server_name surveey.localhost
+                tls_trust_pool file /srv/surveey/tls/preview.crt
+            }
+        }
+    }
+    handle {
+        file_server {
+            precompressed br
+        }
+    }
+}

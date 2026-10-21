@@ -1,0 +1,53 @@
+{
+    admin off
+    auto_https off
+    persist_config off
+}
+
+https://surveey.localhost:18443 {
+    bind 127.0.0.1
+    tls /srv/surveey/tls/preview.crt /srv/surveey/tls/preview.key
+    root * /srv/surveey/static
+    encode zstd gzip
+
+    @public not path /admin /admin/*
+    header @public {
+        Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https://tile.googleapis.com https://*.google.com https://*.gstatic.com https://services.arcgisonline.com; connect-src 'self' https://tile.googleapis.com https://*.google.com https://www.esdm.cloud; frame-ancestors 'self'; form-action 'self'"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        X-Frame-Options SAMEORIGIN
+        -Server
+    }
+    header /sw.js Cache-Control no-cache
+    header /data/* Cache-Control "no-cache, must-revalidate"
+    handle /admin {
+        redir * /admin/ 308
+    }
+    handle /admin/* {
+        request_body {
+            max_size 21MB
+        }
+        reverse_proxy https://127.0.0.1:18490 {
+            header_up Host {http.request.host}
+            transport http {
+                tls_server_name surveey.localhost
+                tls_trust_pool file /srv/surveey/tls/preview.crt
+            }
+        }
+    }
+    @delivery path /data/points.geojson /media/*
+    handle @delivery {
+        reverse_proxy https://127.0.0.1:18492 {
+            header_up Host {http.request.host}
+            transport http {
+                tls_server_name surveey.localhost
+                tls_trust_pool file /srv/surveey/tls/preview.crt
+            }
+        }
+    }
+    handle {
+        file_server {
+            precompressed br
+        }
+    }
+}

@@ -1,5 +1,8 @@
 # Autodeploy Surveey melalui Tailscale
 
+Catatan rencana persiapan awal. Implementasi dan bukti uji kemudian dicatat di
+[panduan autodeploy](../../autodeploy-vps.md) dan [hasil uji](../../autodeploy-test-2026-10-21.md).
+
 Tujuan: push ke `bbreezyX/surveey` branch `master` mengirim rilis aplikasi ke
 VPS Niskala, dengan PostgreSQL dan media tetap di Railway. Railway tetap
 autodeploy sebagai cadangan. Persiapan ini tidak menjalankan build atau deploy.

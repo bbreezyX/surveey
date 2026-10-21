@@ -1,5 +1,14 @@
 # Railway production connection
 
+**Catatan arsitektur 21 Oktober 2026:** aplikasi produksi `survey.esdm.cloud`
+kini berada di VPS melalui Cloudflare Tunnel; database dan media tetap Railway,
+dan tiga aplikasi Railway dipertahankan sebagai cadangan. Dokumen ini merinci
+konfigurasi sisi Railway, bukan menyatakan DNS produksi saat ini menuju Railway.
+Mulai dari [handoff Railway–VPS](railway-vps-handoff.md), [akses Mac](mac-operations.md),
+atau [runbook kembali ke Railway](return-to-railway.md). Hasil uji terakhir
+Railway masih tertahan dan akses HTTP cadangan belum terbukti; kondisi live
+belum diperiksa ulang dalam pekerjaan publikasi dokumentasi ini.
+
 Direct connection was authorized on 2026-10-09. This uses the existing `survey` project, ID `ebebdd21-0358-4ab1-a0d5-1afe4ee2673b`, production environment `6abf965b-42d4-44ad-8b15-55c8be2adc76`. Actual deployment/cutover results are in `superpowers/validation/2026-10-09-online-admin.md`; broad verification and restore rehearsal remain deferred.
 
 ## Resource layout
@@ -9,7 +18,7 @@ Direct connection was authorized on 2026-10-09. This uses the existing `survey` 
 | `surveypjuts` (`09469b8d-578c-4c02-89dd-0b62de14d6ca`) | `server/deploy/Dockerfile.railway-public-map` at cutover | `survey.esdm.cloud` and existing Railway domain |
 | `survey-admin` (`55d8e517-529a-4985-bc66-0bad6f5e16d4`) | `server/deploy/Dockerfile.admin` | `survey.esdm.cloud/admin/` through public-map Caddy; private admin on 8080 and broker on 9001 |
 | `survey-public-data` (`873d72e9-1711-495d-b62d-825681972117`) | `server/deploy/Dockerfile.public-data` | `survey-public-data.railway.internal:8080`; no public domain/TCP proxy |
-| `Postgres` (`ca38ef07-1f75-4191-a905-af3a9af4a423`) | PostgreSQL 18 SSL template and persistent volume | `postgres.railway.internal:5432`; temporary operator proxy removed after setup |
+| `Postgres` (`ca38ef07-1f75-4191-a905-af3a9af4a423`) | PostgreSQL 18 SSL template and persistent volume | `postgres.railway.internal:5432` inside Railway; approved VPS TCP proxy `centerbeam.proxy.rlwy.net:29929` added on 21 October |
 | `survey-private-media` (`47e77464-c207-4932-b355-2d3773dd05bb`) | Private Railway S3-compatible bucket, Singapore | Authenticated HTTPS storage API |
 
 Keep repository root as every build context. Live service settings explicitly select the Dockerfile, region, limits, healthcheck and restart policy. Railway MCP rejected configuring a JSON Config as Code path as deprecated; the JSON examples are earlier references, not the active configuration. Caddy is pinned to 2.11.7. All CLI uploads use explicit project/environment/service IDs because the original folder previously inherited an unrelated project link.

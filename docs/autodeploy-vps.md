@@ -1,5 +1,9 @@
 # Autodeploy Surveey ke VPS
 
+Untuk melanjutkan dari perangkat baru, mulai dari
+[handoff Railway–VPS](railway-vps-handoff.md) dan [panduan Mac](mac-operations.md).
+Credential CI yang sudah tersimpan tidak perlu dipindahkan ke Mac.
+
 ## Alur
 
 Workflow `.github/workflows/deploy-vps.yml` menerima push ke `master` pada
@@ -29,7 +33,9 @@ tetap tersimpan di `/srv/surveey/private`.
   `100.64.182.105` / `fd7a:115c:a1e0::4729:b66a`.
 - Tailscale SSH tetap tidak dipakai. Grant/perangkat/key Niskala tetap ada.
 - OIDC issuer GitHub: `https://token.actions.githubusercontent.com`.
-- OIDC subject: `repo:bbreezyX/surveey:ref:refs/heads/master`.
+- OIDC subject yang diterima saat uji GitHub pada 21 Oktober 2026:
+  `repo:bbreezyX@98301235/surveey@1204822236:ref:refs/heads/master`.
+  Pencocokan mencakup ID pemilik dan repository, tidak hanya nama.
 - Claim `workflow_ref`:
   `bbreezyX/surveey/.github/workflows/deploy-vps.yml@refs/heads/master`.
 - Claim `event_name`: `push`. Scope hanya `auth_keys`, tag `surveey-ci`.
@@ -114,7 +120,7 @@ sudo systemctl start surveey-admin.service surveey-public.service surveey-broker
 ketika deployment lain sedang berlangsung. Akun CI tidak diberi perintah
 rollback bebas; gunakan administrator atau push commit perbaikan/revert kode.
 
-## Status persiapan
+## Status persiapan awal
 
 Pada 21 Oktober 2026, penerima rilis, akun SSH, secrets/variables GitHub, grant,
 dan OIDC telah disiapkan. Tidak ada build, upload rilis, restart aplikasi,
@@ -128,8 +134,32 @@ tanpa penanda skip akan menjalankan alur otomatis.
 Pada 21 Oktober 2026 diminta satu pengujian deployment nyata melalui push ke
 `master`, tanpa penanda skip. Pengujian mencakup GitHub Actions/VPS dan
 autodeploy tiga aplikasi Railway. Database dan media tidak dimigrasikan;
-pemeriksaan aplikasi hanya menggunakan akses baca. Hasil deployment dicatat
-terpisah dari konfigurasi agar kegagalan platform tidak dianggap berhasil.
+pemeriksaan aplikasi hanya menggunakan akses baca.
+
+Hasil uji push `cf24fa8c23a06107ccdac9a0fb5e5b8c70b2bbf3`:
+
+- VPS: berhasil melalui GitHub Actions run `39632355636`, percobaan ke-3.
+  Dua percobaan awal berhenti sebelum upload karena subject OIDC tidak cocok.
+  Subject diperbaiki sesuai token aktual yang menyertakan ID pemilik/repository.
+- Rilis aktif VPS: `/srv/surveey/releases/cf24fa8c23a0-39632355636-3`.
+  Baseline tetap di `releases/before-autodeploy` untuk rollback.
+- Halaman utama, login admin, JS/CSS publik/admin, GeoJSON, dan satu foto
+  publik merespons 200. API sesi anonim tetap 401. GeoJSON memuat 547 titik.
+- PID/waktu start/restart count Niskala dan Caddy bersama tidak berubah;
+  hash kedua konfigurasi yang dilindungi juga tetap sama.
+- Railway: check suite untuk push terbentuk, tetapi deployment baru belum
+  muncul ketika platform melaporkan build dijeda. Ketiga aplikasi masih
+  berstatus Online/SUCCESS pada commit `6aa0691` menurut API.
+- URL langsung Railway merespons `404 Application not found` sebelum dan
+  sesudah uji. Kesiapan akses HTTP backup belum terbukti, meskipun API Online.
+- Tidak menjalankan migrasi, restore, penghapusan data, atau perubahan DNS.
+
+Lihat [catatan hasil pengujian](autodeploy-test-2026-10-21.md). Saat pengujian
+selesai, pembaruan hasil dan subject sempat disimpan lokal agar tidak memicu
+push uji kedua. Dokumen tersebut kemudian diterbitkan atas permintaan handoff
+ke Mac dengan commit dokumentasi `[skip actions]`. Perbaikan subject sudah
+disimpan di konsol Tailscale. Hasil uji mencatat rilis saat itu, bukan keadaan
+live setiap commit setelahnya.
 
 ## Referensi
 
