@@ -42,7 +42,7 @@
     const end = card instanceof HTMLElement && card.offsetHeight ? card.offsetTop + card.offsetHeight + 14 : summary?.offsetHeight ? summary.offsetTop + summary.offsetHeight : search ? search.offsetTop + search.offsetHeight + 14 : 0;
     if (end) document.documentElement.style.setProperty('--sheet-peek', `${Math.round(end)}px`);
   }
-  onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(sidebar.querySelector('#panel-meta')!); observer.observe(near); window.addEventListener('resize', measurePeek); measurePeek(); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); }; });
+  onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(sidebar.querySelector('#panel-meta')!); observer.observe(near); window.addEventListener('resize', measurePeek); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); }; });
   $effect(() => { state.activeRegion; state.statusFilter; state.query; if (scroller) scroller.scrollTop = 0; });
   function syncScroll() {
     sidebar.classList.toggle('is-scrolled', scroller.scrollTop > 2);

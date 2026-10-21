@@ -29,7 +29,20 @@
     <link rel="manifest" href="/manifest.json?v=202610011230" />
     <meta name="apple-mobile-web-app-title" content="PUTS 2026" />
     <meta name="application-name" content="PUTS 2026" />
+    <!-- Two connections to Google, because Chrome keeps CORS and no-cors requests in separate pools:
+         createSession and viewport are fetch() calls (anonymous CORS) and come first, the tile <img>s
+         (no crossOrigin) follow on the other pool. Lighthouse flagged the single plain preconnect as
+         unused because the first request could not reuse it. -->
+    <link rel="preconnect" href="https://tile.googleapis.com" crossorigin />
     <link rel="preconnect" href="https://tile.googleapis.com" />
+    <!-- Build progress (src/public/data/progress.ts) is fetched only after the bundle runs; warming the
+         connection meanwhile took the DNS + TLS handshake off that chain. crossorigin because it is a
+         CORS fetch. -->
+    <link rel="preconnect" href="https://www.esdm.cloud" crossorigin />
+    <!-- fonts.css is only parsed after the stylesheet lands, so the font request used to start ~950 ms in
+         on Slow 4G. Latin only: every rendered string is Indonesian, so latin-ext is rarely needed. Vite
+         rewrites this path to the same hashed file fonts.css points at. -->
+    <link rel="preload" href="/src/public/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin />
     <!-- Esri World Imagery is the alternative basemap (layers/layers.js).
          dns-prefetch, not preconnect: nobody loads its tiles unless they pick
          it in the layer panel, so warming a whole TLS connection on every
