@@ -30,8 +30,11 @@ test('retains the original layer switches, symbols, grouping and basemap capsule
   await expect(panel.locator('img')).toHaveCount(3);
   expect(await panel.evaluate(element => getComputedStyle(element).borderRadius)).toBe('22px');
   expect(await panel.locator('.ctl-switch__track').first().evaluate(element => element.getBoundingClientRect().width)).toBe(36);
-  await page.getByRole('checkbox', { name: 'Titik PUTS', exact: true }).uncheck();
+  // The yellow pin explains itself, so the key never names it; its verification ring goes with the layer.
   await expect(page.locator('.map-legend__item').filter({ hasText: 'Titik PUTS' })).toHaveCount(0);
+  await expect(page.locator('.map-legend__item').filter({ hasText: 'Perlu verifikasi' })).toHaveCount(1);
+  await page.getByRole('checkbox', { name: 'Titik PUTS', exact: true }).uncheck();
+  await expect(page.locator('.map-legend__item').filter({ hasText: 'Perlu verifikasi' })).toHaveCount(0);
   await expect(page.locator('.atlas-total__num')).toHaveText('500');
   await page.getByRole('checkbox', { name: 'Titik PUTS', exact: true }).check();
   await page.locator('label[for="layer-esri"]').click(); await expect(page.getByLabel('Esri Satelit', { exact: true })).toBeChecked();

@@ -92,7 +92,8 @@ body.is-sidebar-collapsed .map-legend {
     right: 0;
 }
 
-/* The pill sizes to its entries and wraps inside the band when it must. */
+/* The pill sizes to its two groups (progress, status) and, when the band is
+   too narrow, wraps between them rather than inside one. */
 .map-legend__pill {
     display: flex;
     align-items: center;
@@ -110,6 +111,11 @@ body.is-sidebar-collapsed .map-legend {
     pointer-events: auto;
 }
 
+.map-legend__group {
+    display: flex;
+    align-items: center;
+}
+
 .map-legend__item {
     display: inline-flex;
     align-items: center;
@@ -120,11 +126,6 @@ body.is-sidebar-collapsed .map-legend {
 .map-legend__swatch {
     display: block;
     flex: none;
-}
-
-/* Two labels per entry; the phone block swaps which one shows. */
-.map-legend__label--short {
-    display: none;
 }
 
 .ol-zoom {
@@ -1041,9 +1042,9 @@ body.is-sidebar-collapsed .map-legend {
     /* The band above the sheet already holds the scale strip and the zoom
        rail and the layer chip. The legend takes its own row under the
        centred masthead, on the same axis. It stays one line: a legend that
-       wraps reads as two rows of unrelated chips. The labels shorten to
-       fit a 360px phone; if more statuses show up than fit (or the phone is
-       narrower) the row pans sideways instead of stacking. */
+       wraps reads as two rows of unrelated chips. The stages lead, so the
+       scale crews read most stays in view; the statuses that do not fit
+       beside it are reached by panning the row sideways, never by stacking. */
     .map-legend {
         top: calc(12px + 48px + 10px);
         bottom: auto;
@@ -1069,12 +1070,57 @@ body.is-sidebar-collapsed .map-legend {
         display: none;
     }
 
-    .map-legend__label--long {
-        display: none;
+    .map-legend__group {
+        flex: none;
     }
 
-    .map-legend__label--short {
-        display: inline;
+    /* Swipe hint (Legend.svelte sets it while an edge hides entries): a fade
+       over that edge with an arrow pointing at what is hidden, which nudges
+       a few times as it appears. It only paints, so a swipe that starts on
+       it still pans the row. */
+    .map-legend__more {
+        position: absolute;
+        top: 1px;
+        bottom: 1px;
+        width: 34px;
+        display: flex;
+        align-items: center;
+        pointer-events: none;
+    }
+
+    .map-legend__more--after {
+        right: 1px;
+        justify-content: flex-end;
+        padding-right: 9px;
+        border-radius: 0 11px 11px 0;
+        background: linear-gradient(90deg, rgba(238, 243, 247, 0), rgba(238, 243, 247, 0.98) 60%);
+    }
+
+    .map-legend__more--before {
+        left: 1px;
+        justify-content: flex-start;
+        padding-left: 9px;
+        border-radius: 11px 0 0 11px;
+        background: linear-gradient(270deg, rgba(238, 243, 247, 0), rgba(238, 243, 247, 0.98) 60%);
+    }
+
+    .map-legend__more::after {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border: solid var(--ink);
+        border-width: 1.8px 1.8px 0 0;
+        transform: rotate(45deg);
+    }
+
+    .map-legend__more--before::after {
+        transform: rotate(-135deg);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .map-legend__more--after::after {
+            animation: legend-nudge 900ms var(--ease-out) 3;
+        }
     }
 
     /* Keep only the zoom rail above the sheet on mobile. */
@@ -1393,6 +1439,19 @@ body.is-sidebar-collapsed .map-legend {
     }
 }
 
+/* The phone legend's swipe arrow (.map-legend__more--after) leaning toward
+   the hidden entries. */
+@keyframes legend-nudge {
+    0%,
+    100% {
+        transform: translateX(0) rotate(45deg);
+    }
+
+    50% {
+        transform: translateX(3px) rotate(45deg);
+    }
+}
+
 /* Legend: one key plate, read-only. Loose rounded chips took the shape of
    the sidebar's filter pills (Semua / Perlu verifikasi), which are buttons,
    so the key read as three toggles. Squared to the info box's 14px beside
@@ -1416,41 +1475,28 @@ body.is-sidebar-collapsed .map-legend {
     font-weight: 500;
 }
 
-.map-legend__swatch {
-    width: 12px;
-    height: 12px;
+/* The four stages are one scale, so they sit closer and carry no hairlines. */
+.map-legend__group--scale {
+    padding: 0 4px;
 }
 
-/* The progress key sets its pies side by side, so the swatch grows with them.
-   It keeps the 12px row height of the other swatches; the badge overhangs it
-   by half a pixel each way, so the key is no taller than before. */
-.map-legend__swatch--badge {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    width: auto;
+.map-legend__group--scale .map-legend__item {
+    padding: 0 5px;
 }
 
+/* Status dots and stage badges share one 13px box. */
+.map-legend__swatch,
 .map-legend__swatch--badge svg {
-    display: block;
-    flex: none;
     width: 13px;
     height: 13px;
 }
 
-/* Four entries in their long form wrap to a second line on a laptop-width map
-   band; the short labels keep the key to one compact row until the map is wide. */
-@media (min-width: 960px) and (max-width: 1439px) {
-    .map-legend__label--long {
-        display: none;
-    }
-
-    .map-legend__label--short {
-        display: inline;
-    }
+.map-legend__swatch--badge svg {
+    display: block;
 }
 
-.map-legend__item + .map-legend__item {
+.map-legend__group + .map-legend__group,
+.map-legend__group:not(.map-legend__group--scale) .map-legend__item + .map-legend__item {
     border-left: 1px solid var(--atlas-edge);
 }
 
