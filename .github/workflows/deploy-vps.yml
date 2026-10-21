@@ -1,0 +1,78 @@
+name: Deploy Surveey VPS
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: surveey-vps-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.repository == 'bbreezyX/surveey' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+
+      # These commands compile release assets; no test/typecheck/lint is run.
+      - name: Build release on GitHub
+        env:
+          VITE_GOOGLE_MAPS_KEY: ${{ secrets.SURVEEY_GOOGLE_MAPS_KEY }}
+        run: |
+          npm ci --no-audit --no-fund
+          node scripts/build-public-assets.mjs --dev
+          ./node_modules/.bin/vite build --config vite.public.config.mts
+          node scripts/build-public-assets.mjs
+          ./node_modules/.bin/vite build --config vite.admin.config.mts
+          python -m pip download --only-binary=:all: --dest .local/vps-wheels -r server/requirements.lock
+          python server/deploy/vps/package-ci-release.py
+
+      - name: Join Tailscale as Surveey CI
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
+        with:
+          oauth-client-id: ${{ vars.SURVEEY_TS_CLIENT_ID }}
+          audience: ${{ vars.SURVEEY_TS_AUDIENCE }}
+          tags: tag:surveey-ci
+          hostname: surveey-ci-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Send release through restricted SSH
+        env:
+          SSH_KEY: ${{ secrets.SURVEEY_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.SURVEEY_DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ vars.SURVEEY_DEPLOY_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d "$RUNNER_TEMP/surveey-ssh"
+          printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/surveey-ssh/key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$RUNNER_TEMP/surveey-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/surveey-ssh/"*
+          digest=$(sha256sum .local/surveey-release.tar.gz | cut -d' ' -f1)
+          ssh -T -i "$RUNNER_TEMP/surveey-ssh/key" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/surveey-ssh/known_hosts" \
+            -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 \
+            "surveey-deploy@$HOST" \
+            "receive $GITHUB_SHA $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT $digest" \
+            < .local/surveey-release.tar.gz
+          printf 'Release %s sent. No application health test or database migration was run.\n' "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove temporary runner key
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/surveey-ssh/key"

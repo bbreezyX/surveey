@@ -7,8 +7,15 @@ ROOT = Path(__file__).resolve().parents[2]
 LOCAL = os.environ.get('SURVEY_ENV') == 'local'
 TESTING = os.environ.get('DJANGO_SETTINGS_MODULE') == 'config.test_settings'
 RAILWAY = os.environ.get('SURVEY_DEPLOYMENT') == 'railway'
+VPS = os.environ.get('SURVEY_DEPLOYMENT') == 'vps'
+VPS_DATA_SOURCE = os.environ.get('SURVEY_DATA_SOURCE', 'vps')
+VPS_RAILWAY_DATA = VPS and VPS_DATA_SOURCE == 'railway'
 if RAILWAY and (LOCAL or not os.environ.get('RAILWAY_ENVIRONMENT_ID')):
     raise ImproperlyConfigured('Railway deployment requires an actual Railway environment and production mode.')
+if VPS and (LOCAL or os.environ.get('RAILWAY_ENVIRONMENT_ID')):
+    raise ImproperlyConfigured('VPS deployment must be isolated from local and Railway environments.')
+if VPS and VPS_DATA_SOURCE not in ('vps', 'railway'):
+    raise ImproperlyConfigured('SURVEY_DATA_SOURCE must be vps or railway for a VPS deployment.')
 DEBUG = False
 
 def required(name):
@@ -74,26 +81,32 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 40
 DATA_UPLOAD_MAX_NUMBER_FILES = 1
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
-STORAGE_BACKEND = 'filesystem' if TESTING else 's3'
+STORAGE_BACKEND = 'filesystem' if TESTING or (VPS and not VPS_RAILWAY_DATA) else 's3'
 STORAGE_ROOT = ROOT / '.local/private-media'
+if VPS and not VPS_RAILWAY_DATA:
+    STORAGE_ROOT = Path(required('SURVEY_MEDIA_ROOT'))
+    if not STORAGE_ROOT.is_absolute() or STORAGE_ROOT.resolve() != Path('/srv/surveey/media'):
+        raise ImproperlyConfigured('VPS private media must use /srv/surveey/media.')
 MEDIA_BROKER_TOKEN = os.environ.get('MEDIA_BROKER_TOKEN', '')
 MEDIA_BROKER_URL = os.environ.get('MEDIA_BROKER_URL', '')
 # Content-addressed copies of published derivatives; None disables the cache.
 MEDIA_CACHE_ROOT = None
-broker_client = RAILWAY and public_service
+broker_client = (RAILWAY or VPS) and public_service
 if broker_client:
     parsed_broker = urlparse(required('MEDIA_BROKER_URL'))
-    if (parsed_broker.scheme != 'http' or not parsed_broker.hostname or
-            not parsed_broker.hostname.endswith('.railway.internal') or parsed_broker.port != 9001 or
+    private_address = (parsed_broker.hostname and parsed_broker.hostname.endswith('.railway.internal') and
+        parsed_broker.port == 9001) if RAILWAY else (
+        parsed_broker.hostname == '127.0.0.1' and parsed_broker.port == 18491)
+    if (parsed_broker.scheme != 'http' or not private_address or
             parsed_broker.username or parsed_broker.password or parsed_broker.path not in ('', '/') or
             parsed_broker.query or parsed_broker.fragment):
-        raise ImproperlyConfigured('MEDIA_BROKER_URL must address the private Railway media port only.')
+        raise ImproperlyConfigured('MEDIA_BROKER_URL must address this deployment\'s private media port only.')
     STORAGE_BACKEND = 'broker'
     # Each broker fetch crosses two private services and the bucket (~1.5 s per photo
     # measured from Singapore). The container disk is ephemeral, which is fine for a
     # cache: published bytes are immutable and verified against their checksum.
     MEDIA_CACHE_ROOT = Path('/tmp/survey-media-cache')
-if RAILWAY and len(MEDIA_BROKER_TOKEN) < 50:
+if (RAILWAY or VPS) and len(MEDIA_BROKER_TOKEN) < 50:
     raise ImproperlyConfigured('A private MEDIA_BROKER_TOKEN of at least 50 characters is required.')
 if STORAGE_BACKEND == 's3':
     S3_ENDPOINT = required('S3_ENDPOINT')
