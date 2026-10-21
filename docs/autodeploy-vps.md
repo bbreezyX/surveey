@@ -123,6 +123,14 @@ persiapan ini. Publikasi workflow harus memakai commit `[skip actions]` jika
 deployment pertama belum ingin dijalankan. Commit push master berikutnya
 tanpa penanda skip akan menjalankan alur otomatis.
 
+## Uji pemicu push
+
+Pada 21 Oktober 2026 diminta satu pengujian deployment nyata melalui push ke
+`master`, tanpa penanda skip. Pengujian mencakup GitHub Actions/VPS dan
+autodeploy tiga aplikasi Railway. Database dan media tidak dimigrasikan;
+pemeriksaan aplikasi hanya menggunakan akses baca. Hasil deployment dicatat
+terpisah dari konfigurasi agar kegagalan platform tidak dianggap berhasil.
+
 ## Referensi
 
 - [Tailscale GitHub Action](https://tailscale.com/docs/integrations/github/github-action)
