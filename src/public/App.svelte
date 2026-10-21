@@ -85,7 +85,7 @@
     <main class="map-frame"><MapView state={model} {locator} {connection} bind:adapter/><LayerPanel state={model}/></main>
     <Legend state={model}/><MobileHints busy={model.panelOpen || !!model.selected}/>
   {:else}
-    <aside id="sidebar" class="loading-panel" aria-label="Daftar titik PUTS"><div class="atlas-head"><img src={lambang} srcset={lambangSrcset} sizes="38px" alt="Lambang Provinsi Jambi" width="38" height="39"/><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div></div><div class="data-state" role="status">{#if error}<h2>Data titik belum tersedia</h2><p>{error}</p><button type="button" onclick={load}>Coba lagi</button>{:else}<p>Memuat data titik…</p>{/if}</div></aside><main class="map-frame"></main>
+    <aside id="sidebar" class="loading-panel" aria-label="Daftar titik PUTS"><div class="atlas-head"><img src={lambang} srcset={lambangSrcset} sizes="38px" alt="Lambang Provinsi Jambi" width="38" height="39"/><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div></div><div class="data-state" role="status">{#if error}<h2>Data titik belum tersedia</h2><p>{error}</p><button type="button" onclick={load}>Coba lagi</button>{:else}<div class="data-loading"><span class="data-loading__spinner" aria-hidden="true"></span><p>Memuat data titik…</p></div>{/if}</div></aside><main class="map-frame"></main>
   {/if}
   <ConnectionStatus {connection} hasData={!!model}/>
 </div>
