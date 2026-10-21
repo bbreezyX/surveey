@@ -4,7 +4,7 @@ import { parseCoordinateQuery, formatCoordPair } from '../src/shared/survey/coor
 import { legacyPhotoUrl } from '../src/shared/survey/media';
 import { latestDocumentationDate } from '../src/shared/survey/dates';
 import { progressReportUrl } from '../src/shared/survey/report';
-import { parseProgress, stageBadgeSvg, stageSummary } from '../src/shared/survey/progress';
+import { parseProgress, stageBadgeSvg, stageDone, stageSummary } from '../src/shared/survey/progress';
 describe('survey evidence and counting', () => {
   it('ignores malformed and impossible optional dates without normalizing them', () => {
     expect(latestDocumentationDate(['32/13/2026', '31/02/9999', '29/02/2025', ''])).toBeNull();
@@ -39,9 +39,12 @@ describe('build progress from esdm.cloud', () => {
     expect([...progress]).toEqual([['A-001', 1], ['A-002', 4]]);
     expect(parseProgress(null).size).toBe(0);
   });
+  it('draws every stage apart and keeps the green check for a lit lamp', () => {
+    expect([1, 2, 3, 4].map(stage => stageBadgeSvg(stage).includes('#1f8f4e'))).toEqual([false, false, false, true]);
+    expect(new Set([1, 2, 3, 4].map(stageBadgeSvg)).size).toBe(4);
+    expect([0, 1, 2, 3, 4].map(stageDone)).toEqual([false, false, false, false, true]);
+  });
   it('names the last finished stage, and a lit lamp as terpasang', () => {
-    expect([1, 2, 3, 4].map(stage => stageBadgeSvg(stage).includes('#1f8f4e'))).toEqual([false, false, true, true]);
-    expect(stageBadgeSvg(1)).not.toBe(stageBadgeSvg(2));
     expect([0, 1, 2, 3, 4].map(stageSummary)).toEqual(['Belum dimulai', 'Galian selesai', 'Cor selesai', 'Tiang selesai', 'Terpasang']);
   });
 });

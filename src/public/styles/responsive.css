@@ -1421,8 +1421,19 @@ body.is-sidebar-collapsed .map-legend {
     height: 12px;
 }
 
+/* The progress key sets its pies side by side, so the swatch grows with them.
+   It keeps the 12px row height of the other swatches; the badge overhangs it
+   by half a pixel each way, so the key is no taller than before. */
+.map-legend__swatch--badge {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    width: auto;
+}
+
 .map-legend__swatch--badge svg {
     display: block;
+    flex: none;
     width: 13px;
     height: 13px;
 }

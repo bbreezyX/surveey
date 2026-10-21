@@ -10,15 +10,16 @@ import type { FeatureLike } from 'ol/Feature';
 import type { SurveyPoint } from '../../shared/survey/types';
 import { toDisplayCase } from '../../shared/survey/display';
 import * as symbols from './pin-symbols';
-import { stageBadgeSvg, stageBuilt } from '../../shared/survey/progress';
+import { stageBadgeSvg } from '../../shared/survey/progress';
 const cache = new Map<string, Style[]>();
 const badgeSrc = (stage: number) => `data:image/svg+xml,${encodeURIComponent(stageBadgeSvg(stage))}`;
 export function pointStyle(point: SurveyPoint, resolution: number, selected = false, hovered = false, stage = 0): Style[] {
   const kind = point.cadangan ? 'cadangan' : point.belum ? 'belum' : point.duplikat ? 'duplikat' : 'sk';
   const radius = Math.round((5 + 2 * Math.max(0, Math.min(1, (430 - resolution) / 354))) * 2) / 2;
   const dot = resolution > 76 && !selected;
-  // Cadangan is never built, so it never wears the badge whatever the data says.
-  const badge = kind === 'cadangan' ? 0 : stageBuilt(stage) ? 3 : stage > 0 ? stage : 0;
+  // Cadangan is never built, so it never wears the badge whatever the data says. parseProgress only
+  // admits stages 1 to 4, and each one draws its own badge.
+  const badge = kind === 'cadangan' ? 0 : stage;
   const key = `${kind}|${dot ? radius : 'pin'}|${selected}|${hovered}|${badge}`;
   const cached = cache.get(key); if (cached) return cached;
   const fill = kind === 'cadangan' ? '#c5cdd6' : kind === 'belum' ? '#f4f6f8' : '#fee50f';

@@ -664,8 +664,11 @@
 }
 
 /* Build progress from esdm.cloud: a slim four-segment bar with each stage
-   named beneath it. Green only on what is done, so an untouched unit reads
-   quiet; the next stage gets a faint tint so the eye knows where work resumes. */
+   named beneath it. Finished stages fill blue, like the pie on the pin, and
+   the whole bar turns green only once the lamp is lit: green means terpasang
+   on the pin, the list and the legend, so a unit with work left never wears
+   it here either. An untouched unit reads quiet; the next stage gets a faint
+   tint so the eye knows where work resumes. */
 .feature-popup__progress {
     display: block;
     margin-top: 12px;
@@ -733,6 +736,10 @@
 }
 
 .feature-popup__progress.is-started .feature-popup__progress-head strong {
+    color: var(--blue-deep);
+}
+
+.feature-popup__progress.is-complete .feature-popup__progress-head strong {
     color: var(--green);
 }
 
@@ -775,6 +782,10 @@
 }
 
 .feature-popup__stages li.is-done::before {
+    background: var(--blue);
+}
+
+.feature-popup__progress.is-complete .feature-popup__stages li::before {
     background: var(--green);
 }
 

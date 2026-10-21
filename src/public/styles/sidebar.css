@@ -852,7 +852,8 @@ body.is-sidebar-collapsed #sidebar {
 }
 
 /* Last finished build stage from esdm.cloud, wearing the same badge as its pin:
-   a blue progress pie through Galian and Cor, a green check from Tiang on. */
+   a blue pie filling a quarter per stage through Tiang, a green check only
+   once the lamp is lit (terpasang). */
 .atlas-pt__stage {
     align-self: flex-start;
     display: inline-flex;
@@ -868,7 +869,7 @@ body.is-sidebar-collapsed #sidebar {
     line-height: 1.35;
 }
 
-.atlas-pt__stage.is-built {
+.atlas-pt__stage.is-done {
     background: var(--green-tint);
     color: var(--green);
 }

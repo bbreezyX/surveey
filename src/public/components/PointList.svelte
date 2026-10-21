@@ -2,7 +2,7 @@
   import type { SurveyState } from '../state/survey.svelte';
   import { desaGroups, groupHead, landmarkFor } from '../state/list-model';
   import { STATUS_LABEL } from '../../shared/survey/status';
-  import { stageBadgeSvg, stageBuilt, stageSummary } from '../../shared/survey/progress';
+  import { stageBadgeSvg, stageDone, stageSummary } from '../../shared/survey/progress';
   let { state }: { state: SurveyState } = $props();
   const sections = $derived.by(() => {
     const groups = new Map<string, typeof state.visiblePoints>();
@@ -36,7 +36,7 @@
                   {#if !shared && landmarks[index]}<span class="atlas-pt__note">{landmarks[index]}</span>{/if}
                   {#if point.belum}<span class="atlas-pt__coord atlas-pt__coord--none">Belum ada koordinat</span>
                   {:else}<span class="atlas-pt__coord">{point.koordinat.split(', ')[0]}<br/>{point.koordinat.split(', ')[1]}</span>{/if}
-                  {#if stage}<span class="atlas-pt__stage" class:is-built={stageBuilt(stage)} aria-hidden="true">{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}
+                  {#if stage}<span class="atlas-pt__stage" class:is-done={stageDone(stage)} aria-hidden="true">{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}
                 </span>
               </button>
             {/each}

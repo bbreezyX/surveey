@@ -3,7 +3,7 @@
   import { legacyPhotoUrl } from '../../shared/survey/media';
   import { directionsUrl } from '../../shared/survey/coordinates';
   import { progressReportUrl } from '../../shared/survey/report';
-  import { BUILD_STAGES, stageSummary } from '../../shared/survey/progress';
+  import { BUILD_STAGES, stageDone, stageSummary } from '../../shared/survey/progress';
   import { STATUS_LABEL } from '../../shared/survey/status';
   import { regionKey } from '../data/regions';
   import Shape from './Shape.svelte';
@@ -37,7 +37,7 @@
     {#if stage !== null && !point.cadangan}
       <!-- The whole block opens the point on esdm.cloud/lapangan, which lists its stages and every report
            behind them, so a reader who wonders "since when?" reaches the evidence in one tap. -->
-      <a class="feature-popup__progress" class:is-started={stage > 0} href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Buka riwayat tahap titik ini di esdm.cloud">
+      <a class="feature-popup__progress" class:is-started={stage > 0} class:is-complete={stageDone(stage)} href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Buka riwayat tahap titik ini di esdm.cloud">
         <p class="feature-popup__progress-head"><span>Progres pembangunan</span><strong>{stageSummary(stage)}<span class="feature-popup__progress-count" aria-hidden="true">{Math.min(stage, BUILD_STAGES.length)}/{BUILD_STAGES.length}</span><span class="feature-popup__progress-go" aria-hidden="true"></span></strong></p>
         <!-- One bar segment per stage with its name beneath: the fill reads at a glance, the label says which step it is. -->
         <ol class="feature-popup__stages">
