@@ -74,9 +74,6 @@
       points = result.items; total = result.total; pages = result.pages; counts = result.counts; gaps = result.gaps;
     } catch(e) { failed(e); } finally { busy = false; }
   }
-  async function loadMap() {
-    try { backdrop?.setPoints((await api<{items: MapPoint[]}>('points/map')).items); } catch { /* the backdrop is scenery */ }
-  }
   async function select(id: string) {
     busy = true; error = ''; creating = false; pane = 'edit';
     try { detail = await api<Detail>(`points/${id}`); editor = new PointEditor(detail, { onSaved: text => { announce(text); loadPoints(); select(id); } }); backdrop?.setSelected(id); }
@@ -123,7 +120,11 @@
     backdrop = createBackdrop(backdropEl, { onSelect: id => { if (page === 'points') select(id); } });
     (async () => {
       try {
-        const result = await api<{account: Account; csrf: string}>('session'); account = result.account; csrf = result.csrf; setCsrf(csrf);
+        const result = await api<{account: Account; csrf: string; points: {items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}; map: {items: MapPoint[]}}>('bootstrap');
+        account = result.account; csrf = result.csrf; setCsrf(csrf);
+        points = result.points.items; total = result.points.total; pages = result.points.pages;
+        counts = result.points.counts; gaps = result.points.gaps;
+        backdrop?.setPoints(result.map.items);
         if (phase === 'login') {
           // Commit the login card's height with a forced reflow, then grow.
           // Not requestAnimationFrame: browsers pause it in background tabs,
@@ -132,7 +133,6 @@
           void sheetEl.offsetHeight;
           phase = 'open';
         } else { await tick(); allowMotion(); }
-        await Promise.all([loadPoints(), loadMap()]);
       } catch(e) { failed(e); phase = 'open'; }
     })();
     return () => backdrop?.dispose();

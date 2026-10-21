@@ -170,10 +170,11 @@ def install_unit_overrides():
         directory.mkdir(exist_ok=True)
         tls = (' --certfile /srv/surveey/tls/preview.crt --keyfile /srv/surveey/tls/preview.key'
                if name != 'broker' else '')
+        threads = 4 if name == 'admin' else 2
         path = directory / '40-release-runtime.conf'
         content = ('[Service]\nExecStart=\nExecStart=/srv/surveey/current/venv/bin/gunicorn '
                    f'config.{application}_wsgi:application --bind 127.0.0.1:{port} '
-                   '--workers 1 --threads 1 --timeout 60 --forwarded-allow-ips= '
+                   f'--worker-class gthread --workers 1 --threads {threads} --timeout 60 --forwarded-allow-ips= '
                    '--no-control-socket --error-logfile -' + tls + '\n')
         path.write_text(content)
         path.chmod(0o644)

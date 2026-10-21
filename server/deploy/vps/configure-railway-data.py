@@ -113,6 +113,7 @@ def main():
         ('public', 'surveey-public', 'config.public_wsgi:application', 18492, 160),
         ('broker', 'surveey', 'config.media_wsgi:application', 18491, 128)]:
         root = BASE / ('public-app' if name == 'public' else 'app')
+        threads = 4 if name == 'admin' else 2
         tls = '' if name == 'broker' else f' --certfile {BASE}/tls/preview.crt --keyfile {BASE}/tls/preview.key'
         inaccessible = f'{BASE}/media {BASE}/postgres {BASE}/snapshots'
         if name == 'public':
@@ -128,7 +129,7 @@ Group={user}
 Slice=surveey.slice
 WorkingDirectory={root}/server
 EnvironmentFile={PRIVATE}/{name}.env
-ExecStart={BASE}/runtime/python/bin/gunicorn {application} --bind 127.0.0.1:{port} --workers 1 --threads 1 --timeout 60 --forwarded-allow-ips= --no-control-socket --error-logfile -{tls}
+ExecStart={BASE}/runtime/python/bin/gunicorn {application} --bind 127.0.0.1:{port} --worker-class gthread --workers 1 --threads {threads} --timeout 60 --forwarded-allow-ips= --no-control-socket --error-logfile -{tls}
 Restart=on-failure
 RestartSec=5
 MemoryMax={memory}M

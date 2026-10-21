@@ -1,7 +1,7 @@
 import hashlib
 import time
 from datetime import timedelta
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponseNotFound
 from .models import RateBucket
@@ -16,6 +16,24 @@ def permission(user, action):
 def throttle(key, limit, seconds):
     digest = hashlib.sha256(key.encode()).hexdigest()
     now = timezone.now()
+    if connection.vendor == 'postgresql':
+        # The row lock, window reset and increment belong to one statement.
+        # Separate workers still share the same counter and admission limit.
+        table = connection.ops.quote_name(RateBucket._meta.db_table)
+        cutoff = now - timedelta(seconds=seconds)
+        with connection.cursor() as cursor:
+            cursor.execute(f'''
+                INSERT INTO {table} AS bucket ("key", "window_start", "count")
+                VALUES (%s, %s, 1)
+                ON CONFLICT ("key") DO UPDATE SET
+                    "window_start" = CASE WHEN bucket."window_start" <= %s
+                        THEN EXCLUDED."window_start" ELSE bucket."window_start" END,
+                    "count" = CASE WHEN bucket."window_start" <= %s
+                        THEN 1 ELSE bucket."count" + 1 END
+                RETURNING "count"
+            ''', [digest, now, cutoff, cutoff])
+            return cursor.fetchone()[0] <= limit
+    # Retain the portable implementation for non-PostgreSQL environments.
     with transaction.atomic():
         RateBucket.objects.get_or_create(key=digest, defaults={'window_start': now})
         row = RateBucket.objects.select_for_update().get(key=digest)

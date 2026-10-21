@@ -1,18 +1,14 @@
-import hashlib
-import io
 import json
 import hmac
-import os
 import re
-import threading
-from contextlib import closing
-from pathlib import Path
 from django.conf import settings
 from django.http import HttpResponse, FileResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
+from django.db.models import Exists, OuterRef, Subquery
 from .models import ActivePublication, PublishedMedia, MediaGrant
 from . import storage
+from .media_cache import MAX_MEDIA_BYTES, cache_path, open_cached
 
 @require_GET
 def readiness(request):
@@ -35,21 +31,19 @@ def points(request):
     response['X-Publication-ID'] = str(publication.id)
     return response
 
-# Display derivatives are ~130 KB; anything far larger is not a derivative we published.
-MAX_MEDIA_BYTES = 20 * 1024 * 1024
-
-
 def cached_path(record):
-    if not settings.MEDIA_CACHE_ROOT or not re.fullmatch(r'[0-9a-f]{64}', record.checksum):
-        return None
-    # Keyed by content checksum, so a cached file can never answer for different bytes.
-    return Path(settings.MEDIA_CACHE_ROOT) / record.checksum
+    return cache_path(settings.MEDIA_CACHE_ROOT, record.checksum)
 
 
 def discard_cached(record):
     path = cached_path(record)
     if path:
-        path.unlink(missing_ok=True)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            # Authorization still denies access even if the disposable cache
+            # cannot be cleaned at this instant.
+            pass
 
 
 def open_stored(record):
@@ -61,37 +55,23 @@ def open_stored(record):
 
 def open_media(record):
     """Return a readable file for the derivative, filling the local cache on a miss."""
-    path = cached_path(record)
-    if path is None:
-        return open_stored(record)
-    try:
-        return path.open('rb')
-    except FileNotFoundError:
-        pass
-    with closing(open_stored(record)) as stream:
-        content = stream.read(MAX_MEDIA_BYTES + 1)
-    if len(content) > MAX_MEDIA_BYTES:
-        raise ConnectionError('Media larger than any published derivative.')
-    if hashlib.sha256(content).hexdigest() == record.checksum:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        # Atomic rename: concurrent workers and the warm-up command may fill the same entry.
-        temporary = path.with_name(f'.{path.name}.{os.getpid()}.{threading.get_ident()}')
-        temporary.write_bytes(content)
-        os.replace(temporary, path)
-    # A checksum mismatch is served as before but never cached.
-    return io.BytesIO(content)
+    return open_cached(settings.MEDIA_CACHE_ROOT, record.checksum, lambda: open_stored(record), MAX_MEDIA_BYTES)
 
 
 @require_GET
 def media(request, media_id):
-    record = PublishedMedia.objects.filter(pk=media_id).first()
+    grants = MediaGrant.objects.filter(media_id=OuterRef('pk'))
+    active = ActivePublication.objects.filter(id=1).values('publication_id')[:1]
+    # Validate publication access in the same round trip as the media lookup.
+    # These checks also run before a cache hit or a conditional 304 response.
+    record = PublishedMedia.objects.annotate(has_grant=Exists(grants),
+        has_active_grant=Exists(grants.filter(publication_id=Subquery(active)))).filter(pk=media_id).first()
     if not record:
         return HttpResponse(status=404)
     if (record.revoked or (record.retain_until and record.retain_until <= timezone.now())
             or not re.fullmatch(r'display/[0-9a-f]{32}', record.derivative_key)
-            or not MediaGrant.objects.filter(media=record).exists()
-            or (record.retain_until is None and not MediaGrant.objects.filter(media=record,
-                publication_id=ActivePublication.objects.values_list('publication_id', flat=True).get(id=1)).exists())):
+            or not record.has_grant
+            or (record.retain_until is None and not record.has_active_grant)):
         # Revocation must also drop the local copy, not just stop serving it.
         discard_cached(record)
         return HttpResponse(status=404)

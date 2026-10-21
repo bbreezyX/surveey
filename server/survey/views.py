@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate, login as django_login, logout as d
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import transaction, IntegrityError
+from django.db.models import Count, Prefetch, Q
 from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.shortcuts import render
@@ -20,6 +21,7 @@ from .security import permission, establish, throttle
 from .media import store_photo, MAX_BYTES
 from .login_assets import login_assets
 from . import services
+from delivery.media_cache import open_cached
 
 def response(value, status=200):
     return JsonResponse(value, status=status, json_dumps_params={'ensure_ascii': False})
@@ -105,13 +107,16 @@ def logout(request):
 def session(request):
     return response({'account': account_view(request.user), 'csrf': get_token(request), 'idle_seconds': 1800, 'absolute_seconds': 28800})
 
-@api(['GET', 'POST'])
-def points(request):
-    if request.method == 'POST':
-        data = body(request, ['state', 'reason'])
-        point = services.create_point(request.user, data['state'], data['reason'])
-        return response({'id': str(point.pk), 'revision': point.revision}, 201)
-    from django.db.models import Count, Q
+
+def point_summary(request):
+    # One request-local snapshot supplies counts, numbering gaps and backdrop.
+    # Never cache editable point data across requests or across accounts.
+    if not hasattr(request, '_point_summary'):
+        request._point_summary = list(Point.objects.values('id', 'nomor', 'state', 'archived'))
+    return request._point_summary
+
+
+def point_list_payload(request):
     query = request.GET.get('q', '')[:250].strip()
     rows = Point.objects.all()
     if query:
@@ -129,13 +134,38 @@ def points(request):
     except ValueError:
         raise Problem('Nomor halaman tidak valid.')
     total = rows.count()
-    # Pending drafts are flagged in the list so a changed point is visible
-    # without opening the Draf tab.
     rows = rows.annotate(drafts=Count('draft', filter=Q(draft__status='pending'))).order_by('nomor')[(page-1)*50:page*50]
-    return response({'items': [{'id': str(p.pk), 'revision': p.revision, 'state': p.state, 'drafts': p.drafts} for p in rows],
-        'total': total, 'page': page, 'pages': max(1, (total+49)//50), 'counts': counts(Point.objects.values_list('state', flat=True)),
-        # Over every point, not the page: a desa can span two pages of 50.
-        'gaps': nomor_gaps(Point.objects.filter(archived=False).values_list('nomor', flat=True))})
+    summary = point_summary(request)
+    return {'items': [{'id': str(p.pk), 'revision': p.revision, 'state': p.state, 'drafts': p.drafts} for p in rows],
+        'total': total, 'page': page, 'pages': max(1, (total+49)//50), 'counts': counts(p['state'] for p in summary),
+        'gaps': nomor_gaps(p['nomor'] for p in summary if not p['archived'])}
+
+
+def map_items(rows):
+    items = []
+    for pk, state in rows:
+        lon, lat = state.get('lon'), state.get('lat')
+        if isinstance(lon, (int, float)) and isinstance(lat, (int, float)) and abs(lon) <= 180 and abs(lat) <= 90:
+            items.append({'id': str(pk), 'lon': lon, 'lat': lat, 'status': state.get('status') or '', 'duplikat': bool(state.get('duplikat'))})
+    return items
+
+
+@api(['GET'])
+def bootstrap(request):
+    # Initial dashboard data crosses authentication/session middleware once.
+    points = point_list_payload(request)
+    return response({'account': account_view(request.user), 'csrf': get_token(request),
+        'idle_seconds': 1800, 'absolute_seconds': 28800, 'points': points,
+        'map': {'items': map_items((p['id'], p['state']) for p in point_summary(request) if not p['archived'])}})
+
+
+@api(['GET', 'POST'])
+def points(request):
+    if request.method == 'POST':
+        data = body(request, ['state', 'reason'])
+        point = services.create_point(request.user, data['state'], data['reason'])
+        return response({'id': str(point.pk), 'revision': point.revision}, 201)
+    return response(point_list_payload(request))
 
 @api(['GET'])
 def next_nomor(request):
@@ -154,12 +184,7 @@ def renumber(request):
 def point_map(request):
     # Every active point's position and status in one response, for the
     # dashboard's map backdrop; the list endpoint pages at 50.
-    items = []
-    for pk, state in Point.objects.filter(archived=False).values_list('pk', 'state'):
-        lon, lat = state.get('lon'), state.get('lat')
-        if isinstance(lon, (int, float)) and isinstance(lat, (int, float)) and abs(lon) <= 180 and abs(lat) <= 90:
-            items.append({'id': str(pk), 'lon': lon, 'lat': lat, 'status': state.get('status') or '', 'duplikat': bool(state.get('duplikat'))})
-    return response({'items': items})
+    return response({'items': map_items(Point.objects.filter(archived=False).values_list('pk', 'state'))})
 
 # Kepmendagri region tree for Jambi (kab/kota → kecamatan → desa/kel), built
 # by scripts/build_wilayah_jambi.py. Served from our own origin because the
@@ -172,18 +197,20 @@ def wilayah(request):
 
 @api(['GET'])
 def point_detail(request, point_id):
-    point = Point.objects.get(pk=point_id)
+    point = Point.objects.annotate(pending_drafts=Count('draft', filter=Q(draft__status='pending'))).get(pk=point_id)
     observations = []
-    for obs in Observation.objects.filter(point=point).order_by('-created_at'):
+    rows = Observation.objects.filter(point=point).order_by('-created_at').prefetch_related(
+        Prefetch('observationevidence_set', queryset=ObservationEvidence.objects.only('observation_id', 'photo_id')))
+    for obs in rows:
         observations.append({'id': str(obs.pk), 'date': obs.date, 'lon': float(obs.longitude), 'lat': float(obs.latitude),
-            'notes': obs.notes, 'source': obs.source, 'photos': [str(v) for v in ObservationEvidence.objects.filter(observation=obs).values_list('photo_id', flat=True)]})
+            'notes': obs.notes, 'source': obs.source, 'photos': [str(v.photo_id) for v in obs.observationevidence_set.all()]})
     revisions = [{'number': r.number, 'state': r.state, 'reason': r.reason,
         'at': r.created_at.isoformat()} for r in Revision.objects.filter(point=point).order_by('-number')]
     # The editor opens on the viewer's own pending draft, so a saved change is
     # still in the form the next time the point is opened.
     own = Draft.objects.filter(point=point, author=request.user, status='pending').order_by('-created_at').first()
     return response({'id': str(point.pk), 'revision': point.revision, 'state': point.state,
-        'drafts': Draft.objects.filter(point=point, status='pending').count(),
+        'drafts': point.pending_drafts,
         'own_draft': {'id': str(own.id), 'proposed': own.proposed, 'reason': own.reason} if own else None,
         'observations': observations, 'revisions': revisions})
 
@@ -255,7 +282,11 @@ def photo_content(request, photo_id, kind):
         raise Problem('Foto belum siap.', 404)
     key = photo.derivative_key if kind == 'display' else photo.original_key
     content_type = photo.mime if kind == 'display' else 'application/octet-stream'
-    result = FileResponse(storage.get(key), content_type=content_type, as_attachment=kind == 'original', filename=f'{photo.id}.bin' if kind == 'original' else None)
+    # Authentication, permission and current photo metadata are checked before
+    # touching this private derivative cache. Originals remain streamed from storage.
+    stream = open_cached(getattr(settings, 'ADMIN_MEDIA_CACHE_ROOT', None), photo.derivative_checksum,
+        lambda: storage.get(key)) if kind == 'display' else storage.get(key)
+    result = FileResponse(stream, content_type=content_type, as_attachment=kind == 'original', filename=f'{photo.id}.bin' if kind == 'original' else None)
     result['X-Content-Type-Options'] = 'nosniff'
     return result
 

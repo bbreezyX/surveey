@@ -22,3 +22,7 @@ SESSION_COOKIE_NAME = 'survey_admin_session'
 CSRF_COOKIE_NAME = 'survey_admin_csrf'
 SESSION_COOKIE_PATH = '/admin/'
 CSRF_COOKIE_PATH = '/admin/'
+
+# Kept outside the web root and separate from the public derivative cache.
+# Every hit still goes through live account/session/permission checks.
+ADMIN_MEDIA_CACHE_ROOT = Path('/tmp/survey-admin-media-cache') if (VPS or RAILWAY) else None
