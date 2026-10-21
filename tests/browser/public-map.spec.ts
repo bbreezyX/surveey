@@ -167,9 +167,9 @@ test('keeps the selected pin visible after crossing the responsive threshold and
 test('opens photo-less unplaced records without offering routes to estimated coordinates', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /Kab. Batanghari, 70 titik/ }).click();
-  await page.getByRole('button', { name: /Belum ditetapkan/ }).first().click();
+  await page.getByRole('button', { name: /Belum Ditetapkan/ }).first().click();
   await expect(page.locator('.atlas-pt')).toHaveCount(1); await page.locator('.atlas-pt').click();
-  await expect(page.locator('#popup')).toContainText('Koordinat perkiraan');
+  await expect(page.locator('#popup')).toContainText('Koordinat Perkiraan');
   await expect(page.locator('#popup img')).toHaveCount(0);
   await expect(page.getByRole('link', { name: /Rute ke titik ini/ })).toHaveCount(0);
 });
@@ -232,7 +232,7 @@ test('handles data failure, retry and empty successful data', async ({ page }) =
 test('opens regions, filters, and layer options without mounting duplicate maps', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' }); await page.getByRole('button', { name: /Kab. Batanghari, 70 titik/ }).click();
   await expect(page.getByRole('heading', { name: 'Kab. Batanghari' })).toBeVisible();
-  await page.getByRole('button', { name: /Perlu verifikasi/ }).first().click();
+  await page.getByRole('button', { name: /Perlu Verifikasi/ }).first().click();
   await expect(page.locator('.atlas-pt')).toHaveCount(1);
   await page.getByRole('button', { name: 'Kembali ke semua wilayah' }).click();
   await page.getByRole('button', { name: 'Tampilkan pilihan layer' }).click();

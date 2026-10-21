@@ -328,7 +328,7 @@ body.is-sidebar-collapsed #sidebar {
     stroke-linecap: round;
 }
 
-/* Counts line, overview: the total and "Lihat semua". */
+/* Counts line, overview: the total and "Lihat Semua". */
 .atlas-summary {
     display: flex;
     align-items: center;
@@ -1029,7 +1029,7 @@ body.is-data-unavailable .atlas-summary {
     font-style: italic;
 }
 
-/* Footer: "Survey lapangan & pelaksanaan" over the newest survey date and
+/* Footer: "Survey Lapangan & Pelaksanaan" over the newest survey date and
    the agency, centred under the list. */
 .sidebar-footer {
     flex: none;
@@ -1417,7 +1417,7 @@ body.is-data-unavailable .atlas-summary {
 
     /* One kabupaten, collapsed: its header shrinks to a single line (back,
        name, count) so the peek leaves the map room for the lead to the
-       nearest unit. The locator and the "Semua wilayah" label come back
+       nearest unit. The locator and the "Semua Wilayah" label come back
        with the opened sheet; the button keeps its aria-label throughout. */
     body:not(.is-panel-open) .atlas-detail {
         display: flex;

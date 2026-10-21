@@ -8,7 +8,7 @@
   import { regionKey } from '../data/regions';
   import Shape from './Shape.svelte';
   import Icon from './Icon.svelte';
-  // stage is null until esdm.cloud has answered, so a slow or failed fetch shows nothing rather than "Belum dimulai".
+  // stage is null until esdm.cloud has answered, so a slow or failed fetch shows nothing rather than "Belum Dimulai".
   let { point, dataset, stage = null }: { point: SurveyPoint; dataset: SurveyDataset; stage?: number | null } = $props();
   const photo = $derived(legacyPhotoUrl(point.photo));
   const kind = $derived(point.belum ? 'belum' : point.duplikat ? 'duplikat' : point.cadangan ? 'cadangan' : null);
@@ -20,14 +20,14 @@
   {#if photo}
     <a class="feature-popup__media" href={photo} target="_blank" rel="noopener" aria-label={`Buka foto lokasi ${point.nomor} di tab baru`}>
       <img src={photo} alt={`Foto lokasi ${point.nomor}`} decoding="async"/>
-      <span class="feature-popup__media-badge"><Icon name="external" size={16}/><span>Lihat foto</span></span>
+      <span class="feature-popup__media-badge"><Icon name="external" size={16}/><span>Lihat Foto</span></span>
       <span class="popup-inset"><Shape {region} points={dataset.points.filter(p => p.kabupaten === point.kabupaten)} width={70} height={52} selected={point.nomor} inset/></span>
     </a>
   {/if}
   {#if kind}<div class={`feature-popup__note feature-popup__note--${kind}`} role="note"><span class="feature-popup__note-mark" aria-hidden="true">{kind === 'belum' ? '?' : kind === 'duplikat' ? '!' : ''}</span><p><strong class="feature-popup__note-title">{STATUS_LABEL[kind].legend}</strong> {note}</p></div>{/if}
   <div class="feature-popup__body">
     <!-- Code and region read as one line; the coordinate moves out of the meta list into a compact badge that wraps under them when the region name is long. -->
-    <p class="feature-popup__eyebrow"><span class="feature-popup__id">Titik {point.display.code} · {point.kabupaten}</span><span class="feature-popup__coord" title={point.belum ? 'Koordinat perkiraan' : 'Koordinat'}>{#if point.belum}<span aria-hidden="true">≈ </span><span class="visually-hidden">Koordinat perkiraan </span>{:else}<span class="visually-hidden">Koordinat </span>{/if}{point.koordinat}</span></p>
+    <p class="feature-popup__eyebrow"><span class="feature-popup__id">Titik {point.display.code} · {point.kabupaten}</span><span class="feature-popup__coord" title={point.belum ? 'Koordinat Perkiraan' : 'Koordinat'}>{#if point.belum}<span aria-hidden="true">≈ </span><span class="visually-hidden">Koordinat Perkiraan </span>{:else}<span class="visually-hidden">Koordinat </span>{/if}{point.koordinat}</span></p>
     <h3 class="feature-popup__title">{point.display.primary}</h3>
     <dl class="feature-popup__meta">
       {#each [{ label: 'Alamat', value: point.alamat }, { label: 'Dokumentasi', value: point.tanggal }, { label: 'Keterangan', value: point.display.showsKeterangan ? '' : point.keterangan }] as row (row.label)}
@@ -38,7 +38,7 @@
       <!-- The whole block opens the point on esdm.cloud/lapangan, which lists its stages and every report
            behind them, so a reader who wonders "since when?" reaches the evidence in one tap. -->
       <a class="feature-popup__progress" class:is-started={stage > 0} class:is-complete={stageDone(stage)} href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Buka riwayat tahap titik ini di esdm.cloud">
-        <p class="feature-popup__progress-head"><span>Progres pembangunan</span><strong>{stageSummary(stage)}<span class="feature-popup__progress-count" aria-hidden="true">{Math.min(stage, BUILD_STAGES.length)}/{BUILD_STAGES.length}</span><span class="feature-popup__progress-go" aria-hidden="true"></span></strong></p>
+        <p class="feature-popup__progress-head"><span>Progres Pembangunan</span><strong>{stageSummary(stage)}<span class="feature-popup__progress-count" aria-hidden="true">{Math.min(stage, BUILD_STAGES.length)}/{BUILD_STAGES.length}</span><span class="feature-popup__progress-go" aria-hidden="true"></span></strong></p>
         <!-- One bar segment per stage with its name beneath: the fill reads at a glance, the label says which step it is. -->
         <ol class="feature-popup__stages">
           {#each BUILD_STAGES as name, index (name)}

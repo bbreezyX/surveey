@@ -45,6 +45,6 @@ describe('build progress from esdm.cloud', () => {
     expect([0, 1, 2, 3, 4].map(stageDone)).toEqual([false, false, false, false, true]);
   });
   it('names the last finished stage, and a lit lamp as terpasang', () => {
-    expect([0, 1, 2, 3, 4].map(stageSummary)).toEqual(['Belum dimulai', 'Galian selesai', 'Cor selesai', 'Tiang selesai', 'Terpasang']);
+    expect([0, 1, 2, 3, 4].map(stageSummary)).toEqual(['Belum Dimulai', 'Galian Selesai', 'Cor Selesai', 'Tiang Selesai', 'Terpasang']);
   });
 });

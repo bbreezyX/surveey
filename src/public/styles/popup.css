@@ -148,7 +148,7 @@
     transition: background-color var(--dur) var(--ease-out);
 }
 
-/* "Lihat foto": a frosted pill dead centre on the photo, the one place a
+/* "Lihat Foto": a frosted pill dead centre on the photo, the one place a
    reader looks first, with an expand icon for "open this bigger". */
 .feature-popup__media-badge {
     position: absolute;
@@ -306,7 +306,7 @@
     padding-right: 16px;
 }
 
-/* Perlu verifikasi: the same orange the pin's ring and the list capsule use,
+/* Perlu Verifikasi: the same orange the pin's ring and the list capsule use,
    so the reader connects the three without a legend lookup. */
 .feature-popup__note--duplikat {
     background: var(--orange-tint);
@@ -513,7 +513,7 @@
     gap: 8px;
 }
 
-/* Sized by their labels, so "Perlu verifikasi" gets the room it needs and
+/* Sized by their labels, so "Perlu Verifikasi" gets the room it needs and
    "Arsir" does not hold half the row for five letters. */
 .feature-popup__hatch {
     flex: 1 1 auto;

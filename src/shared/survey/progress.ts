@@ -24,5 +24,5 @@ export function stageBadgeSvg(stage: number): string {
 }
 // "Lampu selesai" is the unit standing and lit, which the field calls terpasang.
 export function stageSummary(stage: number): string {
-  return stage >= 4 ? 'Terpasang' : stage >= 1 ? `${BUILD_STAGES[stage - 1]} selesai` : 'Belum dimulai';
+  return stage >= 4 ? 'Terpasang' : stage >= 1 ? `${BUILD_STAGES[stage - 1]} Selesai` : 'Belum Dimulai';
 }
