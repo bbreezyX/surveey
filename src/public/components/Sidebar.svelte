@@ -32,8 +32,17 @@
     else [...sidebar.querySelectorAll<HTMLButtonElement>('[data-region]')].find(button => button.dataset.region === previous)?.focus({ preventScroll: true });
   }
   async function collapse() { state.sidebarCollapsed = true; await tick(); document.getElementById('panel-toggle')?.focus({ preventScroll: true }); }
-  function measurePeek() { if (sidebar && window.innerWidth < 960) { const search = sidebar.querySelector('.panel-search'), card = near?.firstElementChild, label = card instanceof HTMLElement && card.offsetHeight ? card : search; if (label instanceof HTMLElement) document.documentElement.style.setProperty('--sheet-peek', `${Math.round(label.offsetTop + label.offsetHeight + 14)}px`); } }
-  onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(near); window.addEventListener('resize', measurePeek); measurePeek(); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); }; });
+  // The closed phone sheet peeks down to the nearest-unit card while it shows, else to the point count under
+  // the search (all units, or the search's matches), so the total is on screen without opening the list. A
+  // kabupaten keeps its count in the header above the search, so its peek still ends at the search. The count
+  // block carries its own bottom padding, so it needs none of the 14px the other two get.
+  function measurePeek() {
+    if (!sidebar || window.innerWidth >= 960) return;
+    const search = sidebar.querySelector<HTMLElement>('.panel-search'), card = near?.firstElementChild, summary = sidebar.querySelector<HTMLElement>('#panel-meta > .atlas-summary');
+    const end = card instanceof HTMLElement && card.offsetHeight ? card.offsetTop + card.offsetHeight + 14 : summary?.offsetHeight ? summary.offsetTop + summary.offsetHeight : search ? search.offsetTop + search.offsetHeight + 14 : 0;
+    if (end) document.documentElement.style.setProperty('--sheet-peek', `${Math.round(end)}px`);
+  }
+  onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(sidebar.querySelector('#panel-meta')!); observer.observe(near); window.addEventListener('resize', measurePeek); measurePeek(); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); }; });
   $effect(() => { state.activeRegion; state.statusFilter; state.query; if (scroller) scroller.scrollTop = 0; });
   function syncScroll() {
     sidebar.classList.toggle('is-scrolled', scroller.scrollTop > 2);

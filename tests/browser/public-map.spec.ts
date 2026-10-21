@@ -95,6 +95,13 @@ test('keeps mobile region search in the collapsed sheet peek', async ({ page }) 
   await expect.poll(() => page.getByRole('searchbox').evaluate(element => element.getBoundingClientRect().bottom)).toBeLessThan(844);
 });
 
+test('keeps the point total in the collapsed mobile sheet peek', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/'); await expect(page.locator('.atlas-total__num')).toHaveText('500');
+  await expect(page.getByRole('button', { name: 'Lihat daftar titik', exact: true })).toBeVisible();
+  await expect.poll(() => page.locator('.atlas-total').evaluate(element => element.getBoundingClientRect().bottom)).toBeLessThanOrEqual(844);
+});
+
 test('restores keyboard focus across region and sidebar navigation', async ({ page }) => {
   await page.goto('/'); const region = page.getByRole('button', { name: /Kota Jambi, 72 titik/ });
   await region.focus(); await page.keyboard.press('Enter');

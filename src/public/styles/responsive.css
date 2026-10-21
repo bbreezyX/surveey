@@ -599,11 +599,12 @@ body.is-sidebar-collapsed .map-legend {
 
 @media (max-width: 959px) {
     :root {
-        /* Closed, the sheet peeks down to its search field, so the search is
-           always on screen and the masthead carries the identity. custom.js
-           (measurePeek) sets the real value from the rendered sheet on every
-           screen; this is only the first paint's guess. */
-        --sheet-peek: 124px;
+        /* Closed, the sheet peeks down past its search field to the point
+           count, so the search and the total are always on screen and the
+           masthead carries the identity. Sidebar.svelte (measurePeek) sets
+           the real value from the rendered sheet on every screen; this is
+           only the first paint's guess. */
+        --sheet-peek: 152px;
         --sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);
         --popup-ease: cubic-bezier(0.22, 1, 0.36, 1);
         /* 48px touch target. Drives the layer button AND its icon overlay —
