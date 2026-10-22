@@ -1,3 +1,4 @@
+import { parseCoordinateQuery } from '../../src/shared/survey/coordinates';
 export interface PointState {
   nomor: string; nama: string; jalur: string; alamat: string; keterangan: string; lokasi_rekapan: string;
   catatan: string; status: '' | 'Cadangan' | 'Belum Ditetapkan'; duplikat: boolean; archived: boolean;
@@ -37,6 +38,14 @@ export function photoUrl(id: string | null) { return id ? `/admin/api/photos/${i
 export function emptyState(): PointState { return { nomor: '', nama: '', jalur: '', alamat: '', keterangan: '',
   lokasi_rekapan: '', catatan: '', status: '', duplikat: false, archived: false, lon: Number.NaN, lat: Number.NaN,
   date: '', photo_id: null, observation_id: null }; }
+// A "lat, long" pair pasted into either coordinate field (Google Maps, a photo stamp, the public
+// map's coordinate row) fills both, using the public search's parser so a swapped "long, lat" still
+// lands right. A single number pastes as usual.
+export function pasteCoordinates(event: ClipboardEvent, target: { lat: number; lon: number }) {
+  const pair = parseCoordinateQuery((event.clipboardData?.getData('text') ?? '').replace(/^\s*\(|\)\s*$/g, ''));
+  if (!pair) return;
+  event.preventDefault(); target.lat = pair.lat; target.lon = pair.lon;
+}
 export function distance(a: PointState, b: PointState) {
   const rad = Math.PI / 180, x = a.lat*rad, y = b.lat*rad;
   const h = Math.sin((y-x)/2)**2 + Math.cos(x)*Math.cos(y)*Math.sin((b.lon-a.lon)*rad/2)**2;

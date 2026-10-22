@@ -102,6 +102,12 @@ tbody th { width: 1%; overflow-wrap: normal; }
 /* A point with a draft waiting for review; shown in the list and the editor head. */
 .badge--draf { background: var(--blue-tint); color: var(--blue-deep); }
 .badge--draf::before { background: var(--blue); }
+/* Build stage from esdm.cloud, the public map's badge and wording: blue pie through Tiang, green check once terpasang. */
+.badge--stage { gap: 4px; padding-left: 3px; background: var(--blue-tint); color: var(--blue-deep); }
+.badge--stage::before { content: none; }
+.badge--stage.is-done, .atlas-pt__stage.is-done { background: var(--green-tint); color: var(--green); }
+.badge--stage svg, .atlas-pt__stage svg { flex: none; width: 13px; height: 13px; }
+.atlas-pt__stage { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-deep); font-size: 11.5px; font-weight: 700; line-height: 1.35; white-space: nowrap; }
 
 /* ---------- Wings ----------
    White panels like the public map's #sidebar. Only the centre sheet's

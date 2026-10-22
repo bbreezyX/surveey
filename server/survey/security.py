@@ -79,7 +79,7 @@ class AdminBoundary:
         if response is None:
             response = self.get_response(request)
         response['Cache-Control'] = 'private, no-store'
-        # Map imagery and the Figtree font come from the same hosts the public map uses.
-        response['Content-Security-Policy'] = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://tile.googleapis.com https://services.arcgisonline.com; connect-src 'self' https://tile.googleapis.com; font-src 'self' https://fonts.gstatic.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+        # Map imagery, the Figtree font and esdm.cloud's public build-stage feed come from the same hosts the public map uses.
+        response['Content-Security-Policy'] = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://tile.googleapis.com https://services.arcgisonline.com; connect-src 'self' https://tile.googleapis.com https://www.esdm.cloud; font-src 'self' https://fonts.gstatic.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
         response['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
         return response

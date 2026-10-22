@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { distance, formatDistance, type PointState } from './api';
+  import { distance, formatDistance, pasteCoordinates, type PointState } from './api';
   import { badgeOf, type PointEditor } from './editor.svelte';
+  import { stageBadgeSvg, stageDone, stageSummary } from '../../src/shared/survey/progress';
   import Select from './Select.svelte';
   import AddressPicker from './AddressPicker.svelte';
-  let { editor, onReload }: { editor: PointEditor; onReload: () => void } = $props();
+  let { editor, stage = 0, onReload }: { editor: PointEditor; stage?: number; onReload: () => void } = $props();
   const labels: Record<string, string> = { nomor: 'Nomor', nama: 'Pengusul', jalur: 'Jalur', alamat: 'Alamat lengkap', keterangan: 'Keterangan',
     lokasi_rekapan: 'Lokasi rekapan', catatan: 'Catatan', status: 'Status alokasi', duplikat: 'Perlu verifikasi', archived: 'Diarsipkan', lat: 'Latitude', lon: 'Longitude', photo_id: 'Foto', date: 'Tanggal' };
   let detail = $derived(editor.detail);
@@ -15,7 +16,7 @@
   <div class="edit-title">
     <h2>{detail.state.lokasi_rekapan || detail.state.nomor}</h2>
     <p class="edit-id">{detail.state.nomor}</p>
-    <p class="edit-meta"><span class="badge badge--{badge.kind}">{badge.label}</span>{#if detail.drafts}<span class="badge badge--draf">{detail.drafts > 1 ? `${detail.drafts} draf menunggu` : 'Draf menunggu'}</span>{/if}<span>Revisi {detail.revision}</span></p>
+    <p class="edit-meta"><span class="badge badge--{badge.kind}">{badge.label}</span>{#if stage}<span class="badge badge--stage" class:is-done={stageDone(stage)}>{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}{#if detail.drafts}<span class="badge badge--draf">{detail.drafts > 1 ? `${detail.drafts} draf menunggu` : 'Draf menunggu'}</span>{/if}<span>Revisi {detail.revision}</span></p>
   </div>
   <button class="btn-ghost" type="button" onclick={() => { editor.forget(); onReload(); }} disabled={editor.busy}>Muat ulang</button>
 </div>
@@ -35,8 +36,8 @@
       <label class="field">Catatan<textarea bind:value={edit.catatan} rows="2" maxlength="6000"></textarea></label>
     </fieldset>
     <fieldset disabled={editor.busy}><legend>Koordinat</legend>
-      <div class="pair"><label class="field">Latitude<input type="number" min="-90" max="90" step="any" bind:value={edit.lat} required></label><label class="field">Longitude<input type="number" min="-180" max="180" step="any" bind:value={edit.lon} required></label></div>
-      <p class="hint">Perpindahan dari lokasi saat ini: <strong>{formatDistance(distance(detail.state, edit))}</strong>. Pin dapat digeser pada peta di panel Foto & lokasi.</p>
+      <div class="pair"><label class="field">Latitude<input type="number" min="-90" max="90" step="any" bind:value={edit.lat} onpaste={event => pasteCoordinates(event, edit)} required></label><label class="field">Longitude<input type="number" min="-180" max="180" step="any" bind:value={edit.lon} onpaste={event => pasteCoordinates(event, edit)} required></label></div>
+      <p class="hint">Perpindahan dari lokasi saat ini: <strong>{formatDistance(distance(detail.state, edit))}</strong>. Tempel “lat, long” untuk mengisi keduanya, atau geser pin pada peta di panel Foto & lokasi.</p>
     </fieldset>
     <fieldset disabled={editor.busy}><legend>Pengamatan survei</legend>
       <label class="field">Jenis perubahan<Select label="Jenis perubahan" bind:value={editor.mode} options={[{ value: 'correction', label: 'Koreksi foto / data pada pengamatan yang ada' }, { value: 'visit', label: 'Kunjungan survei baru' }]}/></label>

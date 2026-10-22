@@ -188,7 +188,7 @@ def point_map(request):
 
 # Kepmendagri region tree for Jambi (kab/kota → kecamatan → desa/kel), built
 # by scripts/build_wilayah_jambi.py. Served from our own origin because the
-# admin's CSP keeps connect-src at 'self'; read once, it never changes at runtime.
+# admin's CSP keeps connect-src to a short allowlist; read once, it never changes at runtime.
 WILAYAH = (Path(__file__).resolve().parent / 'data' / 'wilayah-jambi.json').read_bytes()
 
 @api(['GET'])

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { api, setCsrf, emptyState, type Account, type PointRow, type Detail, type PointState, type Counts } from './api';
+  import { api, setCsrf, emptyState, pasteCoordinates, type Account, type PointRow, type Detail, type PointState, type Counts } from './api';
   import { createBackdrop, type MapPoint } from './backdrop';
   import { PointEditor, badgeOf } from './editor.svelte';
   import { fold, foldAway, allowMotion, reducedMotion, narrow, UNFOLD_KEY } from './unfold';
@@ -12,6 +12,7 @@
   import Select from './Select.svelte';
   import AddressPicker from './AddressPicker.svelte';
   import { listSections, type ListPoint } from './list-points';
+  import { PROGRESS_URL, parseProgress, stageBadgeSvg, stageDone, stageSummary, type SurveyProgress } from '../../src/shared/survey/progress';
   let account = $state<Account>(); let csrf = $state(''); let error = $state(''); let message = $state(''); let busy = $state(false);
   let page = $state<'points' | 'drafts' | 'publications' | 'accounts' | 'audit' | 'password' | 'evidence'>('points');
   let points = $state<PointRow[]>([]); let detail = $state<Detail>(); let q = $state(''); let status = $state(''); let archived = $state(false);
@@ -45,6 +46,10 @@
   let backdrop: ReturnType<typeof createBackdrop> | undefined;
 
   let sections = $derived(listSections(points));
+  // Build stage per Nomor from esdm.cloud, the same feed as the public map's chips. Optional:
+  // a slow or failed esdm.cloud leaves the list as it was. Cadangan units are not built.
+  let progress = $state.raw<SurveyProgress>(new Map());
+  const stageOf = (nomor: string, cadangan: boolean) => cadangan ? 0 : progress.get(nomor) ?? 0;
   // badgeOf reads only these fields; the list point carries them under public names.
   function editorState(point: ListPoint) { return { archived: point.archived, status: point.cadangan ? 'Cadangan' : point.belum ? 'Belum Ditetapkan' : '', duplikat: point.duplikat } as PointState; }
   // Search runs as the user types, like the public map's; the server does the matching.
@@ -118,6 +123,7 @@
   }
   onMount(() => {
     backdrop = createBackdrop(backdropEl, { onSelect: id => { if (page === 'points') select(id); } });
+    fetch(PROGRESS_URL, { credentials: 'omit' }).then(r => r.ok ? r.json() : null).then(v => { if (v) progress = parseProgress(v); }).catch(() => {});
     (async () => {
       try {
         const result = await api<{account: Account; csrf: string; points: {items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}; map: {items: MapPoint[]}}>('bootstrap');
@@ -161,14 +167,14 @@
   {#if !account}<p class="sheet-body loading">Memuat sesi…</p>
   {:else if page === 'points'}
     <section class="editor sheet-body">
-      {#if editor}{#key editor}<EditorSheet {editor} onReload={() => select(editor!.detail.id)}/>{/key}
+      {#if editor}{#key editor}<EditorSheet {editor} stage={stageOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} onReload={() => select(editor!.detail.id)}/>{/key}
       {:else if creating}<div class="edit-head"><div class="edit-title"><h2>Titik baru</h2><p class="edit-id">Titik baru dimulai sebagai arsip. Setelah data dan bukti lengkap, aktivasi diajukan melalui draf.</p></div></div>
         <form class="edit-form" onsubmit={create}><div class="edit-scroll"><fieldset disabled={busy}><legend>Identitas & lokasi</legend>
           <label class="field">Nomor<input bind:value={newPoint.nomor} placeholder="KABUPATEN-KECAMATAN-DESA-001" required maxlength="250"></label>
           <AddressPicker bind:value={newPoint.alamat} onpick={fillNomor}/>
           <label class="field">Alamat lengkap<textarea bind:value={newPoint.alamat} rows="2" maxlength="3000" required></textarea></label>
-          <div class="pair"><label class="field">Latitude<input type="number" bind:value={newPoint.lat} min="-90" max="90" step="any" required></label><label class="field">Longitude<input type="number" bind:value={newPoint.lon} min="-180" max="180" step="any" required></label></div>
-          <p class="hint">Lokasi dapat ditentukan lewat peta di panel Foto & lokasi atau diketik sebagai koordinat.</p>
+          <div class="pair"><label class="field">Latitude<input type="number" bind:value={newPoint.lat} onpaste={event => pasteCoordinates(event, newPoint)} min="-90" max="90" step="any" required></label><label class="field">Longitude<input type="number" bind:value={newPoint.lon} onpaste={event => pasteCoordinates(event, newPoint)} min="-180" max="180" step="any" required></label></div>
+          <p class="hint">Lokasi dapat ditentukan lewat peta di panel Foto & lokasi, diketik, atau ditempel sebagai “lat, long”.</p>
           <label class="field">Alasan penambahan<textarea bind:value={newReason} rows="2" maxlength="3000" required></textarea></label>
         </fieldset></div><div class="edit-foot"><p>Titik baru belum tampil di peta publik.</p><button class="btn-primary" disabled={busy}>Buat titik</button></div></form>
       {:else}<div class="editor-empty"><h2>Belum ada titik terpilih</h2><p>Titik dari daftar atau pin di peta terbuka di sini. Setiap perubahan tersimpan sebagai draf dan ditinjau sebelum diterbitkan.</p></div>{/if}
@@ -255,13 +261,15 @@
                 {#if group.shared}<p class="atlas-desa__note">{group.shared}</p>{/if}
                 <div class="atlas-units">
                   {#each group.items as point, index (point.id)}
-                    <button class="atlas-pt" type="button" aria-pressed={detail?.id === point.id} aria-label={[`Titik ${point.display.code}`, badgeOf(editorState(point)).label, point.drafts ? 'Ada draf menunggu' : '', point.display.primary].filter(Boolean).join('. ')} onclick={() => select(point.id)}>
+                    {@const stage = stageOf(point.nomor, point.cadangan)}
+                    <button class="atlas-pt" type="button" aria-pressed={detail?.id === point.id} aria-label={[`Titik ${point.display.code}`, badgeOf(editorState(point)).label, point.drafts ? 'Ada draf menunggu' : '', point.display.primary, stage ? stageSummary(stage) : ''].filter(Boolean).join('. ')} onclick={() => select(point.id)}>
                       <span class="atlas-unit" class:is-active={detail?.id === point.id} class:is-cadangan={point.cadangan} class:is-duplikat={point.duplikat} class:is-belum={point.belum} class:is-arsip={point.archived}>{point.display.code}</span>
                       <span class="atlas-pt__info">
                         {#if !group.shared && group.landmarks[index]}<span class="atlas-pt__note">{group.landmarks[index]}</span>{/if}
                         {#if point.archived}<span class="atlas-pt__coord atlas-pt__coord--none">Arsip</span>
                         {:else if point.belum || !point.koordinat}<span class="atlas-pt__coord atlas-pt__coord--none">Belum ada koordinat</span>
                         {:else}<span class="atlas-pt__coord">{point.koordinat.split(', ')[0]}<br/>{point.koordinat.split(', ')[1]}</span>{/if}
+                        {#if stage}<span class="atlas-pt__stage" class:is-done={stageDone(stage)} aria-hidden="true">{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}
                         {#if point.drafts}<span class="atlas-pt__draft">{point.drafts > 1 ? `${point.drafts} draf` : 'Ada draf'}</span>{/if}
                       </span>
                     </button>
