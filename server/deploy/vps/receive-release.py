@@ -215,9 +215,9 @@ def main():
             and re.fullmatch(r'[a-f0-9]{64}', digest)):
         raise SystemExit('Invalid release identity.')
     os.umask(0o022)
-    # Refuse alternate data modes and never configure, migrate or restore data.
-    if not (BASE / 'HYBRID_CONFIGURED.json').is_file():
-        raise SystemExit('This receiver requires the existing Railway-data deployment.')
+    # Require explicit data configuration; never configure, migrate or restore data.
+    if not any((BASE / marker).is_file() for marker in ('HYBRID_CONFIGURED.json', 'FULL_VPS_CONFIGURED.json')):
+        raise SystemExit('This receiver requires an explicitly configured data deployment.')
     RELEASES.mkdir(mode=0o755, exist_ok=True)
     with (BASE / 'private/autodeploy.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)

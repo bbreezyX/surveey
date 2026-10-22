@@ -1,4 +1,14 @@
-# Surveey di VPS dengan database dan media Railway
+# Surveey di VPS: aplikasi, database dan media
+
+**Status mulai 22 Oktober 2026, 17.22 WIB:** database dan media produksi sudah
+dipindahkan ke VPS. Railway tetap menyimpan snapshot sumber dengan writer
+dibatasi. Lihat [lokasi data, bukti integritas dan pemulihan](vps-data-migration-2026-10-22.md).
+
+## Arsip konfigurasi hybrid sebelum migrasi data
+
+Bagian berikut mendokumentasikan tahap ketika aplikasi VPS masih memakai data
+Railway. Pernyataan mengenai sumber data Railway dan cluster kosong mengacu
+pada tahap historis itu; jangan menjalankan ulang installer pada produksi.
 
 Mulai dari [handoff Railway–VPS](railway-vps-handoff.md). Untuk perangkat baru,
 gunakan [panduan Mac](mac-operations.md), bukan helper Windows `.local` yang

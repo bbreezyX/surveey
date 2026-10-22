@@ -1,5 +1,12 @@
 # Mengembalikan produksi Surveey ke Railway
 
+**Perubahan keadaan 22 Oktober 2026:** PostgreSQL dan media aktif kini berada
+di VPS. Railway menyimpan snapshot lama dengan writer dibatasi. Ikuti
+[runbook data VPS](vps-data-migration-2026-10-22.md) dan skenario migrasi data
+terbaru; prosedur pengalihan aplikasi saja pada bagian A merupakan arsip kondisi
+hybrid sebelumnya. Jangan membuka writer Railway atau mengubah DNS sebelum
+seluruh perubahan VPS terbaru dipindahkan dengan jeda penulisan yang terkoordinasi.
+
 Dokumen operasional dibuat 21 Oktober 2026. Ini panduan untuk pelaksanaan berikutnya, bukan pernyataan bahwa pemindahan kembali sudah dilakukan. Baca keadaan aktual sebelum menjalankannya; alamat, versi, kredensial, dan status deployment dapat berubah.
 
 Untuk melanjutkan dari Mac, mulai dari [handoff Railway–VPS](railway-vps-handoff.md)
@@ -13,11 +20,11 @@ siap menerima produksi. Temuan itu perlu dituntaskan sebelum pengalihan DNS;
 lihat [hasil uji dan batasnya](autodeploy-test-2026-10-21.md). Catatan ini tidak
 menggantikan pembacaan kondisi aktual saat pemindahan nanti.
 
-Keputusan terakhir pengguna: **tunda penghentian aplikasi Railway; biarkan Railway menyala sebagai cadangan utama**. Percobaan 0 replica dan penghentian melalui CLI mengembalikan error, sedangkan konfirmasi Remove Deployment di dashboard dibatalkan. Jangan meneruskan penghentian tanpa instruksi baru. Langkah pengaktifan ulang di bawah hanya berlaku jika kelak aplikasi benar-benar dihentikan.
+Keputusan historis 21 Oktober: **tunda penghentian aplikasi Railway; biarkan Railway menyala sebagai cadangan utama**. Instruksi migrasi penuh 22 Oktober kemudian mengizinkan pemindahan data dengan sumber Railway tetap disimpan. Writer admin Railway dihentikan untuk pemindahan dan login role sumber dibatasi. Riwayat percobaan 0 replica/penghentian CLI serta pembatalan Remove Deployment sebelumnya tidak menjadi instruksi untuk menghapus resource.
 
 Autodeploy frontend `surveypjuts` sempat dinonaktifkan saat persiapan penghentian, lalu dipulihkan ke branch `master`; hasil UI kembali menampilkan **Auto deploys when pushed to GitHub**. Pengaturan autodeploy dua aplikasi lainnya tidak diubah. Tidak ada pemeriksaan fungsional tambahan untuk pembatalan ini.
 
-## Posisi data sekarang
+## Arsip posisi data sebelum migrasi 22 Oktober
 
 | Komponen | Lokasi produksi yang digunakan |
 | --- | --- |
@@ -53,7 +60,7 @@ Belum ada arsip `pg_dump` produksi yang berhasil dibuat/disalin pada pekerjaan p
 
 Snapshot konfigurasi sebelum permintaan penghentian yang kemudian ditunda ada di `.local/vps-copy/railway-apps-before-pause.json` pada checkout persiapan Windows. Direktori `.local` diabaikan Git; file itu tidak tersedia setelah clone di Mac. ID dan pembagian resource yang dibutuhkan sudah dicatat pada tabel di atas. Bila memerlukan snapshot privat tersebut, ambil melalui perangkat/penyimpanan administrasi yang berwenang; jangan menganggapnya backup database.
 
-## A. Kembali ke Railway dengan database dan media yang sekarang
+## A. Arsip pengalihan aplikasi ketika sumber data masih Railway
 
 1. Buka project dan environment yang tercantum di atas. Baca status aplikasi, PostgreSQL, volume, bucket, dan pending changes. Jangan menerapkan pending changes milik pekerjaan lain. Jangan membuat ulang atau mengganti PostgreSQL/bucket yang masih menjadi sumber data.
 2. Pilih revisi aplikasi yang disetujui dan kompatibel dengan schema database saat itu. Pertahankan service, variabel, private networking dan domain yang ada. Jangan menjalankan migrasi schema sekadar untuk memindahkan lokasi aplikasi.
@@ -86,9 +93,12 @@ Variabel sumber Railway harus dipertahankan, terutama `DATABASE_URL`, `DJANGO_SE
 
 TCP proxy PostgreSQL `centerbeam.proxy.rlwy.net:29929` masih dibutuhkan selama VPS memakai database Railway. Jangan menonaktifkannya hanya karena aplikasi Railway dinyalakan lagi. Setelah VPS benar-benar tidak memakai database itu, perubahan akses proxy dapat direncanakan terpisah.
 
-## B. Jika kelak database produksi ikut dipindahkan ke VPS
+## B. Kembali ke Railway setelah database produksi pindah ke VPS
 
-Bagian ini **rencana untuk keadaan yang belum terjadi**, bukan prosedur restore yang sudah dijalankan atau diuji. Cocokkan lokasi sumber data yang benar saat pelaksanaan; jangan memakai cluster kosong `/srv/surveey/postgres` atau arsip/snapshot lama sebagai sumber produksi.
+Database produksi sudah dipindahkan ke VPS pada 22 Oktober. Bagian ini tetap
+merupakan rencana untuk pemindahan balik yang belum dijalankan; cocokkan dengan
+[runbook data VPS](vps-data-migration-2026-10-22.md). Jangan memakai cluster kosong
+`/srv/surveey/postgres`, database percobaan, atau snapshot lama sebagai sumber produksi.
 
 1. Catat database sumber yang benar, versi PostgreSQL, extensions, schema/migrasi, role, ukuran, lokasi media, dan aplikasi/proses yang masih menulis. Siapkan Railway PostgreSQL tujuan yang kompatibel dan baru/kosong agar database lama tetap utuh. Biaya dan pembuatan resource baru memerlukan cakupan persetujuan pengguna.
 2. Tentukan waktu pengalihan. Untuk migrasi logical dump tanpa replikasi, jeda **semua** penulisan Surveey selama dump final, restore, dan pengalihan koneksi. Ini termasuk admin pada kedua host dan job yang menulis. Snapshot dump konsisten sendiri tidak menangkap tulisan yang datang setelah snapshot; tanpa jeda atau sinkronisasi lanjutan, tulisan tersebut dapat tertinggal.

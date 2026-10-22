@@ -1,5 +1,10 @@
 # Operasional Surveey: Railway, VPS, dan Mac
 
+**Pembaruan 22 Oktober 2026, 17.22 WIB:** aplikasi, PostgreSQL dan media produksi
+kini berada di VPS. Data Railway tetap disimpan sebagai snapshot migrasi dengan
+writer dibatasi. Baca [hasil migrasi dan pemulihan data](vps-data-migration-2026-10-22.md)
+sebelum memakai prosedur hybrid atau mengalihkan kembali ke Railway.
+
 Mulai dari dokumen ini ketika melanjutkan pekerjaan dari perangkat lain.
 Dokumentasi ini mencatat konfigurasi dan bukti yang sudah diperoleh; kondisi
 provider, alamat, certificate, versi rilis, dan akses perangkat dapat berubah.
@@ -15,7 +20,9 @@ Pengunjung -> Cloudflare survey.esdm.cloud -> Tunnel -> VPS Niskala
                                                     |-- public delivery
                                                     `-- media broker
                                                            |
-                                       PostgreSQL + bucket media Railway
+                                       PostgreSQL + media lokal VPS
+
+Railway PostgreSQL + bucket: snapshot migrasi dipertahankan, writer dibatasi
 
 GitHub bbreezyX/surveey, master
   |-- GitHub Actions -> Tailscale -> SSH khusus -> rilis aplikasi di VPS
@@ -24,16 +31,16 @@ GitHub bbreezyX/surveey, master
 Niskala: /srv/niskala-udara, layanan dan Caddy terpisah dari Surveey
 ```
 
-Railway merupakan cadangan **aplikasi** yang dipertahankan menyala. Database
-dan bucket media adalah sumber data produksi bersama, bukan dua salinan data
-yang independen. Edit, publikasi, upload, dan sesi dari aplikasi VPS tetap
-menggunakan data Railway. Jangan menjalankan migrasi skema otomatis di kedua
-deployment atau memakai cluster kosong VPS sebagai sumber produksi.
+Railway menyimpan data pada saat migrasi. Edit, publikasi, upload dan sesi baru
+memakai PostgreSQL/media VPS. Railway tidak mengikuti perubahan baru secara
+otomatis. Jangan membuka kembali writer sumber atau memakai cluster kosong
+persiapan sebagai produksi. Migrasi skema tetap merupakan operasi terpisah.
 
 ## Pilih panduan sesuai pekerjaan
 
 | Pekerjaan | Dokumen |
 |---|---|
+| Lokasi data aktif, bukti migrasi, cadangan, dan pemulihan setelah 22 Oktober | [Database dan media VPS](vps-data-migration-2026-10-22.md) |
 | Melanjutkan dari Mac, clone repo, menyiapkan SSH | [Panduan Mac](mac-operations.md) |
 | Memahami folder, port, service, data, TLS dan DNS | [Arsitektur VPS dan Railway](vps-copy.md) |
 | Push kode, GitHub Actions, OIDC, rilis dan rollback kode | [Autodeploy VPS](autodeploy-vps.md) |
@@ -84,6 +91,7 @@ Kredensial aplikasi berada di `/srv/surveey/private` dan variable Railway;
 credential CI berada di GitHub Secrets/Variables. Tidak perlu menyalin env
 produksi ke Mac untuk push kode atau menjalankan autodeploy yang sudah ada.
 
-Belum ada dump PostgreSQL produksi yang berhasil dibuat pada persiapan ini.
-Salinan awal media 1.190 objek pada VPS adalah snapshot lama yang tidak dipakai
-aplikasi aktif. Kehadiran snapshot tersebut bukan bukti backup data terkini.
+Pada persiapan awal belum ada dump PostgreSQL yang berhasil dibuat. Migrasi
+22 Oktober kemudian menghasilkan dump final dan arsip 1.190 media; lokasi dan
+hasil perbandingannya dicatat di [runbook data VPS](vps-data-migration-2026-10-22.md).
+Backup migrasi tersebut tidak otomatis menjadi backup perubahan berikutnya.

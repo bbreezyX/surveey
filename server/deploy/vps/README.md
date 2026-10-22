@@ -1,5 +1,9 @@
 # Sumber operasional Surveey VPS
 
+Sejak **22 Oktober 2026, 17.22 WIB**, database dan media aktif berada di VPS.
+Baca [runbook migrasi data](../../../docs/vps-data-migration-2026-10-22.md).
+Railway dipertahankan sebagai snapshot sumber dengan writer dibatasi.
+
 Mulai dari [handoff Railway–VPS](../../../docs/railway-vps-handoff.md) dan
 [panduan Mac](../../../docs/mac-operations.md). File di direktori ini disimpan
 agar referensi implementasi ikut checkout pada perangkat lain. Menerbitkan
@@ -12,6 +16,7 @@ sumbernya tidak menjalankan skrip atau menerapkan ulang konfigurasi server.
 | `package-ci-release.py` | Kemasan allowlist kode/aset/wheel serta metadata commit/branch dari konteks push GitHub |
 | `ssh-release-gate.py` | Forced command untuk akun CI, menolak shell/perintah lain |
 | `receive-release.py` | Penerima root-owned yang menginstal dan mengganti rilis Surveey |
+| `migrate-local-data.py` | Operasi satu kali prepare/cutover data; input credential privat di stdin, bukan hook deploy |
 | `prepare-autodeploy.py` | Pendaftaran awal akun/key/receiver; bukan langkah setiap deploy |
 
 Workflow aktif adalah [deploy-vps.yml](../../../.github/workflows/deploy-vps.yml).
@@ -54,6 +59,6 @@ Berkas tersebut tidak termasuk repo. Template tidak berisi private key/token.
 Jangan menyalin template Caddy loopback/tailnet langsung ke edge produksi karena
 listener/import origin publik yang telah ditambahkan dapat hilang.
 
-Pada mode aktif, PostgreSQL dan media tetap Railway. Jangan menjalankan exporter,
-restore, atau cluster lokal sebagai bagian deploy aplikasi biasa. Pengembalian
-Railway dijelaskan pada [runbook](../../../docs/return-to-railway.md).
+Pada mode aktif, PostgreSQL dan media berada di VPS. Jangan menjalankan exporter,
+restore, atau installer cluster sebagai bagian deploy aplikasi biasa. Pengembalian
+Railway memerlukan pemindahan data VPS terbaru; lihat [runbook data](../../../docs/vps-data-migration-2026-10-22.md).

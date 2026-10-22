@@ -1,7 +1,12 @@
 # Railway production connection
 
-**Catatan arsitektur 21 Oktober 2026:** aplikasi produksi `survey.esdm.cloud`
-kini berada di VPS melalui Cloudflare Tunnel; database dan media tetap Railway,
+**Pembaruan 22 Oktober 2026, 17.22 WIB:** database dan media produksi telah
+dipindahkan ke VPS. PostgreSQL, volume dan bucket Railway dipertahankan sebagai
+snapshot migrasi dengan writer dibatasi. Lihat [runbook data VPS](vps-data-migration-2026-10-22.md).
+Rincian hybrid di bawah mencatat konfigurasi sebelum pemindahan data.
+
+**Catatan historis 21 Oktober 2026:** aplikasi produksi `survey.esdm.cloud`
+saat itu berada di VPS melalui Cloudflare Tunnel; database dan media tetap Railway,
 dan tiga aplikasi Railway dipertahankan sebagai cadangan. Dokumen ini merinci
 konfigurasi sisi Railway, bukan menyatakan DNS produksi saat ini menuju Railway.
 Mulai dari [handoff Railway–VPS](railway-vps-handoff.md), [akses Mac](mac-operations.md),

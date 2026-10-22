@@ -13,14 +13,16 @@ mengirim arsip melalui OpenSSH di jaringan Tailscale. Build tidak dijalankan
 di VPS bersama Niskala.
 
 Alur tidak menjalankan test, typecheck, lint, pemeriksaan HTTP, maupun migrasi
-database. Perubahan skema database perlu prosedur terpisah karena VPS dan
-cadangan Railway menggunakan PostgreSQL yang sama. Kode yang di-push harus
-tetap kompatibel dengan skema dan versi aplikasi Railway yang berjalan.
+database. Sejak migrasi data 22 Oktober 2026, skema produksi berada pada
+PostgreSQL lokal VPS; perubahan skema tetap perlu prosedur terpisah. Railway
+menyimpan snapshot sumber dengan writer dibatasi, bukan replika data aktif.
 
 Railway tetap menggunakan integrasi GitHub/autodeploy yang sudah ada. Workflow
 VPS tidak memanggil API Railway, mematikan service, atau mengubah variabel
-Railway. PostgreSQL dan bucket media tetap Railway; env/kredensial produksi
-tetap tersimpan di `/srv/surveey/private`.
+Railway. PostgreSQL dan media produksi berada di VPS; env/kredensial produksi
+tetap tersimpan di `/srv/surveey/private`. Receiver root-owned menerima penanda
+`FULL_VPS_CONFIGURED.json` dan mempertahankan dukungan penanda hybrid lama.
+Lihat [lokasi data dan pemulihan](vps-data-migration-2026-10-22.md).
 
 ## Metadata branch dan commit rilis
 
