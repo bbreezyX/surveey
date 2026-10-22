@@ -290,7 +290,7 @@
 }
 
 /* The status name leads the sentence so a reader skimming the card gets the
-   category first ("Koordinat perlu verifikasi") and the instruction after. */
+   category first ("Perlu konfirmasi setempat") and the instruction after. */
 .feature-popup__note-title {
     display: block;
     margin-bottom: 1px;
@@ -306,7 +306,7 @@
     padding-right: 16px;
 }
 
-/* Perlu Verifikasi: the same orange the pin's ring and the list capsule use,
+/* Perlu Konfirmasi: the same orange the pin's ring and the list capsule use,
    so the reader connects the three without a legend lookup. */
 .feature-popup__note--duplikat {
     background: var(--orange-tint);
@@ -513,7 +513,7 @@
     gap: 8px;
 }
 
-/* Sized by their labels, so "Perlu Verifikasi" gets the room it needs and
+/* Sized by their labels, so "Perlu Konfirmasi" gets the room it needs and
    "Arsir" does not hold half the row for five letters. */
 .feature-popup__hatch {
     flex: 1 1 auto;

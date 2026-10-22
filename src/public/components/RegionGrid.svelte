@@ -13,14 +13,14 @@
     {@const districts = new Set(counted.map(point => point.display.kecamatan)).size}
     {@const duplicates = counted.filter(point => point.duplikat).length}
     {@const unplaced = counted.filter(point => point.belum).length}
-    <button class="atlas-cell" type="button" data-region={name} aria-label={[name, `${count} titik`, `${districts} kecamatan`, duplicates ? `${duplicates} perlu verifikasi` : '', unplaced ? `${unplaced} lokasi belum ditetapkan` : '', 'buka daftar'].filter(Boolean).join(', ')} onclick={(event) => {
+    <button class="atlas-cell" type="button" data-region={name} aria-label={[name, `${count} titik`, `${districts} kecamatan`, duplicates ? `${duplicates} perlu konfirmasi` : '', unplaced ? `${unplaced} lokasi belum ditetapkan` : '', 'buka daftar'].filter(Boolean).join(', ')} onclick={(event) => {
       const shortcut = event.target instanceof Element ? event.target.closest('[data-shortcut]')?.getAttribute('data-shortcut') : null;
       onopen(name, shortcut === 'duplikat' || shortcut === 'belum' ? shortcut : null);
     }}>
       <span class="atlas-cell__shape"><Shape region={state.dataset.boundaries.find(region => regionKey(String(region.properties.KABUPATEN_)) === regionKey(name))} {points}/></span>
       <span class="atlas-cell__name">{name.replace(/^Kab\.\s+/i, '')}</span>
       <span class="atlas-cell__meta"><b>{count}</b> titik di {districts} kecamatan</span>
-      {#if duplicates}<span class="status-flag status-flag--duplikat" data-shortcut="duplikat">{duplicates} perlu verifikasi</span>{/if}
+      {#if duplicates}<span class="status-flag status-flag--duplikat" data-shortcut="duplikat">{duplicates} perlu konfirmasi</span>{/if}
       {#if unplaced}<span class="status-flag status-flag--belum" data-shortcut="belum">{unplaced} belum ditetapkan</span>{/if}
     </button>
   {/each}

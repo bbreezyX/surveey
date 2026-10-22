@@ -13,7 +13,7 @@
   const photo = $derived(legacyPhotoUrl(point.photo));
   const kind = $derived(point.belum ? 'belum' : point.duplikat ? 'duplikat' : point.cadangan ? 'cadangan' : null);
   const sharedCoordinateCount = $derived(dataset.points.filter(p => p.latNum.toFixed(6) === point.latNum.toFixed(6) && p.lonNum.toFixed(6) === point.lonNum.toFixed(6)).length);
-  const note = $derived(point.catatan && (point.belum || point.duplikat) ? point.catatan : point.belum ? 'Pin perkiraan. Lokasi pasti ditentukan di lapangan bersama RT.' : point.duplikat ? sharedCoordinateCount > 1 ? `${sharedCoordinateCount} unit di satu koordinat. Cek posisi tiap tiang di lapangan.` : 'Cek posisi tiang di lapangan.' : point.cadangan ? 'Di luar jatah. Dipasang hanya jika ada titik lain yang batal.' : '');
+  const note = $derived(point.catatan && (point.belum || point.duplikat) ? point.catatan : point.belum ? 'Pin perkiraan. Lokasi pasti ditentukan di lapangan bersama RT.' : point.duplikat ? sharedCoordinateCount > 1 ? `${sharedCoordinateCount} unit di satu koordinat. Konfirmasi posisi tiap tiang ke RT/desa setempat.` : 'Konfirmasi posisi tiang ke RT/desa setempat.' : point.cadangan ? 'Di luar jatah. Dipasang hanya jika ada titik lain yang batal.' : '');
   const region = $derived(dataset.boundaries.find(region => regionKey(String(region.properties.KABUPATEN_)) === regionKey(point.kabupaten)));
 </script>
 <div class="feature-popup" class:is-cadangan={point.cadangan} class:is-duplikat={point.duplikat} class:is-belum={point.belum}>

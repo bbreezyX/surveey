@@ -608,7 +608,7 @@ body.is-sidebar-collapsed #sidebar {
 }
 
 /* Status words keep the map's own symbols: a yellow disc with an orange ring
-   for "perlu verifikasi", a dashed outline for "belum ditetapkan". On a cell
+   for "perlu konfirmasi", a dashed outline for "belum ditetapkan". On a cell
    each is also a shortcut into the kabupaten, filtered (custom.js reads which
    part of the cell was hit). */
 .status-flag {

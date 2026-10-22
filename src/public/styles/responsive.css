@@ -1454,7 +1454,7 @@ body.is-sidebar-collapsed .map-legend {
 }
 
 /* Legend: one key plate, read-only. Loose rounded chips took the shape of
-   the sidebar's filter pills (Semua / Perlu Verifikasi), which are buttons,
+   the sidebar's filter pills (Semua / Perlu Konfirmasi), which are buttons,
    so the key read as three toggles. Squared to the info box's 14px beside
    it and split by hairlines, it reads as a caption for the map. */
 .map-legend__pill {

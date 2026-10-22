@@ -32,9 +32,9 @@ test('retains the original layer switches, symbols, grouping and basemap capsule
   expect(await panel.locator('.ctl-switch__track').first().evaluate(element => element.getBoundingClientRect().width)).toBe(36);
   // The yellow pin explains itself, so the key never names it; its verification ring goes with the layer.
   await expect(page.locator('.map-legend__item').filter({ hasText: 'Titik PUTS' })).toHaveCount(0);
-  await expect(page.locator('.map-legend__item').filter({ hasText: 'Perlu verifikasi' })).toHaveCount(1);
+  await expect(page.locator('.map-legend__item').filter({ hasText: 'Perlu konfirmasi' })).toHaveCount(1);
   await page.getByRole('checkbox', { name: 'Titik PUTS', exact: true }).uncheck();
-  await expect(page.locator('.map-legend__item').filter({ hasText: 'Perlu verifikasi' })).toHaveCount(0);
+  await expect(page.locator('.map-legend__item').filter({ hasText: 'Perlu konfirmasi' })).toHaveCount(0);
   await expect(page.locator('.atlas-total__num')).toHaveText('500');
   await page.getByRole('checkbox', { name: 'Titik PUTS', exact: true }).check();
   await page.locator('label[for="layer-esri"]').click(); await expect(page.getByLabel('Esri Satelit', { exact: true })).toBeChecked();
@@ -232,7 +232,7 @@ test('handles data failure, retry and empty successful data', async ({ page }) =
 test('opens regions, filters, and layer options without mounting duplicate maps', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' }); await page.getByRole('button', { name: /Kab. Batanghari, 70 titik/ }).click();
   await expect(page.getByRole('heading', { name: 'Kab. Batanghari' })).toBeVisible();
-  await page.getByRole('button', { name: /Perlu Verifikasi/ }).first().click();
+  await page.getByRole('button', { name: /Perlu Konfirmasi/ }).first().click();
   await expect(page.locator('.atlas-pt')).toHaveCount(1);
   await page.getByRole('button', { name: 'Kembali ke semua wilayah' }).click();
   await page.getByRole('button', { name: 'Tampilkan pilihan layer' }).click();
