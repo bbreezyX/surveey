@@ -35,7 +35,8 @@ export function attachPointFeedback(map: OlMap, pointLayer: VectorLayer<VectorSo
       const units: SurveyPoint[] = feature.get('units'), codes = units.filter(shown).map(point => point.display.code);
       if (!codes.length) return undefined;
       const text = codeList(codes); let style = labelStyles.get(text);
-      if (!style) { style = new Style({ text: new Text({ text, font: '700 11px Figtree, system-ui, sans-serif', textAlign: 'left', textBaseline: 'middle', offsetX: 14, offsetY: -20, padding: [3, 5, 2, 5], fill: new Fill({ color: '#293d50' }), backgroundFill: new Fill({ color: 'rgba(255,255,255,.92)' }), backgroundStroke: new Stroke({ color: 'rgba(41,61,80,.28)', width: 1 }) }) }); labelStyles.set(text, style); }
+      // The stage badge sits 2–16px right of the pin's tip (17px when hovered), so the label box starts past it at 19px.
+      if (!style) { style = new Style({ text: new Text({ text, font: '700 11px Figtree, system-ui, sans-serif', textAlign: 'left', textBaseline: 'middle', offsetX: 24, offsetY: -20, padding: [3, 5, 2, 5], fill: new Fill({ color: '#293d50' }), backgroundFill: new Fill({ color: 'rgba(255,255,255,.92)' }), backgroundStroke: new Stroke({ color: 'rgba(41,61,80,.28)', width: 1 }) }) }); labelStyles.set(text, style); }
       return style;
     },
   });
