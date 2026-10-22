@@ -107,7 +107,13 @@ tbody th { width: 1%; overflow-wrap: normal; }
 .badge--stage::before { content: none; }
 .badge--stage.is-done, .atlas-pt__stage.is-done { background: var(--green-tint); color: var(--green); }
 .badge--stage svg, .atlas-pt__stage svg { flex: none; width: 13px; height: 13px; }
-.atlas-pt__stage { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-deep); font-size: 11.5px; font-weight: 700; line-height: 1.35; white-space: nowrap; }
+/* The stage chip takes its own row under the unit, from the unit's left edge: in the admin's
+   330px wing a column is ~137px, and beside the 46px unit the widest chip ("Galian Selesai",
+   ~101px) overran into the next column and past the wing's padding. */
+/* Rows keep their tops level when only one unit of a pair has a chip, and get room to breathe. */
+.atlas-units:has(.atlas-pt__stage) { align-items: start; row-gap: 10px; }
+.atlas-pt:has(> .atlas-pt__stage) { display: grid; grid-template-columns: auto minmax(0, 1fr); row-gap: 5px; }
+.atlas-pt__stage { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-deep); font-size: 11.5px; font-weight: 700; line-height: 1.35; white-space: nowrap; }
 
 /* ---------- Wings ----------
    White panels like the public map's #sidebar. Only the centre sheet's

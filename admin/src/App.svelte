@@ -269,9 +269,9 @@
                         {#if point.archived}<span class="atlas-pt__coord atlas-pt__coord--none">Arsip</span>
                         {:else if point.belum || !point.koordinat}<span class="atlas-pt__coord atlas-pt__coord--none">Belum ada koordinat</span>
                         {:else}<span class="atlas-pt__coord">{point.koordinat.split(', ')[0]}<br/>{point.koordinat.split(', ')[1]}</span>{/if}
-                        {#if stage}<span class="atlas-pt__stage" class:is-done={stageDone(stage)} aria-hidden="true">{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}
                         {#if point.drafts}<span class="atlas-pt__draft">{point.drafts > 1 ? `${point.drafts} draf` : 'Ada draf'}</span>{/if}
                       </span>
+                      {#if stage}<span class="atlas-pt__stage" class:is-done={stageDone(stage)} aria-hidden="true">{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}
                     </button>
                   {/each}
                 </div>
