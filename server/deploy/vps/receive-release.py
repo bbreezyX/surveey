@@ -83,7 +83,10 @@ def unpack(archive, destination, revision):
                 shutil.copyfileobj(incoming, output)
             target.chmod(0o644)
     manifest = json.loads((destination / 'release.json').read_text())
-    if manifest != {'format': 1, 'repository': 'bbreezyX/surveey', 'revision': revision}:
+    expected = {'format': 1, 'repository': 'bbreezyX/surveey', 'revision': revision}
+    # Keep accepting existing format-1 packages while recording the branch in
+    # new ones. Only master is authorized by the production workflow/OIDC trust.
+    if manifest not in (expected, dict(expected, branch='master')):
         raise ValueError('Release manifest does not match the upload command.')
     for name in ('app/server/config/admin_wsgi.py', 'app/server/config/media_wsgi.py',
                  'public-app/server/config/public_wsgi.py', 'app/dist/admin/.vite/manifest.json',
@@ -98,6 +101,7 @@ def unpack(archive, destination, revision):
         for path in (directory, *directory.rglob('*')):
             os.chown(path, 0, gid)
             path.chmod(0o750 if path.is_dir() else 0o640)
+    return manifest
 
 
 def install_python(destination, identifier):
@@ -235,12 +239,14 @@ def main():
                 output.write(block)
         if calculated.hexdigest() != digest:
             raise ValueError('Incomplete or corrupted upload; active release unchanged.')
-        unpack(archive, destination, revision)
+        manifest = unpack(archive, destination, revision)
         install_python(destination, identifier)
         previous = activate(destination)
         record = {'revision': revision, 'run': run_id, 'release': str(destination),
                   'previous': str(previous), 'at_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                   'tests_or_health_checks': 'Not performed', 'database_migration': False}
+        if 'branch' in manifest:
+            record['branch'] = manifest['branch']
         (destination / 'activated.json').write_text(json.dumps(record, indent=2) + '\n')
         print(json.dumps(record), flush=True)
 

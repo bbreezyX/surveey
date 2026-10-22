@@ -9,7 +9,7 @@ sumbernya tidak menjalankan skrip atau menerapkan ulang konfigurasi server.
 
 | File | Kegunaan |
 |---|---|
-| `package-ci-release.py` | Kemasan allowlist kode/aset/wheel dari runner GitHub |
+| `package-ci-release.py` | Kemasan allowlist kode/aset/wheel serta metadata commit/branch dari konteks push GitHub |
 | `ssh-release-gate.py` | Forced command untuk akun CI, menolak shell/perintah lain |
 | `receive-release.py` | Penerima root-owned yang menginstal dan mengganti rilis Surveey |
 | `prepare-autodeploy.py` | Pendaftaran awal akun/key/receiver; bukan langkah setiap deploy |
@@ -20,6 +20,12 @@ kode tidak memperbarui receiver root-owned secara otomatis; perubahan pada
 receiver/gate perlu pemasangan administratif tersendiri dalam lingkup yang
 disetujui. Env, TLS, database, media dan konfigurasi edge berada di luar paket
 rilis. Jangan memakai akun CI sebagai akun administrasi Mac.
+
+Manifest format 1 kini dapat mencatat `branch: master`. Receiver kompatibel
+tetap menerima manifest lama tanpa field branch; receiver lama yang memakai
+perbandingan manifest persis harus diperbarui sebelum paket baru dikirim.
+Riwayat penerapan dan pengisian metadata rilis aktif pada 22 Oktober 2026
+ada di [metadata branch dan commit](../../../docs/autodeploy-vps.md#metadata-branch-dan-commit-rilis).
 
 ## Referensi persiapan awal
 

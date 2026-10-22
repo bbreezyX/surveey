@@ -22,6 +22,41 @@ VPS tidak memanggil API Railway, mematikan service, atau mengubah variabel
 Railway. PostgreSQL dan bucket media tetap Railway; env/kredensial produksi
 tetap tersimpan di `/srv/surveey/private`.
 
+## Metadata branch dan commit rilis
+
+`package-ci-release.py` menyimpan `format`, `repository`, `revision`, dan
+`branch` di `release.json`. Branch diambil dari `GITHUB_REF_NAME`; pembuat
+paket mensyaratkan `GITHUB_REF_TYPE=branch`, `GITHUB_REF=refs/heads/master`,
+dan nama branch `master`, sesuai workflow produksi. Nilai branch tidak
+diturunkan dari nama folder atau keberadaan commit pada suatu branch.
+
+Penerima root-owned menerima manifest format 1 lama tanpa branch serta
+format 1 baru dengan `branch: master`. Field lain dan branch lain tetap
+ditolak. Jika manifest mencatat branch, penerima juga menyalinnya ke
+`activated.json`. Perubahan pembuat paket berlaku pada rilis yang dibuat
+dari commit yang menyertakan perubahan tersebut; paket lama tidak ditulis
+ulang otomatis. Sebelum menerbitkan pembuat paket baru ke VPS lain, pasang
+penerima yang kompatibel terlebih dahulu karena penerima lama membandingkan
+manifest secara persis dan menolak field tambahan.
+
+Pada 22 Oktober 2026, penerima terpasang
+`/usr/local/libexec/surveey-release.py` diperbarui secara atomik agar menerima
+kedua format tersebut. Metadata rilis aktif
+`2971ede0f5af-39635714863-1` dilengkapi `branch: master` pada `release.json`
+dan `activated.json`, setelah sumber GitHub Actions run `39635714863`,
+attempt `1`, mencatat event `push`, branch `master`, workflow
+`.github/workflows/deploy-vps.yml`, dan SHA
+`2971ede0f5af6eec9ff31a087de8b56524647f90` yang cocok dengan kedua file.
+Commit, timestamp aktivasi, dan pointer rilis dipertahankan.
+
+Operasi memakai lock autodeploy yang sudah ada. Salinan ketiga file sebelum
+perubahan dan catatan sumber GitHub disimpan di
+`/srv/surveey/private/configuration-history/branch-metadata-004bd46d7243484ea780351676b43a1a`.
+Tidak ada deployment, restart aplikasi, perubahan Railway/Niskala, atau
+penghapusan data. Pengujian dan verifikasi runtime sesudah perubahan tidak
+dilakukan. Dashboard membaca branch dari manifest; manifest lama tanpa field
+tersebut tetap menampilkan `Not recorded`.
+
 ## Akses yang disiapkan
 
 - Akun Linux `surveey-deploy`, terpisah dari akun deploy Niskala.

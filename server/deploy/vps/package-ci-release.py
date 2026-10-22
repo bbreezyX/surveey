@@ -10,6 +10,10 @@ ROOT = Path(__file__).resolve().parents[3]
 revision = os.environ['GITHUB_SHA']
 if not re.fullmatch(r'[a-f0-9]{40}', revision):
     raise SystemExit('GITHUB_SHA must be a full commit SHA.')
+branch = os.environ['GITHUB_REF_NAME']
+if (branch != 'master' or os.environ.get('GITHUB_REF_TYPE') != 'branch'
+        or os.environ.get('GITHUB_REF') != 'refs/heads/' + branch):
+    raise SystemExit('Release metadata requires the master branch push context.')
 output = ROOT / '.local/surveey-release.tar.gz'
 output.parent.mkdir(exist_ok=True)
 
@@ -52,7 +56,7 @@ with tarfile.open(output, 'w:gz', compresslevel=3) as archive:
     for wheel in sorted((ROOT / '.local/vps-wheels').glob('*.whl')):
         add_file(archive, wheel, f'wheels/{wheel.name}')
     content = json.dumps({'format': 1, 'repository': 'bbreezyX/surveey',
-                          'revision': revision}).encode()
+                          'revision': revision, 'branch': branch}).encode()
     member = tarfile.TarInfo('release.json')
     member.size = len(content)
     member.mode = 0o644
