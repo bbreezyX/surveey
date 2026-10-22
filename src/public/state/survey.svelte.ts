@@ -1,6 +1,6 @@
 import type { SurveyDataset, StatusFilter } from '../../shared/survey/types';
 import { matchesQuery } from '../../shared/survey/search';
-import { countOfficialPoints } from '../../shared/survey/status';
+import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
 import type { SurveyProgress } from '../../shared/survey/progress';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
 export function createSurveyState(initial: SurveyDataset) {
@@ -18,7 +18,10 @@ export function createSurveyState(initial: SurveyDataset) {
   // The card of the detail just closed is marked briefly so the eye lands on it, then lets go.
   let recentNomor = $state<string | null>(null), recentTimer: ReturnType<typeof setTimeout> | undefined;
   const layers = $state({ google: true, esri: false, boundaries: true, mask: true, area: false, sk: true, cadangan: false, belum: true });
-  const points = $derived([...dataset.points].sort((a, b) => collator.compare(a.nomor, b.nomor)));
+  // Once esdm.cloud has accepted any build stage for a shared-coordinate unit, the crew has found and dug
+  // its spot, so asking readers to confirm it with the RT/desa no longer helps; the list, filter, counts and
+  // popup then treat it as an ordinary SK point. Only those few points are copied, the rest keep their objects.
+  const points = $derived([...dataset.points].map(point => point.duplikat && progress?.get(point.nomor) ? { ...point, duplikat: false, searchText: point.searchText.replace(STATUS_LABEL.duplikat.search, '') } : point).sort((a, b) => collator.compare(a.nomor, b.nomor)));
   const regionNames = $derived([...new Set(points.map(point => point.kabupaten))].sort((a, b) => Number(/^Kota\s/i.test(b)) - Number(/^Kota\s/i.test(a)) || collator.compare(a, b)));
   const visiblePoints = $derived(points.filter(point => (!activeRegion || point.kabupaten === activeRegion) && (!statusFilter || point[statusFilter]) && matchesQuery(point, query)));
   const visibleIds = $derived(new Set(visiblePoints.map(point => point.nomor)));

@@ -14,7 +14,9 @@ import { stageBadgeSvg } from '../../shared/survey/progress';
 const cache = new Map<string, Style[]>();
 const badgeSrc = (stage: number) => `data:image/svg+xml,${encodeURIComponent(stageBadgeSvg(stage))}`;
 export function pointStyle(point: SurveyPoint, resolution: number, selected = false, hovered = false, stage = 0): Style[] {
-  const kind = point.cadangan ? 'cadangan' : point.belum ? 'belum' : point.duplikat ? 'duplikat' : 'sk';
+  // A stage accepted on esdm.cloud means the crew found the spot and dug there, so the shared-coordinate
+  // warning has done its job; the map holds its own copy of the points, hence the check on stage here too.
+  const kind = point.cadangan ? 'cadangan' : point.belum ? 'belum' : point.duplikat && !stage ? 'duplikat' : 'sk';
   const radius = Math.round((5 + 2 * Math.max(0, Math.min(1, (430 - resolution) / 354))) * 2) / 2;
   const dot = resolution > 76 && !selected;
   // Cadangan is never built, so it never wears the badge whatever the data says. parseProgress only
