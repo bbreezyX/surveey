@@ -792,3 +792,8 @@
 .feature-popup__stages li.is-next::before {
     background: var(--hairline-strong);
 }
+
+/* Lampu up with the pole but not yet seen lit at night: a dashed segment, like the badge's dashed ring. */
+.feature-popup__stages li.is-partial::before {
+    background: repeating-linear-gradient(90deg, var(--blue) 0 4px, transparent 4px 7px);
+}

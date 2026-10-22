@@ -3,7 +3,7 @@
   import { legacyPhotoUrl } from '../../shared/survey/media';
   import { directionsUrl } from '../../shared/survey/coordinates';
   import { progressReportUrl } from '../../shared/survey/report';
-  import { BUILD_STAGES, stageDone, stageSummary } from '../../shared/survey/progress';
+  import { BUILD_STAGES, lampAwaitsNight, stageDone, stageSummary } from '../../shared/survey/progress';
   import { STATUS_LABEL } from '../../shared/survey/status';
   import { regionKey } from '../data/regions';
   import Shape from './Shape.svelte';
@@ -42,7 +42,7 @@
         <!-- One bar segment per stage with its name beneath: the fill reads at a glance, the label says which step it is. -->
         <ol class="feature-popup__stages">
           {#each BUILD_STAGES as name, index (name)}
-            <li class:is-done={index < stage} class:is-next={index === stage}>{name}<span class="visually-hidden">{index < stage ? ' selesai' : ' belum'}</span></li>
+            <li class:is-done={index < stage} class:is-next={index === stage} class:is-partial={index === stage && lampAwaitsNight(stage)}>{name}<span class="visually-hidden">{index < stage ? ' selesai' : index === stage && lampAwaitsNight(stage) ? ' terpasang, menunggu foto malam' : ' belum'}</span></li>
           {/each}
         </ol>
       </a>

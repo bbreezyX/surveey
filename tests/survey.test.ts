@@ -42,6 +42,8 @@ describe('build progress from esdm.cloud', () => {
   it('draws every stage apart and keeps the green check for a lit lamp', () => {
     expect([1, 2, 3, 4].map(stage => stageBadgeSvg(stage).includes('#1f8f4e'))).toEqual([false, false, false, true]);
     expect(new Set([1, 2, 3, 4].map(stageBadgeSvg)).size).toBe(4);
+    // Only Tiang's badge draws the dashed ring of a Lampu still to be seen lit at night.
+    expect([1, 2, 3, 4].map(stage => stageBadgeSvg(stage).includes('stroke-dasharray'))).toEqual([false, false, true, false]);
     expect([0, 1, 2, 3, 4].map(stageDone)).toEqual([false, false, false, false, true]);
   });
   it('names the last finished stage, and a lit lamp as terpasang', () => {
