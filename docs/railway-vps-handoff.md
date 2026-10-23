@@ -26,7 +26,7 @@ Railway PostgreSQL + bucket: snapshot migrasi dipertahankan, writer dibatasi
 
 GitHub bbreezyX/surveey, master
   |-- GitHub Actions -> Tailscale -> SSH khusus -> rilis aplikasi di VPS
-  `-- Railway GitHub integration -> tiga aplikasi cadangan Railway
+  `-- (Railway: source repo masih terpasang, autodeploy mati sejak 23 Okt)
 
 Niskala: /srv/niskala-udara, layanan dan Caddy terpisah dari Surveey
 ```

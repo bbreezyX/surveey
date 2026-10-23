@@ -24,6 +24,12 @@ Keputusan historis 21 Oktober: **tunda penghentian aplikasi Railway; biarkan Rai
 
 Autodeploy frontend `surveypjuts` sempat dinonaktifkan saat persiapan penghentian, lalu dipulihkan ke branch `master`; hasil UI kembali menampilkan **Auto deploys when pushed to GitHub**. Pengaturan autodeploy dua aplikasi lainnya tidak diubah. Tidak ada pemeriksaan fungsional tambahan untuk pembatalan ini.
 
+**23 Oktober 2026: autodeploy GitHub ketiga aplikasi Railway dimatikan.** Setelah migrasi data, setiap push ke `master` tetap membangun ketiga aplikasi Railway. `survey-public-data` selalu gagal healthcheck (`role "survey_public_app" is not permitted to log in`) dan meninggalkan check merah pada commit, padahal deploy VPS sukses. Deployment trigger GitHub `surveypjuts` (`77e0bba3-440e-4024-b075-0b638f95d948`), `survey-admin` (`8b59e965-7a97-4df0-ba53-3275a242797e`) dan `survey-public-data` (`78b5a654-26cd-41dd-9c6e-0cafc868ed6b`) dihapus melalui `deploymentTriggerDelete`, sama dengan tombol **Disable** di UI. Source `bbreezyX/surveey`, service, variabel, deployment terakhir (`f71e96f`), Postgres, volume dan bucket tidak diubah. Untuk menyalakan lagi, klik **Enable** di Settings tiap service, atau jalankan per service:
+
+```bash
+railway api 'mutation($i:DeploymentTriggerCreateInput!){deploymentTriggerCreate(input:$i){id}}' --var 'i={"projectId":"ebebdd21-0358-4ab1-a0d5-1afe4ee2673b","environmentId":"6abf965b-42d4-44ad-8b15-55c8be2adc76","serviceId":"<service id>","provider":"github","repository":"bbreezyX/surveey","branch":"master","checkSuites":false}'
+```
+
 ## Arsip posisi data sebelum migrasi 22 Oktober
 
 | Komponen | Lokasi produksi yang digunakan |

@@ -14,11 +14,11 @@ hanya menerima foto turunan yang sudah diterbitkan.
 
 ## Operasional Railway, VPS, dan Mac
 
-Aplikasi produksi menggunakan VPS Niskala melalui Cloudflare Tunnel. Database
-dan media tetap Railway; tiga aplikasi Railway dipertahankan sebagai cadangan.
-Push normal ke `master` memicu deploy VPS melalui GitHub Actions/Tailscale dan
-autodeploy Railway secara terpisah. Keberhasilan terakhir yang tercatat untuk
-VPS tidak membuktikan kesiapan Railway; lihat catatan pengujian.
+Aplikasi, database dan media produksi berada di VPS Niskala melalui Cloudflare
+Tunnel. Push normal ke `master` hanya memicu deploy VPS melalui GitHub
+Actions/Tailscale. Tiga aplikasi Railway disimpan sebagai cadangan dengan
+snapshot data sebelum migrasi; autodeploy GitHub-nya dimatikan sejak
+23 Oktober 2026, jadi Railway tidak lagi membangun setiap push.
 
 - [Mulai di sini: handoff Railway–VPS](docs/railway-vps-handoff.md)
 - [Melanjutkan dari Mac: GitHub, Tailscale dan SSH](docs/mac-operations.md)

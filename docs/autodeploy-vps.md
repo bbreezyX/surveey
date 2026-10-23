@@ -17,8 +17,10 @@ database. Sejak migrasi data 22 Oktober 2026, skema produksi berada pada
 PostgreSQL lokal VPS; perubahan skema tetap perlu prosedur terpisah. Railway
 menyimpan snapshot sumber dengan writer dibatasi, bukan replika data aktif.
 
-Railway tetap menggunakan integrasi GitHub/autodeploy yang sudah ada. Workflow
-VPS tidak memanggil API Railway, mematikan service, atau mengubah variabel
+Sejak 23 Oktober 2026 autodeploy GitHub ketiga aplikasi Railway dimatikan,
+sehingga push ke `master` hanya menjalankan workflow ini; lihat
+[kembali ke Railway](return-to-railway.md) untuk alasan dan cara menyalakan
+lagi. Workflow VPS tidak memanggil API Railway, mematikan service, atau mengubah variabel
 Railway. PostgreSQL dan media produksi berada di VPS; env/kredensial produksi
 tetap tersimpan di `/srv/surveey/private`. Receiver root-owned menerima penanda
 `FULL_VPS_CONFIGURED.json` dan mempertahankan dukungan penanda hybrid lama.
