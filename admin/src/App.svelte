@@ -123,7 +123,8 @@
   }
   onMount(() => {
     backdrop = createBackdrop(backdropEl, { onSelect: id => { if (page === 'points') select(id); } });
-    fetch(PROGRESS_URL, { credentials: 'omit' }).then(r => r.ok ? r.json() : null).then(v => { if (v) progress = parseProgress(v); }).catch(() => {});
+    // no-cache: esdm.cloud allows a 60 s browser copy, which hid a stage just accepted there.
+    fetch(PROGRESS_URL, { credentials: 'omit', cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(v => { if (v) progress = parseProgress(v); }).catch(() => {});
     (async () => {
       try {
         const result = await api<{account: Account; csrf: string; points: {items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}; map: {items: MapPoint[]}}>('bootstrap');

@@ -7,7 +7,9 @@ export async function loadProgress(signal: AbortSignal): Promise<SurveyProgress 
   signal.addEventListener('abort', abort, { once: true });
   const deadline = setTimeout(abort, 15_000);
   try {
-    const response = await fetch(URL_OVERRIDE || PROGRESS_URL, { signal: attempt.signal, credentials: 'omit' });
+    // esdm.cloud lets browsers keep the list for 60 s, so a stage accepted there a moment ago stayed
+    // hidden until a hard refresh. no-cache always asks esdm.cloud; the list is only a few KB.
+    const response = await fetch(URL_OVERRIDE || PROGRESS_URL, { signal: attempt.signal, credentials: 'omit', cache: 'no-cache' });
     return response.ok ? parseProgress(await response.json()) : null;
   } catch {
     return null;

@@ -47,6 +47,32 @@ test('retains the original layer switches, symbols, grouping and basemap capsule
   await expect(page.getByRole('searchbox')).toHaveValue(''); await expect(page.locator('.atlas-cell')).toHaveCount(10);
 });
 
+test('shows a stage reported on esdm.cloud/lapangan when the reader returns, without a hard refresh', async ({ page }) => {
+  let stage = 1, nomor = '';
+  // Playwright routing turns the HTTP cache off and Chrome adds the cache header below what routing sees,
+  // so the fetch's own cache mode is what proves esdm.cloud's 60 s browser copy is skipped.
+  await page.addInitScript(() => {
+    const seen: (string | undefined)[] = (window as Window & { progressCache?: typeof seen }).progressCache = [], original = window.fetch;
+    window.fetch = (input, init) => { if (String(input).includes('/api/public/survey-progress')) seen.push(init?.cache); return original(input, init); };
+  });
+  await page.route('https://www.esdm.cloud/api/public/survey-progress', route => {
+    return route.fulfill({ headers: { 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=60' }, json: { stages: { [nomor]: stage } } });
+  });
+  await page.goto('/'); await expect(page.locator('.atlas-total__num')).toHaveText('500');
+  await page.getByRole('searchbox').fill('TANJUNG RADEN-007');
+  const point = page.locator('.atlas-pt'); await expect(point).toHaveCount(1);
+  nomor = (await point.getAttribute('data-item-id'))!;
+  // The first answer came before the Nomor was known; ask again the way a returning reader does.
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect(point.locator('.atlas-pt__stage')).toHaveText('Galian Selesai');
+  stage = 4;
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect(point.locator('.atlas-pt__stage')).toHaveText('Terpasang');
+  const modes = await page.evaluate(() => (window as Window & { progressCache?: string[] }).progressCache);
+  expect(modes?.length).toBeGreaterThanOrEqual(3);
+  for (const mode of modes!) expect(mode).toBe('no-cache');
+});
+
 test('keeps the chosen marker visible while its ordinary point layer is hidden', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await page.goto('/');
   await page.getByRole('button', { name: 'Tampilkan pilihan layer' }).click();

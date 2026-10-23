@@ -43,6 +43,13 @@
       if (progress) state.progress = progress;
     } finally { refreshing = false; }
   }
+  // Build stages move while the points do not: a crew reports on esdm.cloud/lapangan in another tab and
+  // comes back here. The stage list is small, so every return fetches it, not only after STALE_MS.
+  async function refreshProgress() {
+    const state = model, attempt = controller; if (!state || !attempt || refreshing) return;
+    const progress = await loadProgress(attempt.signal);
+    if (progress && !disposed && !attempt.signal.aborted && model === state) state.progress = progress;
+  }
   // Data stays current without the reader doing anything: a failed first load retries, a stored copy is
   // swapped for fresh data, and a map left open in a pocket all morning refreshes when it is looked at again.
   const STALE_MS = 5 * 60_000, RETRY_MS = 30_000;
@@ -51,6 +58,7 @@
     if (disposed || document.visibilityState !== 'visible' || (!force && navigator.onLine === false)) return;
     if (!model) { if (error) load(); return; }
     if (force || model.storedAt || !model.progress || Date.now() - freshAt > STALE_MS) void refresh();
+    else void refreshProgress();
   }
   onMount(() => {
     const stopConnection = connection.start();
