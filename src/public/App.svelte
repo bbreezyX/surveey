@@ -14,6 +14,7 @@
   import { createLocator } from './state/locate.svelte';
   import { createConnection } from './state/connection.svelte';
   import ConnectionStatus from './components/ConnectionStatus.svelte';
+  import { recallView, rememberView } from './state/view-memory';
   let model = $state.raw<SurveyState | null>(null), adapter = $state.raw<SurveyMapAdapter | null>(null), error = $state('');
   let controller: AbortController | null = null, disposed = false;
   const locator = createLocator(), connection = createConnection();
@@ -27,7 +28,7 @@
     // Build progress comes from esdm.cloud and never holds up the map; it lands on the pins when it arrives.
     const progress = loadProgress(attempt.signal);
     connection.loading(true);
-    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) state.progress = value; }); } }
+    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset); const saved = recallView(); if (saved) state.restore(saved); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) state.progress = value; }); } }
     catch (problem) { if (!disposed && !attempt.signal.aborted) { error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; connection.suspect(); } }
     finally { if (controller === attempt) connection.loading(false); }
   }
@@ -66,8 +67,11 @@
     const wake = () => reconnect(), retry = setInterval(() => { if (!model ? !!error : !!model.storedAt || !model.progress) reconnect(); }, RETRY_MS);
     // The service worker says when a slow download it was still finishing has landed in its store.
     const fromWorker = (event: MessageEvent) => { if (event.data?.type === 'puts-data-updated') reconnect(true); };
-    addEventListener('online', wake); document.addEventListener('visibilitychange', wake); navigator.serviceWorker?.addEventListener('message', fromWorker);
-    return () => { disposed = true; stopConnection(); clearInterval(retry); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
+    // Hidden is the last moment the page is sure to run: a phone may discard the tab without another event.
+    const remember = () => { const state = model, view = adapter?.getView() ?? null; if (state) rememberView({ selected: state.selectedNomor, region: state.activeRegion, filter: state.statusFilter, query: state.query, panel: state.panelOpen, center: view?.center ?? null, zoom: view?.zoom ?? null }); };
+    const hide = () => { if (document.visibilityState === 'hidden') remember(); };
+    addEventListener('online', wake); document.addEventListener('visibilitychange', wake); document.addEventListener('visibilitychange', hide); addEventListener('pagehide', remember); navigator.serviceWorker?.addEventListener('message', fromWorker);
+    return () => { disposed = true; stopConnection(); clearInterval(retry); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); document.removeEventListener('visibilitychange', hide); removeEventListener('pagehide', remember); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
   });
   $effect(() => { document.body.classList.toggle('is-popup-open', !!model?.selected); document.body.classList.toggle('is-panel-open', !!model?.panelOpen); document.body.classList.toggle('is-sidebar-collapsed', !!model?.sidebarCollapsed); document.body.classList.toggle('is-data-unavailable', !model); });
   $effect(() => {
@@ -75,6 +79,8 @@
     const revision = model.fitRevision; if (revision === appliedFit) return; appliedFit = revision;
     cancelAnimationFrame(fitFrame); clearTimeout(fitTimer);
     const state = model, instance = adapter, reason = state.fitReason;
+    // A restored view already put the map where the reader left it.
+    if (reason === 'initial' && state.initialView) return;
     const options = reason === 'initial' ? { duration: 0, maxZoom: 15 } : reason === 'region' ? { duration: 700, maxZoom: state.activeRegion ? 14 : 15 } : { duration: 500, maxZoom: 16 };
     const schedule = () => { fitFrame = requestAnimationFrame(() => { if (!disposed && !state.selectedNomor) instance.fitToPoints(state.visibleIds, options); }); };
     if (!untrack(() => state.selectedNomor)) { if (reason === 'search') fitTimer = setTimeout(schedule, 250); else schedule(); }

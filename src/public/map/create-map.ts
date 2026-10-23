@@ -39,12 +39,14 @@ export interface SurveyMapAdapter {
   // Newer points after a reconnect; the view, layers and selection stay as the reader left them.
   setPoints(points: SurveyPoint[]): void;
   fitToPoints(ids: ReadonlySet<string>, options?: FitOptions): void;
+  // Where the reader is looking, saved so a reload the phone forces on a background tab can resume there.
+  getView(): { center: [number, number]; zoom: number } | null;
   setLayerVisibility(key: LayerKey, visible: boolean): void;
   updateSize(): void;
   setUserLocation(fix: Fix | null, nearest: SurveyPoint | null, here?: boolean, frame?: boolean): void;
   dispose(): void;
 }
-export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; onSelect: (nomor: string | null, nearby?: boolean) => void; onBasemapFallback?: () => void; onTileTrouble?: () => void; onTilesSlow?: (slow: boolean) => void }): SurveyMapAdapter {
+export function createSurveyMap(options: { target: HTMLElement; popup: HTMLElement; dataset: SurveyDataset; view?: { center: [number, number]; zoom: number } | null; onSelect: (nomor: string | null, nearby?: boolean) => void; onBasemapFallback?: () => void; onTileTrouble?: () => void; onTilesSlow?: (slow: boolean) => void }): SurveyMapAdapter {
   const { boundaries, dissolved } = options.dataset;
   let points = options.dataset.points;
   const coordinateKey = (point: SurveyPoint) => `${point.latNum.toFixed(6)},${point.lonNum.toFixed(6)}`;
@@ -138,7 +140,8 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   let positionFrame = 0;
   const resize = () => { if (disposed) return; map.updateSize(); if (selected) { const point = byId.get(selected); if (point) { focusPoint(point, map.getView().getZoom() ?? 17); positionPopup(point); } } };
   window.addEventListener('resize', resize);
-  fitToPoints(visibleIds, { duration: 0 });
+  if (options.view) { map.getView().setCenter(options.view.center); map.getView().setZoom(options.view.zoom); }
+  else fitToPoints(visibleIds, { duration: 0 });
   return {
     setSelection(nomor) {
       selected = nomor; feedback.refresh(); pointLayer.changed(); cancelAnimationFrame(positionFrame);
@@ -165,6 +168,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       const point = selected ? byId.get(selected) : undefined; if (point) positionPopup(point);
     },
     fitToPoints,
+    getView() { const view = map.getView(), center = view.getCenter(), zoom = view.getZoom(); return center && zoom !== undefined ? { center: [center[0], center[1]], zoom } : null; },
     setLayerVisibility(key, visible) {
       if (key === 'sk' || key === 'cadangan' || key === 'belum') { flags[key] = visible; feedback.refresh(); pointLayer.changed(); }
       else if (key === 'google' || key === 'esri') { if (key === 'google') google.setVisible(visible); else esri.setVisible(visible); }

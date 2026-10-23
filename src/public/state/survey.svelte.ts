@@ -2,6 +2,7 @@ import type { SurveyDataset, StatusFilter } from '../../shared/survey/types';
 import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
 import type { SurveyProgress } from '../../shared/survey/progress';
+import type { SavedView } from './view-memory';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
 export function createSurveyState(initial: SurveyDataset) {
   // Replaced in place when a reconnect brings newer data, so the open region, search, filter, selected
@@ -17,6 +18,8 @@ export function createSurveyState(initial: SurveyDataset) {
   let returnToList = false;
   // The card of the detail just closed is marked briefly so the eye lands on it, then lets go.
   let recentNomor = $state<string | null>(null), recentTimer: ReturnType<typeof setTimeout> | undefined;
+  // The map position a reload resumes from, read once when the map is built; null fits the points as usual.
+  let initialView: { center: [number, number]; zoom: number } | null = null;
   const layers = $state({ google: true, esri: false, boundaries: true, mask: true, area: false, sk: true, cadangan: false, belum: true });
   // Once esdm.cloud has accepted any build stage for a shared-coordinate unit, the crew has found and dug
   // its spot, so asking readers to confirm it with the RT/desa no longer helps; the list, filter, counts and
@@ -46,6 +49,16 @@ export function createSurveyState(initial: SurveyDataset) {
     get visiblePoints() { return visiblePoints; }, get visibleIds() { return visibleIds; },
     get count() { return countOfficialPoints(visiblePoints); },
     get panelOpen() { return panelOpen; }, set panelOpen(value: boolean) { panelOpen = value; },
+    get initialView() { return initialView; },
+    // Reopens what the reader had on screen before the phone dropped the tab. Set directly rather than
+    // through openRegion/query, which would refit the map away from the position being restored; a
+    // kabupaten or point no longer in the data is left out.
+    restore(view: SavedView) {
+      if (view.region && regionNames.includes(view.region)) activeRegion = view.region;
+      statusFilter = view.filter; query = view.query;
+      if (view.selected && visiblePoints.some(point => point.nomor === view.selected)) selectedNomor = view.selected; else panelOpen = view.panel;
+      initialView = view.center && view.zoom !== null ? { center: view.center, zoom: view.zoom } : null;
+    },
     get sidebarCollapsed() { return sidebarCollapsed; }, set sidebarCollapsed(value: boolean) { sidebarCollapsed = value; },
     openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { recentNomor = null; activeRegion = name; statusFilter = filter; selectedNomor = null; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
     setFilter(filter: StatusFilter) { recentNomor = null; statusFilter = filter; selectedNomor = null; fitReason = 'filter'; fitRevision++; },
