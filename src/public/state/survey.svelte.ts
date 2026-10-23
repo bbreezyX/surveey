@@ -59,6 +59,14 @@ export function createSurveyState(initial: SurveyDataset) {
       if (view.selected && visiblePoints.some(point => point.nomor === view.selected)) selectedNomor = view.selected; else panelOpen = view.panel;
       initialView = view.center && view.zoom !== null ? { center: view.center, zoom: view.zoom } : null;
     },
+    // A link naming a point (?nomor=) wins over the restored view: its kabupaten opens with nothing
+    // filtered out, and the map goes to the point rather than the position being resumed.
+    openLinked(nomor: string) {
+      const point = points.find(item => item.nomor === nomor);
+      if (!point) return false;
+      activeRegion = point.kabupaten; statusFilter = null; query = ''; panelOpen = false; initialView = null;
+      selectedNomor = point.nomor; return true;
+    },
     get sidebarCollapsed() { return sidebarCollapsed; }, set sidebarCollapsed(value: boolean) { sidebarCollapsed = value; },
     openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { recentNomor = null; activeRegion = name; statusFilter = filter; selectedNomor = null; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
     setFilter(filter: StatusFilter) { recentNomor = null; statusFilter = filter; selectedNomor = null; fitReason = 'filter'; fitRevision++; },

@@ -3,7 +3,7 @@ import { getPointFlags, countOfficialPoints } from '../src/shared/survey/status'
 import { parseCoordinateQuery, formatCoordPair } from '../src/shared/survey/coordinates';
 import { legacyPhotoUrl } from '../src/shared/survey/media';
 import { latestDocumentationDate } from '../src/shared/survey/dates';
-import { progressReportUrl } from '../src/shared/survey/report';
+import { linkedNomor, progressReportUrl } from '../src/shared/survey/report';
 import { parseProgress, stageBadgeSvg, stageDone, stageSummary } from '../src/shared/survey/progress';
 describe('survey evidence and counting', () => {
   it('ignores malformed and impossible optional dates without normalizing them', () => {
@@ -31,6 +31,12 @@ describe('survey evidence and counting', () => {
 describe('progress report link', () => {
   it('names the point by its Nomor, spaces and all', () => {
     expect(progressReportUrl('KERINCI-SIULAK-DUSUN DALAM-001')).toBe('https://www.esdm.cloud/lapangan?nomor=KERINCI-SIULAK-DUSUN%20DALAM-001');
+  });
+  it('reads back the Nomor esdm.cloud links here with', () => {
+    expect(linkedNomor('?nomor=KERINCI-SIULAK-DUSUN%20DALAM-001')).toBe('KERINCI-SIULAK-DUSUN DALAM-001');
+    expect(linkedNomor('?nomor=MUARO+JAMBI-JAMBI+LUAR+KOTA-MENDALO+DARAT-012&x=1')).toBe('MUARO JAMBI-JAMBI LUAR KOTA-MENDALO DARAT-012');
+    expect(linkedNomor('?nomor=%20%20')).toBeNull();
+    expect(linkedNomor('')).toBeNull();
   });
 });
 describe('build progress from esdm.cloud', () => {

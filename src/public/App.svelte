@@ -15,6 +15,7 @@
   import { createConnection } from './state/connection.svelte';
   import ConnectionStatus from './components/ConnectionStatus.svelte';
   import { recallView, rememberView } from './state/view-memory';
+  import { linkedNomor } from '../shared/survey/report';
   let model = $state.raw<SurveyState | null>(null), adapter = $state.raw<SurveyMapAdapter | null>(null), error = $state('');
   let controller: AbortController | null = null, disposed = false;
   const locator = createLocator(), connection = createConnection();
@@ -22,13 +23,21 @@
   let fitTimer: ReturnType<typeof setTimeout> | undefined, appliedFit = -1;
   // When the points last came from the network rather than the service worker's stored copy.
   let freshAt = 0, refreshing = $state(false);
+  // Opens the point esdm.cloud/lapangan linked to, once: the parameter leaves the address so a reload
+  // or a shared link afterwards resumes the reader's own view.
+  function openLinkedPoint(state: SurveyState) {
+    const nomor = linkedNomor(location.search); if (!nomor) return;
+    state.openLinked(nomor);
+    const params = new URLSearchParams(location.search); params.delete('nomor');
+    history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
+  }
   async function load() {
     controller?.abort(); const attempt = new AbortController(); controller = attempt;
     error = ''; model = null;
     // Build progress comes from esdm.cloud and never holds up the map; it lands on the pins when it arrives.
     const progress = loadProgress(attempt.signal);
     connection.loading(true);
-    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset); const saved = recallView(); if (saved) state.restore(saved); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) state.progress = value; }); } }
+    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset); const saved = recallView(); if (saved) state.restore(saved); openLinkedPoint(state); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) state.progress = value; }); } }
     catch (problem) { if (!disposed && !attempt.signal.aborted) { error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; connection.suspect(); } }
     finally { if (controller === attempt) connection.loading(false); }
   }
