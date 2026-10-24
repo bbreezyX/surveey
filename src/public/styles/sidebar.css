@@ -653,7 +653,16 @@ body.is-sidebar-collapsed #sidebar {
     }
 }
 
-/* One kabupaten: kecamatan groups, desa groups inside, unit tiles inside. */
+/* One kabupaten: kecamatan groups, desa groups inside, unit tiles inside.
+   The kecamatan band has to outrank the desa heads under it. On the old
+   near-white frost with divider edges it barely read as a break, and the
+   larger desa name looked like the senior heading. A firmer tint, a darker
+   edge, a 14.5px name and white space before each new kecamatan make the
+   break land at a glance while the list scrolls. */
+.atlas-group + .atlas-group {
+    margin-top: 12px;
+}
+
 .atlas-section {
     position: sticky;
     z-index: 1;
@@ -662,11 +671,11 @@ body.is-sidebar-collapsed #sidebar {
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    padding: 8px 18px;
-    border-top: 1px solid var(--divider);
-    border-bottom: 1px solid var(--divider);
-    background: var(--frost);
-    font-size: 13.5px;
+    padding: 10px 18px;
+    border-top: 1px solid #c6d3df;
+    border-bottom: 1px solid #c6d3df;
+    background: var(--hairline);
+    font-size: 14.5px;
     font-weight: 750;
     /* Slower than the panel's ease-out, and eased both ways: the head
        changes colour mid-scroll, under the eye, and a quick flip read as a
