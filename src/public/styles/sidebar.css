@@ -740,10 +740,13 @@ body.is-sidebar-collapsed #sidebar {
 }
 
 /* Units in two columns: the numbered tile with its coordinate beside it,
-   under the survey landmark where there is one. */
+   under the survey landmark where there is one. 148px is the narrowest
+   column where the longest stage badge ("Galian Selesai", 95px) still sits
+   on one line beside the tile; at 140px a 344-360px phone wrapped it into a
+   two-line blob. Narrower lists (320px phones) fall back to one column. */
 .atlas-units {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
     gap: 4px 10px;
     margin-top: 10px;
 }
@@ -751,7 +754,7 @@ body.is-sidebar-collapsed #sidebar {
 .atlas-pt {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 7px;
     min-width: 0;
     margin: 0;
     padding: 3px;
@@ -858,15 +861,16 @@ body.is-sidebar-collapsed #sidebar {
     align-self: flex-start;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     margin-top: 3px;
-    padding: 2px 8px 2px 3px;
+    padding: 2px 6px 2px 3px;
     border-radius: 999px;
     background: var(--blue-tint);
     color: var(--blue-deep);
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1.35;
+    white-space: nowrap;
 }
 
 .atlas-pt__stage.is-done {
@@ -876,8 +880,8 @@ body.is-sidebar-collapsed #sidebar {
 
 .atlas-pt__stage svg {
     flex: none;
-    width: 13px;
-    height: 13px;
+    width: 12px;
+    height: 12px;
 }
 
 .atlas-pt__coord--none {
@@ -889,7 +893,7 @@ body.is-sidebar-collapsed #sidebar {
     display: grid;
     place-items: center;
     flex: none;
-    min-width: 46px;
+    min-width: 42px;
     height: 34px;
     padding: 0 8px;
     border: 1px solid #c6d3df;
