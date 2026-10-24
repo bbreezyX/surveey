@@ -14,7 +14,7 @@
   let target: HTMLDivElement, popup: HTMLDivElement, content: HTMLDivElement;
   function scrollHint() { const scroller = innerWidth < 960 ? popup : content; popup.classList.toggle("is-scrollable", scroller.scrollHeight - scroller.clientHeight > 4); popup.classList.toggle("is-scroll-end", scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4); }
   let returnFocus: HTMLElement | null = null;
-  function closeDetail() { const nomor = state.selectedNomor; state.closeDetail(); if (nomor) adapter?.revealAboveSheet(nomor); }
+  function closeDetail() { const nomor = state.selectedNomor; state.closeDetail(); if (nomor) adapter?.centerAfterClose(nomor); }
   onMount(() => {
     const instance = createSurveyMap({ target, popup, dataset: state.dataset, view: state.initialView, onSelect: id => id ? state.select(id) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; }, onTileTrouble: () => connection.suspect(), onTilesSlow: slow => { connection.tilesSlow = slow; } }); adapter = instance;
     const observer = new ResizeObserver(scrollHint); observer.observe(content);

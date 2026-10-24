@@ -32,8 +32,8 @@ export type LayerKey = 'google' | 'esri' | 'boundaries' | 'mask' | 'area' | 'sk'
 export interface FitOptions { duration?: number; maxZoom?: number; padding?: number[] }
 export interface SurveyMapAdapter {
   setSelection(nomor: string | null): void;
-  // Phones: slides a just-closed point out from under the list sheet's peek.
-  revealAboveSheet(nomor: string): void;
+  // Phones: centres a just-closed point in the map left open above the list sheet's peek.
+  centerAfterClose(nomor: string): void;
   setProgress(progress: SurveyProgress): void;
   setVisiblePoints(ids: ReadonlySet<string>): void;
   // No internet: a pale basemap with dark boundaries instead of the navy field (imagery cannot be kept offline).
@@ -165,16 +165,16 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       positionFrame = requestAnimationFrame(() => { if (!disposed && selected === nomor) { positionPopup(point); focusPoint(point, zoom, true); } });
     },
     // The open card parks its pin just under itself, which is behind the sheet's peek once the card closes.
-    // Only a covered (or off-top) pin moves, straight up or down into the middle of the open strip, at the same zoom.
-    revealAboveSheet(nomor) {
+    // The pin then always lands in the same place, the middle of the map left open between the masthead and
+    // the peek (not the raw viewport centre, which the sheet pushes visibly low), at the same zoom.
+    centerAfterClose(nomor) {
       const point = byId.get(nomor); if (disposed || !point || innerWidth >= 960) return;
       const view = map.getView(), center = view.getCenter(), resolution = view.getResolution(), pixel = map.getPixelFromCoordinate(fromLonLat([point.lonNum, point.latNum]));
       if (!center || !resolution || !pixel) return;
-      // 40px is the pin's height above its tip.
-      const [top, , bottom] = padding(), floor = innerHeight - bottom;
-      if (pixel[1] - 40 >= top && pixel[1] <= floor) return;
-      const shift = (pixel[1] - (top + floor + 40) / 2) * resolution;
-      view.cancelAnimations(); view.animate({ center: [center[0], center[1] - shift], duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 360, easing: inAndOut });
+      // The pixel is the pin's tip; its 40px body sits above, so the tip goes 20px below the middle.
+      const [top, right, bottom, left] = padding(), x = (left + innerWidth - right) / 2, y = (top + innerHeight - bottom) / 2 + 20;
+      if (Math.hypot(pixel[0] - x, pixel[1] - y) < 2) return;
+      view.cancelAnimations(); view.animate({ center: [center[0] + (pixel[0] - x) * resolution, center[1] - (pixel[1] - y) * resolution], duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 360, easing: inAndOut });
     },
     setProgress(next) { progress = next; feedback.refresh(); pointLayer.changed(); },
     setVisiblePoints(ids) { visibleIds = ids; feedback.refresh(); pointLayer.changed(); },
