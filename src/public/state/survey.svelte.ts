@@ -14,8 +14,6 @@ export function createSurveyState(initial: SurveyDataset) {
   let progress = $state.raw<SurveyProgress | null>(null);
   let fitRevision = $state(0), fitReason = $state<'initial' | 'region' | 'search' | 'filter'>('initial');
   let panelOpen = $state(false), sidebarCollapsed = $state(false);
-  // A detail opened from list cards, or from a map tap that hit several nearby pins, returns to the mobile list when closed.
-  let returnToList = false;
   // The card of the detail just closed is marked briefly so the eye lands on it, then lets go.
   let recentNomor = $state<string | null>(null), recentTimer: ReturnType<typeof setTimeout> | undefined;
   // The map position a reload resumes from, read once when the map is built; null fits the points as usual.
@@ -70,20 +68,17 @@ export function createSurveyState(initial: SurveyDataset) {
     get sidebarCollapsed() { return sidebarCollapsed; }, set sidebarCollapsed(value: boolean) { sidebarCollapsed = value; },
     openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { recentNomor = null; activeRegion = name; statusFilter = filter; selectedNomor = null; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
     setFilter(filter: StatusFilter) { recentNomor = null; statusFilter = filter; selectedNomor = null; fitReason = 'filter'; fitRevision++; },
-    select(nomor: string | null, origin: HTMLElement | null = null, nearby = false) {
-      // Tapping another pin while a list-opened detail is showing keeps the way back to that list.
-      if (nomor) { recentNomor = null; returnToList = !!origin || nearby || (returnToList && !!selectedNomor); selectionOrigin = origin; panelOpen = false; } else returnToList = false;
+    select(nomor: string | null, origin: HTMLElement | null = null) {
+      if (nomor) { recentNomor = null; selectionOrigin = origin; panelOpen = false; }
       selectedNomor = nomor;
     },
-    closeDetail(reopenList: boolean) {
-      // An opened kabupaten or search already lists point cards, so any closed detail goes back to them.
-      const point = selected, reopen = reopenList && !!point && (returnToList || !!activeRegion || !!query);
-      selectedNomor = null; returnToList = false; recentNomor = point?.nomor ?? null;
+    // Closing a detail leaves the reader on the map. On phones it used to pull the list sheet back up
+    // over the map whenever a kabupaten or search was open, which a ?nomor= link always opens, so the
+    // map the reader had just closed the card to see disappeared again. The list opens on request only.
+    closeDetail() {
+      const point = selected;
+      selectedNomor = null; recentNomor = point?.nomor ?? null;
       clearTimeout(recentTimer); recentTimer = setTimeout(() => { recentNomor = null; }, 2800);
-      if (!reopen || !point) return null;
-      // The region grid has no point cards, so open the point's kabupaten without refitting the map the user was reading.
-      if (!activeRegion && !query) { activeRegion = point.kabupaten; statusFilter = null; }
-      panelOpen = true; return point.nomor;
     },
   };
 }

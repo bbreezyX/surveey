@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick, untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { createSurveyMap, type SurveyMapAdapter, type LayerKey } from '../map/create-map';
   import type { SurveyState } from '../state/survey.svelte';
   import type { Locator } from '../state/locate.svelte';
@@ -14,18 +14,9 @@
   let target: HTMLDivElement, popup: HTMLDivElement, content: HTMLDivElement;
   function scrollHint() { const scroller = innerWidth < 960 ? popup : content; popup.classList.toggle("is-scrollable", scroller.scrollHeight - scroller.clientHeight > 4); popup.classList.toggle("is-scroll-end", scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4); }
   let returnFocus: HTMLElement | null = null;
-  async function closeDetail() {
-    const nomor = state.closeDetail(innerWidth < 960); if (!nomor) return;
-    await tick();
-    // Bring the closed point's card into the reopened sheet; scrolling only the list keeps the fixed sheet in place.
-    const card = document.querySelector<HTMLElement>(`#sidebar [data-item-id="${CSS.escape(nomor)}"]`), scroller = card?.closest<HTMLElement>('.sidebar-scroll');
-    if (!card || !scroller) return;
-    const offset = card.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-    if (offset < 0 || offset + card.offsetHeight > scroller.clientHeight) scroller.scrollTop += offset - scroller.clientHeight / 3;
-    card.focus({ preventScroll: true });
-  }
+  function closeDetail() { const nomor = state.selectedNomor; state.closeDetail(); if (nomor) adapter?.revealAboveSheet(nomor); }
   onMount(() => {
-    const instance = createSurveyMap({ target, popup, dataset: state.dataset, view: state.initialView, onSelect: (id, nearby) => id ? state.select(id, null, nearby) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; }, onTileTrouble: () => connection.suspect(), onTilesSlow: slow => { connection.tilesSlow = slow; } }); adapter = instance;
+    const instance = createSurveyMap({ target, popup, dataset: state.dataset, view: state.initialView, onSelect: id => id ? state.select(id) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; }, onTileTrouble: () => connection.suspect(), onTilesSlow: slow => { connection.tilesSlow = slow; } }); adapter = instance;
     const observer = new ResizeObserver(scrollHint); observer.observe(content);
     return () => { observer.disconnect(); instance.dispose(); adapter = null; };
   });

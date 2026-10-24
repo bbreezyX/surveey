@@ -179,6 +179,23 @@ test('fits a plain detail on a short phone and keeps the pole clear once progres
     return Number(match?.[2]) - element.getBoundingClientRect().bottom;
   })).toBeGreaterThan(30);
 });
+test('closing a phone detail leaves the list down and its pin clear of the sheet', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.setViewportSize({ width: 360, height: 645 });
+  // A link opens the point's kabupaten, which used to pull the list sheet up over the map on close.
+  await page.goto('/?nomor=' + encodeURIComponent('KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-007'));
+  await expect(page.locator('#popup')).toBeVisible();
+  const x = await page.locator('#popup').evaluate(element => Number(element.parentElement!.style.transform.match(/translate\(([-.\d]+)px, ([-.\d]+)px\)$/)?.[1]));
+  await page.getByRole('button', { name: 'Tutup info titik' }).click();
+  await expect(page.locator('#popup')).toBeHidden();
+  await expect(page.locator('#sheet-handle')).toHaveAttribute('aria-expanded', 'false');
+  // The yellow pin shows somewhere in its column between the masthead and the sheet's peek.
+  const peek = await page.evaluate(() => parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sheet-peek'), 10) || 240);
+  await expect.poll(async () => {
+    const { data } = PNG.sync.read(await page.screenshot({ clip: { x: Math.round(x - 16), y: 72, width: 32, height: 645 - peek - 72 } })); let pixels = 0;
+    for (let index = 0; index < data.length; index += 4) if (data[index] > 230 && data[index + 1] > 190 && data[index + 2] < 70 && data[index + 3] > 190) pixels++;
+    return pixels;
+  }).toBeGreaterThan(10);
+});
 test('preserves counts, point search, photo evidence and route coordinates', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/', { waitUntil: 'domcontentloaded' });
