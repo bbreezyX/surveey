@@ -123,7 +123,16 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   });
   const pointer = map.on('pointermove', event => { options.target.style.cursor = !event.dragging && map.hasFeatureAtPixel(event.pixel, { layerFilter: layer => layer === pointLayer, hitTolerance: 8 }) ? 'pointer' : ''; });
   const observer = new ResizeObserver(() => { if (!disposed) map.updateSize(); }); observer.observe(options.target);
+  // The pan below measures the card when it opens, but the progress block lands later and makes it taller,
+  // which slid the card over its own pole on short phones. A height change on an open card re-runs the pan.
+  let popupHeight = 0, focusZoom = 17;
+  const popupObserver = new ResizeObserver(() => {
+    const height = options.popup.offsetHeight, grew = popupHeight > 0 && height > 0 && height !== popupHeight; popupHeight = height;
+    const point = grew && !disposed && selected ? byId.get(selected) : undefined; if (point) focusPoint(point, focusZoom, true);
+  });
+  popupObserver.observe(options.popup);
   function focusPoint(point: SurveyPoint, zoom: number, animate = false) {
+    focusZoom = zoom;
     const coordinate = fromLonLat([point.lonNum, point.latNum]), view = map.getView();
     view.cancelAnimations(); const resolution = view.getResolutionForZoom(zoom);
     const [, right, , left] = padding();
@@ -189,6 +198,6 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       map.getView().fit(extent, { padding: padding().map(side => side + 24), maxZoom: 18, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600 });
       if (target) feedback.pulse(target);
     },
-    dispose() { disposed = true; tiles.dispose(); setOfflineBasemap(false); cancelAnimationFrame(positionFrame); observer.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); satelliteCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
+    dispose() { disposed = true; tiles.dispose(); setOfflineBasemap(false); cancelAnimationFrame(positionFrame); observer.disconnect(); popupObserver.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); satelliteCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
   };
 }

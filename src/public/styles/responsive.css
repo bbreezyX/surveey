@@ -988,7 +988,15 @@ body.is-sidebar-collapsed .map-legend {
     /* Card docks under the masthead and the JS pans the pin into the strip
        below it, so the detail reads above its own point — the order desktop
        already uses. Centring the card instead would leave a 62dvh one barely
-       19dvh of room underneath for the pin. */
+       19dvh of room underneath for the pin.
+
+       The cap is the room left after the masthead (70px) and a fixed 120px
+       strip for the pin, which the JS drops 56px under the card. A flat
+       62dvh capped a 645px-tall phone viewport at 400px while a plain detail
+       (photo, two-line title, Alamat, Dokumentasi, progress, buttons) needs
+       437px, so the progress block hid behind the button row. 62dvh stays as
+       the floor for landscape phones, where the fixed strip would leave
+       almost no card. */
     .ol-popup {
         position: fixed !important;
         top: 70px !important;
@@ -998,7 +1006,7 @@ body.is-sidebar-collapsed .map-legend {
         width: auto !important;
         transform: translate3d(0, 10px, 0) scale(0.97) !important;
         opacity: 0;
-        max-height: 62dvh;
+        max-height: max(62dvh, calc(100dvh - 190px));
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         z-index: 22;
@@ -1758,8 +1766,9 @@ body.is-sidebar-collapsed .map-legend {
     }
 }
 
-/* Phones: the card is capped at 62dvh and a full detail runs 530-614px, so on
-   most handsets Google Maps and Lapor sat below the fold. The action row now
+/* Phones: the card is capped above the pin strip and a full detail runs
+   530-614px, so on most handsets Google Maps and Lapor sat below the fold.
+   The action row now
    sticks to the card's foot and the details scroll behind it, so both buttons
    show the moment the card opens on any screen height. */
 @media (max-width: 959px) {
@@ -1810,6 +1819,59 @@ body.is-sidebar-collapsed .map-legend {
     @media (max-height: 700px) {
         .feature-popup__media {
             height: 104px;
+        }
+    }
+
+    /* Under 600px tall (iPhone SE in Safari, 360x640 Androids) a plain detail
+       still ran 67-79px past the cap, so the progress block sat below the fold.
+       The photo becomes a strip that keeps its "Lihat Foto" pill, the locator
+       inset goes (the map with the pin is right under the card), and the
+       gaps tighten. The pin strip shrinks to 104px: the pin still lands 48px
+       above the screen's foot. */
+    @media (max-height: 599px) {
+        .ol-popup {
+            max-height: max(62dvh, calc(100dvh - 174px));
+        }
+
+        .feature-popup__media {
+            height: 64px;
+        }
+
+        .popup-inset {
+            display: none;
+        }
+
+        .feature-popup__note {
+            padding-block: 10px;
+        }
+
+        .feature-popup__body {
+            padding-top: 10px;
+        }
+
+        .feature-popup__title {
+            font-size: 17px;
+        }
+
+        .feature-popup__meta {
+            margin-top: 8px;
+        }
+
+        .feature-popup__meta-row {
+            padding-block: 5px;
+        }
+
+        .feature-popup__progress {
+            margin-top: 6px;
+            padding-top: 8px;
+        }
+
+        .feature-popup__actions {
+            padding-block: 8px 10px;
+        }
+
+        .popup-scroll-fade {
+            bottom: 59px;
         }
     }
 }

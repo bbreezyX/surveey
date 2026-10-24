@@ -160,6 +160,25 @@ test('keeps the selected mobile pole below its fixed photo card', async ({ page 
   })).toBeGreaterThan(30);
   await expect.poll(() => page.locator('#popup').evaluate(element => Number(element.parentElement!.style.transform.match(/translate\(([-.\d]+)px, ([-.\d]+)px\)$/)?.[2]))).toBeLessThan(784);
 });
+test('fits a plain detail on a short phone and keeps the pole clear once progress arrives late', async ({ page }) => {
+  // 360x645 is a common Android viewport with Chrome's bars showing. The progress answer is held back until the
+  // card is open, so the card grows after the map has already panned the pole under it.
+  let release = () => {}; const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route('https://www.esdm.cloud/api/public/survey-progress', async route => {
+    await held; return route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { stages: { 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-007': 1 } } });
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.setViewportSize({ width: 360, height: 645 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('searchbox', { name: 'Cari titik PUTS', exact: true }).fill('TANJUNG RADEN-007');
+  await page.getByRole('button', { name: 'Titik 007. RT 04 Tanjung Raden, Kec. Danau Teluk', exact: true }).click();
+  await expect(page.locator('#popup')).toBeVisible(); release();
+  await expect(page.locator('#popup .feature-popup__progress')).toBeVisible();
+  expect(await page.locator('#popup').evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
+  await expect.poll(() => page.locator('#popup').evaluate(element => {
+    const match = element.parentElement!.style.transform.match(/translate\(([-.\d]+)px, ([-.\d]+)px\)$/);
+    return Number(match?.[2]) - element.getBoundingClientRect().bottom;
+  })).toBeGreaterThan(30);
+});
 test('preserves counts, point search, photo evidence and route coordinates', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/', { waitUntil: 'domcontentloaded' });
