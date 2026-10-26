@@ -1,7 +1,7 @@
 import type { SurveyDataset, StatusFilter } from '../../shared/survey/types';
 import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
-import type { SurveyProgress } from '../../shared/survey/progress';
+import type { SurveyPending, SurveyProgress } from '../../shared/survey/progress';
 import type { SavedView } from './view-memory';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
 export function createSurveyState(initial: SurveyDataset) {
@@ -12,6 +12,7 @@ export function createSurveyState(initial: SurveyDataset) {
   let selectionOrigin = $state.raw<HTMLElement | null>(null);
   // Null until esdm.cloud answers; the map, list and popup show no build status before then.
   let progress = $state.raw<SurveyProgress | null>(null);
+  let pending = $state.raw<SurveyPending | null>(null);
   let fitRevision = $state(0), fitReason = $state<'initial' | 'region' | 'search' | 'filter'>('initial');
   let panelOpen = $state(false), sidebarCollapsed = $state(false);
   // The card of the detail just closed is marked briefly so the eye lands on it, then lets go.
@@ -42,6 +43,7 @@ export function createSurveyState(initial: SurveyDataset) {
     get activeRegion() { return activeRegion; }, get statusFilter() { return statusFilter; },
     get selectionOrigin() { return selectionOrigin; },
     get progress() { return progress; }, set progress(value: SurveyProgress | null) { progress = value; },
+    get pending() { return pending; }, set pending(value: SurveyPending | null) { pending = value; },
     get recentNomor() { return recentNomor; },
     get selectedNomor() { return selectedNomor; }, get selected() { return selected; },
     get visiblePoints() { return visiblePoints; }, get visibleIds() { return visibleIds; },

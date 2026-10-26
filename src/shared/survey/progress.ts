@@ -11,6 +11,29 @@ export function parseProgress(value: unknown): SurveyProgress {
   for (const [nomor, stage] of Object.entries(stages)) if (Number.isInteger(stage) && stage >= 1 && stage <= 4) progress.set(nomor, stage);
   return progress;
 }
+// Stages whose /lapangan report esdm.cloud has received and not yet accepted, ascending; a point whose
+// report has been reviewed drops out. Shown in the list only, beside the accepted stage, never on the pins.
+export type SurveyPending = ReadonlyMap<string, readonly number[]>;
+export function parsePending(value: unknown): SurveyPending {
+  const pending = new Map<string, number[]>();
+  const raw = value && typeof value === 'object' ? (value as { pending?: unknown }).pending : null;
+  if (!raw || typeof raw !== 'object') return pending;
+  for (const [nomor, stages] of Object.entries(raw)) {
+    const valid = Array.isArray(stages) ? [...new Set(stages.filter((stage): stage is number => Number.isInteger(stage) && stage >= 1 && stage <= 4))].sort((a, b) => a - b) : [];
+    if (valid.length) pending.set(nomor, valid);
+  }
+  return pending;
+}
+// The same words /lapangan shows a crew for its own open report, so both sides name it alike. Read aloud
+// and in the tooltip; the pill itself is pendingLabel.
+export function pendingSummary(stages: readonly number[]): string {
+  return `${stages.map(stage => BUILD_STAGES[stage - 1]).join(', ')} menunggu diperiksa`;
+}
+// The pill sits in a two-column card about 117px wide, as wide as "Galian Selesai": only the furthest open
+// stage and one word fit. That stage is the one worth chasing; an earlier open one is settled with it.
+export function pendingLabel(stages: readonly number[]): string {
+  return `${BUILD_STAGES[stages[stages.length - 1] - 1]} Menunggu`;
+}
 // The stages run in order, so the badge counts rather than colour-codes: a blue pie fills a quarter per
 // finished stage (Galian, Cor, Tiang) and reads without the legend or telling hues apart, which a 14px
 // mark on satellite imagery, colour-blind readers and the yellow/orange pin statuses all argue against.

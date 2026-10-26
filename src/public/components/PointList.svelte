@@ -2,7 +2,7 @@
   import type { SurveyState } from '../state/survey.svelte';
   import { desaGroups, groupHead, landmarkFor } from '../state/list-model';
   import { STATUS_LABEL } from '../../shared/survey/status';
-  import { stageBadgeSvg, stageDone, stageSummary } from '../../shared/survey/progress';
+  import { pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary } from '../../shared/survey/progress';
   let { state }: { state: SurveyState } = $props();
   const sections = $derived.by(() => {
     const groups = new Map<string, typeof state.visiblePoints>();
@@ -29,14 +29,18 @@
           <div class="atlas-units">
             {#each group.items as point, index (point.nomor)}
               {@const stage = point.cadangan ? 0 : state.progress?.get(point.nomor) ?? 0}
+              {@const pending = point.cadangan ? null : state.pending?.get(point.nomor) ?? null}
               {@const flags = [point.cadangan ? STATUS_LABEL.cadangan.tag : '', point.duplikat ? STATUS_LABEL.duplikat.tag : '', point.belum ? STATUS_LABEL.belum.tag : ''].filter(Boolean)}
-              <button class="atlas-pt" class:is-recent={state.recentNomor === point.nomor} type="button" data-item-id={point.nomor} aria-label={[`Titik ${point.display.code}`, ...flags, point.display.primary, stage ? stageSummary(stage) : '', state.recentNomor === point.nomor ? 'Terakhir dilihat' : ''].filter(Boolean).join('. ')} aria-pressed={state.selectedNomor === point.nomor} onclick={event => state.select(point.nomor, event.currentTarget)}>
+              <button class="atlas-pt" class:is-recent={state.recentNomor === point.nomor} type="button" data-item-id={point.nomor} aria-label={[`Titik ${point.display.code}`, ...flags, point.display.primary, stage ? stageSummary(stage) : '', pending ? pendingSummary(pending) : '', state.recentNomor === point.nomor ? 'Terakhir dilihat' : ''].filter(Boolean).join('. ')} aria-pressed={state.selectedNomor === point.nomor} onclick={event => state.select(point.nomor, event.currentTarget)}>
                 <span class="atlas-unit" class:is-active={state.selectedNomor === point.nomor} class:is-cadangan={point.cadangan} class:is-duplikat={point.duplikat} class:is-belum={point.belum}>{point.display.code}</span>
                 <span class="atlas-pt__info">
                   {#if !shared && landmarks[index]}<span class="atlas-pt__note">{landmarks[index]}</span>{/if}
                   {#if point.belum}<span class="atlas-pt__coord atlas-pt__coord--none">Belum ada koordinat</span>
                   {:else}<span class="atlas-pt__coord">{point.koordinat.split(', ')[0]}<br/>{point.koordinat.split(', ')[1]}</span>{/if}
-                  {#if stage}<span class="atlas-pt__stage" class:is-done={stageDone(stage)} aria-hidden="true">{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}
+                  {#if stage || pending}<span class="atlas-pt__stages" aria-hidden="true">
+                    {#if stage}<span class="atlas-pt__stage" class:is-done={stageDone(stage)}>{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}
+                    {#if pending}<span class="atlas-pt__stage is-pending" title={pendingSummary(pending)}><svg width="12" height="12" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{pendingLabel(pending)}</span>{/if}
+                  </span>{/if}
                 </span>
               </button>
             {/each}

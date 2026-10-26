@@ -866,12 +866,20 @@ body.is-sidebar-collapsed #sidebar {
 /* Last finished build stage from esdm.cloud, wearing the same badge as its pin:
    a blue pie filling a quarter per stage through Tiang, a green check only
    once the lamp is lit (terpasang). */
+/* The accepted stage and an open report sit on one row and wrap only when the
+   card is too narrow for both. */
+.atlas-pt__stages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 4px;
+    margin-top: 3px;
+}
+
 .atlas-pt__stage {
     align-self: flex-start;
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    margin-top: 3px;
     padding: 2px 6px 2px 3px;
     border-radius: 999px;
     background: var(--blue-tint);
@@ -885,6 +893,22 @@ body.is-sidebar-collapsed #sidebar {
 .atlas-pt__stage.is-done {
     background: var(--green-tint);
     color: var(--green);
+}
+
+/* A report sent from esdm.cloud/lapangan that nobody has accepted yet. Neutral
+   with a clock, not orange: orange already means "Perlu konfirmasi" on the tile,
+   and an open report is a wait, not a problem. A hairline keeps it apart from
+   the filled stage pill beside it. */
+.atlas-pt__stage.is-pending {
+    padding-left: 4px;
+    box-shadow: inset 0 0 0 1px var(--hairline-strong);
+    background: #fff;
+    color: var(--muted);
+    /* "Galian Menunggu" is the long end and fits; anything longer trims
+       rather than spilling out of the card. */
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .atlas-pt__stage svg {

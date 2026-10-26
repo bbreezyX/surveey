@@ -4,7 +4,7 @@ import { parseCoordinateQuery, formatCoordPair } from '../src/shared/survey/coor
 import { legacyPhotoUrl } from '../src/shared/survey/media';
 import { latestDocumentationDate } from '../src/shared/survey/dates';
 import { linkedNomor, progressReportUrl } from '../src/shared/survey/report';
-import { parseProgress, stageBadgeSvg, stageDone, stageSummary } from '../src/shared/survey/progress';
+import { parsePending, parseProgress, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary } from '../src/shared/survey/progress';
 describe('survey evidence and counting', () => {
   it('ignores malformed and impossible optional dates without normalizing them', () => {
     expect(latestDocumentationDate(['32/13/2026', '31/02/9999', '29/02/2025', ''])).toBeNull();
@@ -44,6 +44,13 @@ describe('build progress from esdm.cloud', () => {
     const progress = parseProgress({ stages: { 'A-001': 1, 'A-002': 4, 'A-003': 0, 'A-004': 2.5, 'A-005': '3' } });
     expect([...progress]).toEqual([['A-001', 1], ['A-002', 4]]);
     expect(parseProgress(null).size).toBe(0);
+  });
+  it('reads open report stages per Nomor and names them as /lapangan does', () => {
+    const pending = parsePending({ stages: {}, pending: { 'A-001': [3, 2, 3], 'A-002': [], 'A-003': [0, 5, 1.5], 'A-004': '2', 'A-005': [4] } });
+    expect([...pending]).toEqual([['A-001', [2, 3]], ['A-005', [4]]]);
+    expect(parsePending({ stages: {} }).size).toBe(0);
+    expect(pendingSummary([2, 3])).toBe('Cor, Tiang menunggu diperiksa');
+    expect(pendingLabel([2, 3])).toBe('Tiang Menunggu');
   });
   it('draws every stage apart and keeps the green check for a lit lamp', () => {
     expect([1, 2, 3, 4].map(stage => stageBadgeSvg(stage).includes('#1f8f4e'))).toEqual([false, false, false, true]);
