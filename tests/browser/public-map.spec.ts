@@ -205,7 +205,7 @@ test('preserves counts, point search, photo evidence and route coordinates', asy
   await page.getByRole('button', { name: 'Titik 007. RT 04 Tanjung Raden, Kec. Danau Teluk', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'RT 04 Tanjung Raden, Kec. Danau Teluk' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Buka foto lokasi/ })).toHaveAttribute('href', '/images/Tanjung-Raden-007-2026-10-06.jpeg');
-  await expect(page.getByRole('link', { name: /Rute ke titik ini/ })).toHaveAttribute('href', /destination=-1.584248%2C103.586442/);
+  await expect(page.getByRole('link', { name: /Google Maps/ })).toHaveAttribute('href', /maps\/search\/\?api=1&query=-1.584248%2C103.586442/);
   await expect(page.locator('#popup img').first()).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -233,7 +233,7 @@ test('opens photo-less unplaced records without offering routes to estimated coo
   await expect(page.locator('.atlas-pt')).toHaveCount(1); await page.locator('.atlas-pt').click();
   await expect(page.locator('#popup')).toContainText('Koordinat Perkiraan');
   await expect(page.locator('#popup img')).toHaveCount(0);
-  await expect(page.getByRole('link', { name: /Rute ke titik ini/ })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Google Maps/ })).toHaveCount(0);
 });
 
 test('cycles through overlapping mapped units without deleting or hiding them', async ({ page }) => {

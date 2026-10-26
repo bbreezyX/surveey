@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { SurveyPoint, SurveyDataset } from '../../shared/survey/types';
   import { legacyPhotoUrl } from '../../shared/survey/media';
-  import { directionsUrl } from '../../shared/survey/coordinates';
+  import { googleMapsUrl } from '../../shared/survey/coordinates';
   import { progressReportUrl } from '../../shared/survey/report';
   import { BUILD_STAGES, lampAwaitsNight, stageDone, stageSummary } from '../../shared/survey/progress';
   import { STATUS_LABEL } from '../../shared/survey/status';
@@ -50,5 +50,5 @@
     <div class="feature-popup__rule"></div>
   </div>
   <!-- Cadangan points are outside the allocation, so they have no construction to report. The row sits outside the body so it can stay pinned to the foot of the whole card on phones. -->
-  {#if !point.belum || !point.cadangan}<div class="feature-popup__actions">{#if !point.belum}<a class="feature-popup__route" href={directionsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka Google Maps: rute dari posisi Anda ke titik ini"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>{point.cadangan ? 'Buka di Google Maps' : 'Google Maps'}</strong></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a>{/if}{#if !point.cadangan}<a class="feature-popup__report" href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Lapor progres galian, cor, tiang, atau lampu untuk titik ini" aria-label="Lapor progres titik ini"><Icon name="camera" size={16}/><span>Lapor</span></a>{/if}</div>{/if}
+  {#if !point.belum || !point.cadangan}<div class="feature-popup__actions">{#if !point.belum}<a class="feature-popup__route" href={googleMapsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka titik ini di Google Maps; rute bisa dimulai dari sana"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>{point.cadangan ? 'Buka di Google Maps' : 'Google Maps'}</strong></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a>{/if}{#if !point.cadangan}<a class="feature-popup__report" href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Lapor progres galian, cor, tiang, atau lampu untuk titik ini" aria-label="Lapor progres titik ini"><Icon name="camera" size={16}/><span>Lapor</span></a>{/if}</div>{/if}
 </div>

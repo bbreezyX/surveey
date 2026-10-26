@@ -15,6 +15,9 @@ export function coordinateTolerance(value: number): number {
   const decimals = String(Math.abs(value)).split('.')[1]?.length ?? 0;
   return Math.max(0.00015, Math.pow(10, -decimals) * 0.51);
 }
-export function directionsUrl(point: { latNum: number; lonNum: number }): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${point.latNum.toFixed(6)},${point.lonNum.toFixed(6)}`)}`;
+// A place search drops a pin and zooms onto the point first, so crews see where the pole stands before
+// choosing to navigate; Google Maps' own Rute button sits on that card. The dir/ form went straight to a
+// route overview zoomed out to fit the whole trip, where the point itself was hard to make out.
+export function googleMapsUrl(point: { latNum: number; lonNum: number }): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.latNum.toFixed(6)},${point.lonNum.toFixed(6)}`)}`;
 }
