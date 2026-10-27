@@ -16,7 +16,7 @@
   let returnFocus: HTMLElement | null = null;
   function closeDetail() { const nomor = state.selectedNomor; state.closeDetail(); if (nomor) adapter?.centerAfterClose(nomor); }
   onMount(() => {
-    const instance = createSurveyMap({ target, popup, dataset: state.dataset, view: state.initialView, onSelect: id => id ? state.select(id) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; }, onTileTrouble: () => connection.suspect(), onTilesSlow: slow => { connection.tilesSlow = slow; } }); adapter = instance;
+    const instance = createSurveyMap({ target, popup, dataset: state.dataset, onSelect: id => id ? state.select(id) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; }, onTileTrouble: () => connection.suspect(), onTilesSlow: slow => { connection.tilesSlow = slow; } }); adapter = instance;
     const observer = new ResizeObserver(scrollHint); observer.observe(content);
     return () => { observer.disconnect(); instance.dispose(); adapter = null; };
   });
