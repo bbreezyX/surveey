@@ -15,6 +15,7 @@
   import { createConnection } from './state/connection.svelte';
   import ConnectionStatus from './components/ConnectionStatus.svelte';
   import { linkedNomor } from '../shared/survey/report';
+  import { recallOpenDetail, rememberOpenDetail } from './state/detail-memory';
   let model = $state.raw<SurveyState | null>(null), adapter = $state.raw<SurveyMapAdapter | null>(null), error = $state('');
   let controller: AbortController | null = null, disposed = false;
   const locator = createLocator(), connection = createConnection();
@@ -25,7 +26,9 @@
   // Opens the point esdm.cloud/lapangan linked to, once: the parameter leaves the address so a reload
   // or a shared link afterwards resumes the reader's own view.
   function openLinkedPoint(state: SurveyState) {
-    const nomor = linkedNomor(location.search); if (!nomor) return;
+    const nomor = linkedNomor(location.search);
+    // No link names a point: a reader coming back to a discarded tab gets the detail they left open.
+    if (!nomor) { const open = recallOpenDetail(); if (open) state.openLinked(open); return; }
     state.openLinked(nomor);
     const params = new URLSearchParams(location.search); params.delete('nomor');
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
@@ -76,8 +79,11 @@
     const wake = () => reconnect(), retry = setInterval(() => { if (!model ? !!error : !!model.storedAt || !model.progress) reconnect(); }, RETRY_MS);
     // The service worker says when a slow download it was still finishing has landed in its store.
     const fromWorker = (event: MessageEvent) => { if (event.data?.type === 'puts-data-updated') reconnect(true); };
-    addEventListener('online', wake); document.addEventListener('visibilitychange', wake); navigator.serviceWorker?.addEventListener('message', fromWorker);
-    return () => { disposed = true; stopConnection(); clearInterval(retry); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
+    // Hidden is the last moment the page is sure to run: a phone may discard the tab without another event.
+    const remember = () => { if (model) rememberOpenDetail(model.selectedNomor); };
+    const hide = () => { if (document.visibilityState === 'hidden') remember(); };
+    addEventListener('online', wake); document.addEventListener('visibilitychange', wake); document.addEventListener('visibilitychange', hide); addEventListener('pagehide', remember); navigator.serviceWorker?.addEventListener('message', fromWorker);
+    return () => { disposed = true; stopConnection(); clearInterval(retry); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); document.removeEventListener('visibilitychange', hide); removeEventListener('pagehide', remember); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
   });
   $effect(() => { document.body.classList.toggle('is-popup-open', !!model?.selected); document.body.classList.toggle('is-panel-open', !!model?.panelOpen); document.body.classList.toggle('is-sidebar-collapsed', !!model?.sidebarCollapsed); document.body.classList.toggle('is-data-unavailable', !model); });
   $effect(() => {
