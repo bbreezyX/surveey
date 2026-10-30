@@ -23,12 +23,16 @@
   let fitTimer: ReturnType<typeof setTimeout> | undefined, appliedFit = -1;
   // When the points last came from the network rather than the service worker's stored copy.
   let freshAt = 0, refreshing = $state(false);
+  // Only a phone or tablet gets its detail back: a desktop keeps its tab, so a reload there starts from the
+  // province view, even in a narrowed window. Asked once here, because the same query measured false on a
+  // touch device while the page was unloading, which is exactly when the detail is saved or cleared.
+  const touchDevice = matchMedia('(pointer: coarse)').matches;
   // Opens the point esdm.cloud/lapangan linked to, once: the parameter leaves the address so a reload
   // or a shared link afterwards resumes the reader's own view.
   function openLinkedPoint(state: SurveyState) {
     const nomor = linkedNomor(location.search);
     // No link names a point: a reader coming back to a discarded tab gets the detail they left open.
-    if (!nomor) { const open = recallOpenDetail(); if (open) state.openLinked(open); return; }
+    if (!nomor) { const open = touchDevice ? recallOpenDetail() : null; if (open) state.openLinked(open); return; }
     state.openLinked(nomor);
     const params = new URLSearchParams(location.search); params.delete('nomor');
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
@@ -80,7 +84,7 @@
     // The service worker says when a slow download it was still finishing has landed in its store.
     const fromWorker = (event: MessageEvent) => { if (event.data?.type === 'puts-data-updated') reconnect(true); };
     // Hidden is the last moment the page is sure to run: a phone may discard the tab without another event.
-    const remember = () => { if (model) rememberOpenDetail(model.selectedNomor); };
+    const remember = () => { if (model && touchDevice) rememberOpenDetail(model.selectedNomor); };
     const hide = () => { if (document.visibilityState === 'hidden') remember(); };
     addEventListener('online', wake); document.addEventListener('visibilitychange', wake); document.addEventListener('visibilitychange', hide); addEventListener('pagehide', remember); navigator.serviceWorker?.addEventListener('message', fromWorker);
     return () => { disposed = true; stopConnection(); clearInterval(retry); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); document.removeEventListener('visibilitychange', hide); removeEventListener('pagehide', remember); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
