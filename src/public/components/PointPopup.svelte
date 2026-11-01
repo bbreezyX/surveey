@@ -34,7 +34,7 @@
         {#if row.value}<div class="feature-popup__meta-row"><div class="meta-icon" aria-hidden="true"><Icon name={row.label === 'Alamat' ? 'location' : row.label.startsWith('Koordinat') ? 'coordinate' : row.label === 'Dokumentasi' ? 'calendar' : 'info'} size={16}/></div><div><dt>{row.label}</dt><dd>{row.value}</dd></div></div>{/if}
       {/each}
     </dl>
-    {#if stage !== null && !point.cadangan}
+    {#if stage !== null}
       <!-- The whole block opens the point on esdm.cloud/lapangan, which lists its stages and every report
            behind them, so a reader who wonders "since when?" reaches the evidence in one tap. -->
       <a class="feature-popup__progress" class:is-started={stage > 0} class:is-complete={stageDone(stage)} href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Buka riwayat tahap titik ini di esdm.cloud">
@@ -49,6 +49,6 @@
     {/if}
     <div class="feature-popup__rule"></div>
   </div>
-  <!-- Cadangan points are outside the allocation, so they have no construction to report. The row sits outside the body so it can stay pinned to the foot of the whole card on phones. -->
-  {#if !point.belum || !point.cadangan}<div class="feature-popup__actions">{#if !point.belum}<a class="feature-popup__route" href={googleMapsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka titik ini di Google Maps; rute bisa dimulai dari sana"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>{point.cadangan ? 'Buka di Google Maps' : 'Google Maps'}</strong></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a>{/if}{#if !point.cadangan}<a class="feature-popup__report" href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Lapor progres galian, cor, tiang, atau lampu untuk titik ini" aria-label="Lapor progres titik ini"><Icon name="camera" size={16}/><span>Lapor</span></a>{/if}</div>{/if}
+  <!-- Every point can be reported, Cadangan too: crews may build on a reserve site the locals swapped in before the office hears of it. The row sits outside the body so it can stay pinned to the foot of the whole card on phones. -->
+  <div class="feature-popup__actions">{#if !point.belum}<a class="feature-popup__route" href={googleMapsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka titik ini di Google Maps; rute bisa dimulai dari sana"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>Google Maps</strong></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a>{/if}<a class="feature-popup__report" href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Lapor progres galian, cor, tiang, atau lampu untuk titik ini" aria-label="Lapor progres titik ini"><Icon name="camera" size={16}/><span>Lapor</span></a></div>
 </div>
