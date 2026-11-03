@@ -3,8 +3,8 @@
 // back down to where they stand. The detail still open when the page was left is kept here so the reload
 // lands on it; with no detail open a reload starts from the province view. localStorage rather than
 // sessionStorage, because a home-screen app the system killed reopens at start_url with a new session.
-// Long enough for a report with photos; a reader opening the map the next day starts from the province view.
-export const DETAIL_MAX_AGE_MS = 30 * 60_000;
+// Keep the open detail for eight hours after leaving the page so crews can resume during the workday.
+export const DETAIL_MAX_AGE_MS = 8 * 60 * 60_000;
 const KEY = 'puts.open-detail';
 export function readOpenDetail(raw: string | null, now: number): string | null {
   let saved: { at?: unknown; nomor?: unknown } | null;
