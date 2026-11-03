@@ -2,6 +2,7 @@ import GeoJSON from 'ol/format/GeoJSON';
 import type OlFeature from 'ol/Feature';
 import type { SurveyPoint, RegionFeature } from '../../shared/survey/types';
 import { fromLonLat } from 'ol/proj';
+import { containsCoordinate } from 'ol/extent';
 import { toDisplayCase } from '../../shared/survey/display';
 // Region assignment, the map layer and the sidebar thumbnails all need the
 // kabupaten in EPSG:3857. Projecting ~36k vertices three times showed up in the
@@ -18,7 +19,13 @@ export function assignRegions(points: SurveyPoint[], boundaries: RegionFeature[]
   const features = projectRegions(boundaries);
   for (const point of points) {
     const coordinate = fromLonLat([point.lonNum, point.latNum]);
-    let feature = features.find(region => region.getGeometry()?.intersectsCoordinate(coordinate));
+    // A bounding box rejects distant regions before walking their polygon rings.
+    // On the 550-point snapshot this cuts exact containment checks from 3019 to
+    // 817 without simplifying a single boundary vertex or changing the fallback.
+    let feature = features.find(region => {
+      const geometry = region.getGeometry();
+      return geometry && containsCoordinate(geometry.getExtent(), coordinate) && geometry.intersectsCoordinate(coordinate);
+    });
     if (!feature) {
       let nearest = Infinity;
       for (const region of features) {

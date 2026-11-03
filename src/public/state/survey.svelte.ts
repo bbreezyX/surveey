@@ -1,4 +1,4 @@
-import type { SurveyDataset, StatusFilter } from '../../shared/survey/types';
+import type { SurveyDataset, SurveyPoint, StatusFilter } from '../../shared/survey/types';
 import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
 import type { SurveyPending, SurveyProgress } from '../../shared/survey/progress';
@@ -20,7 +20,25 @@ export function createSurveyState(initial: SurveyDataset) {
   // Once esdm.cloud has accepted any build stage for a shared-coordinate unit, the crew has found and dug
   // its spot, so asking readers to confirm it with the RT/desa no longer helps; the list, filter, counts and
   // popup then treat it as an ordinary SK point. Only those few points are copied, the rest keep their objects.
-  const points = $derived([...dataset.points].map(point => point.duplikat && progress?.get(point.nomor) ? { ...point, duplikat: false, searchText: point.searchText.replace(STATUS_LABEL.duplikat.search, '') } : point).sort((a, b) => collator.compare(a.nomor, b.nomor)));
+  const sortedPoints = $derived([...dataset.points].sort((a, b) => collator.compare(a.nomor, b.nomor)));
+  const verifiedPoints = new WeakMap<SurveyPoint, SurveyPoint>();
+  let previousPoints: SurveyPoint[] = [];
+  const points = $derived.by(() => {
+    const next = sortedPoints.map(point => {
+      if (!point.duplikat || !progress?.get(point.nomor)) return point;
+      let verified = verifiedPoints.get(point);
+      if (!verified) {
+        verified = { ...point, duplikat: false, searchText: point.searchText.replace(STATUS_LABEL.duplikat.search, '') };
+        verifiedPoints.set(point, verified);
+      }
+      return verified;
+    });
+    // A returning reader fetches a new progress Map even when nothing changed.
+    // Keep the point array stable in that case: otherwise map features, labels,
+    // region thumbnails and list groups are all rebuilt just to update badges.
+    if (next.length === previousPoints.length && next.every((point, index) => point === previousPoints[index])) return previousPoints;
+    return previousPoints = next;
+  });
   const regionNames = $derived([...new Set(points.map(point => point.kabupaten))].sort((a, b) => Number(/^Kota\s/i.test(b)) - Number(/^Kota\s/i.test(a)) || collator.compare(a, b)));
   const visiblePoints = $derived(points.filter(point => (!activeRegion || point.kabupaten === activeRegion) && (!statusFilter || point[statusFilter]) && matchesQuery(point, query)));
   const visibleIds = $derived(new Set(visiblePoints.map(point => point.nomor)));

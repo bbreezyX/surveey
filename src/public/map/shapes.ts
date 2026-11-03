@@ -3,9 +3,23 @@ import Polygon from 'ol/geom/Polygon';
 import MultiPolygon from 'ol/geom/MultiPolygon';
 import { fromLonLat } from 'ol/proj';
 import type { RegionFeature, SurveyPoint } from '../../shared/survey/types';
+export interface ThumbnailDot { x: number; y: number; kind: string; id: string }
+// Thumbnails are illustrations, not click targets. One circle node per unit
+// made the initial sidebar lay out hundreds of invisible SVG elements on a
+// closed phone sheet. Consecutive dots with the same style can share a path;
+// every coordinate remains represented and status layers keep their order.
+export function thumbnailDotPaths(dots: readonly ThumbnailDot[], radius: number) {
+  const paths: { kind: string; path: string }[] = [];
+  for (const dot of dots) {
+    let group = paths.at(-1);
+    if (!group || group.kind !== dot.kind) { group = { kind: dot.kind, path: '' }; paths.push(group); }
+    group.path += `M${dot.x + radius} ${dot.y}a${radius} ${radius} 0 1 1 ${-2 * radius} 0a${radius} ${radius} 0 1 1 ${2 * radius} 0Z`;
+  }
+  return paths;
+}
 const geometryCache = new WeakMap<RegionFeature, { rings: number[][][]; extent: number[] }>();
 export function thumbnail(region: RegionFeature | undefined, points: readonly SurveyPoint[], width = 160, height = 54, sharedExtent?: number[]) {
-  if (!region) return { path: '', dots: [] as { x: number; y: number; kind: string; id: string }[] };
+  if (!region) return { path: '', dots: [] as ThumbnailDot[] };
   let geometry = geometryCache.get(region);
   if (!geometry) {
     const parsed = projectRegions([region])[0]?.getGeometry();

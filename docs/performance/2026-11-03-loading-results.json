@@ -1,0 +1,899 @@
+{
+  "date": "2026-11-03",
+  "baseline": "Previous local optimization from the same chat; includes DPR cap, polygon bounding checks and point reuse. Not pristine d4d886a.",
+  "builds": {
+    "before": {
+      "entry": "index-BL9N1nIC.js",
+      "sha256": "08d06ea510868d5f6d8da1db03a6f3821e32f8d4a2ee34b72cef05dc02b5511c",
+      "rawBytes": 464244,
+      "gzipBytes": 142636
+    },
+    "after": {
+      "entry": "index-B5gSwaTm.js",
+      "sha256": "669680e3d45935835628d22fe2095aafca5356fa5f3f5598ab4119dd29e14e2f",
+      "rawBytes": 464634,
+      "gzipBytes": 142742
+    }
+  },
+  "definitions": {
+    "lcp": "Observed until one second after map ready and before search input; initial fresh visit including gesture hint.",
+    "ready": "Total text and first map canvas present followed by two animation frames; includes automation polling.",
+    "startupBlocking": "Sum of max(0, longtask duration - 50ms) for tasks starting before ready; not Lighthouse TBT.",
+    "search": "Automation fill JAMBI through two animation frames after first result; not INP.",
+    "cls": "Sum of layout-shift entries without recent input during observed startup; not field CLS."
+  },
+  "summary": {
+    "before": {
+      "fcpMs": {
+        "median": 2128,
+        "min": 2124,
+        "max": 2156
+      },
+      "lcpMs": {
+        "median": 3812,
+        "min": 3768,
+        "max": 3832
+      },
+      "readyMs": {
+        "median": 4792,
+        "min": 4785,
+        "max": 4908
+      },
+      "startupBlockingMs": {
+        "median": 2050,
+        "min": 2028,
+        "max": 2121
+      },
+      "searchMs": {
+        "median": 722,
+        "min": 693,
+        "max": 744
+      },
+      "domNodes": {
+        "median": 792,
+        "min": 792,
+        "max": 792
+      },
+      "cls": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "after": {
+      "fcpMs": {
+        "median": 2136,
+        "min": 2128,
+        "max": 2136
+      },
+      "lcpMs": {
+        "median": 2992,
+        "min": 2984,
+        "max": 3000
+      },
+      "readyMs": {
+        "median": 4679,
+        "min": 4516,
+        "max": 4774
+      },
+      "startupBlockingMs": {
+        "median": 1930,
+        "min": 1780,
+        "max": 1949
+      },
+      "searchMs": {
+        "median": 676,
+        "min": 646,
+        "max": 815
+      },
+      "domNodes": {
+        "median": 310,
+        "min": 310,
+        "max": 310
+      },
+      "cls": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    }
+  },
+  "profile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "deviceScaleFactor": 3,
+    "cpuSlowdown": 6,
+    "latencyMs": 150,
+    "downloadBitsPerSecond": 1600000,
+    "uploadBitsPerSecond": 750000,
+    "compression": "gzip",
+    "freshContextEachRun": true,
+    "serviceWorkers": "blocked",
+    "thirdPartyRequests": "fixtures",
+    "httpCache": "enabled, immutable assets"
+  },
+  "runs": [
+    {
+      "label": "before",
+      "run": 0,
+      "readyMs": 4848,
+      "fcpMs": 2156,
+      "lcpMs": 3832,
+      "lcpCandidates": [
+        {
+          "at": 2156,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 3832,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 792,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 217.59999999403954,
+          "end": 874.8999999985099,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 220.59999999403954,
+          "end": 949.3999999985099,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 221.59999999403954,
+          "end": 1497.5,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-BL9N1nIC.js",
+          "start": 221.79999999701977,
+          "end": 1827.6999999955297,
+          "encodedBytes": 142636,
+          "transferBytes": 142936
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 223.09999999403954,
+          "end": 852,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2059.39999999851,
+          "end": 2262.1999999955297,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 2093,
+      "searchMs": 744,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "after",
+      "run": 0,
+      "readyMs": 4774,
+      "fcpMs": 2136,
+      "lcpMs": 3000,
+      "lcpCandidates": [
+        {
+          "at": 2136,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 3000,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 310,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 209,
+          "end": 864.5,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 211.69999999552965,
+          "end": 939,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 211.79999999701977,
+          "end": 1486.2999999970198,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-B5gSwaTm.js",
+          "start": 213,
+          "end": 1817.2999999970198,
+          "encodedBytes": 142742,
+          "transferBytes": 143042
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 213.09999999403954,
+          "end": 841.3999999985099,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2047.5999999940395,
+          "end": 2244.5999999940395,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 1930,
+      "searchMs": 815,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "after",
+      "run": 1,
+      "readyMs": 4679,
+      "fcpMs": 2136,
+      "lcpMs": 2988,
+      "lcpCandidates": [
+        {
+          "at": 2136,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 2988,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 310,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 212.89999999850988,
+          "end": 864.7000000029802,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 216.20000000298023,
+          "end": 939.7000000029802,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 216.20000000298023,
+          "end": 1488.1000000014901,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-B5gSwaTm.js",
+          "start": 217.60000000149012,
+          "end": 1817.3999999985099,
+          "encodedBytes": 142742,
+          "transferBytes": 143042
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 217.70000000298023,
+          "end": 842.2000000029802,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2047.7000000029802,
+          "end": 2245.7999999970198,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 1949,
+      "searchMs": 676,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "before",
+      "run": 1,
+      "readyMs": 4789,
+      "fcpMs": 2128,
+      "lcpMs": 3768,
+      "lcpCandidates": [
+        {
+          "at": 2128,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 3768,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 792,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 209.09999999403954,
+          "end": 858.7999999970198,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 211.39999999850988,
+          "end": 933.3999999985099,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 212.29999999701977,
+          "end": 1480.7999999970198,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-BL9N1nIC.js",
+          "start": 212.5,
+          "end": 1811,
+          "encodedBytes": 142636,
+          "transferBytes": 142936
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 213.39999999850988,
+          "end": 843.6999999955297,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2035.3999999985099,
+          "end": 2238.2999999970198,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 2028,
+      "searchMs": 697,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "before",
+      "run": 2,
+      "readyMs": 4785,
+      "fcpMs": 2128,
+      "lcpMs": 3796,
+      "lcpCandidates": [
+        {
+          "at": 2128,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 3796,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 792,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 205.60000000149012,
+          "end": 862.6000000014901,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 209.20000000298023,
+          "end": 937.5,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 209.70000000298023,
+          "end": 1486.5,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-BL9N1nIC.js",
+          "start": 209.70000000298023,
+          "end": 1815.2000000029802,
+          "encodedBytes": 142636,
+          "transferBytes": 142936
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 211.30000000447035,
+          "end": 855,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2037.3999999985099,
+          "end": 2235.10000000149,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 2049,
+      "searchMs": 731,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "after",
+      "run": 2,
+      "readyMs": 4598,
+      "fcpMs": 2136,
+      "lcpMs": 2992,
+      "lcpCandidates": [
+        {
+          "at": 2136,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 2992,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 310,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 210.29999999701977,
+          "end": 863.6000000014901,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 212.19999999552965,
+          "end": 937.7999999970198,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 212.79999999701977,
+          "end": 1485.2999999970198,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-B5gSwaTm.js",
+          "start": 213,
+          "end": 1815.7999999970198,
+          "encodedBytes": 142742,
+          "transferBytes": 143042
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 214.10000000149012,
+          "end": 847.6999999955297,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2047,
+          "end": 2250.5,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 1875,
+      "searchMs": 675,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "after",
+      "run": 3,
+      "readyMs": 4703,
+      "fcpMs": 2132,
+      "lcpMs": 2984,
+      "lcpCandidates": [
+        {
+          "at": 2132,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 2984,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 310,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 208.19999999552965,
+          "end": 865.1000000014901,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 211.69999999552965,
+          "end": 941.1000000014901,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 212.69999999552965,
+          "end": 1488,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-B5gSwaTm.js",
+          "start": 213.29999999701977,
+          "end": 1818.5,
+          "encodedBytes": 142742,
+          "transferBytes": 143042
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 214.5,
+          "end": 849.6999999955297,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2043.3999999985099,
+          "end": 2245,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 1941,
+      "searchMs": 794,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "before",
+      "run": 3,
+      "readyMs": 4792,
+      "fcpMs": 2124,
+      "lcpMs": 3812,
+      "lcpCandidates": [
+        {
+          "at": 2124,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 3812,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 792,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 207,
+          "end": 863.3999999985099,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 209.30000000447035,
+          "end": 938.2000000029802,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 209.39999999850988,
+          "end": 1485.6000000014901,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-BL9N1nIC.js",
+          "start": 209.39999999850988,
+          "end": 1815.8000000044703,
+          "encodedBytes": 142636,
+          "transferBytes": 142936
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 210.39999999850988,
+          "end": 849,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2035.1000000014901,
+          "end": 2236,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 2050,
+      "searchMs": 722,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "before",
+      "run": 4,
+      "readyMs": 4908,
+      "fcpMs": 2140,
+      "lcpMs": 3832,
+      "lcpCandidates": [
+        {
+          "at": 2140,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 3832,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 792,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 206.89999999850988,
+          "end": 864.1000000014901,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 208.89999999850988,
+          "end": 939.1999999955297,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 210.79999999701977,
+          "end": 1486.5,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-BL9N1nIC.js",
+          "start": 211.79999999701977,
+          "end": 1816.5,
+          "encodedBytes": 142636,
+          "transferBytes": 142936
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 212,
+          "end": 849,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2048.60000000149,
+          "end": 2245.5,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 2121,
+      "searchMs": 693,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "after",
+      "run": 4,
+      "readyMs": 4516,
+      "fcpMs": 2128,
+      "lcpMs": 2992,
+      "lcpCandidates": [
+        {
+          "at": 2128,
+          "size": 2736,
+          "tag": "H1",
+          "className": "masthead-title"
+        },
+        {
+          "at": 2992,
+          "size": 11472,
+          "tag": "P",
+          "className": "gesture-hint__text"
+        }
+      ],
+      "domNodes": 310,
+      "resources": [
+        {
+          "path": "/assets/figtree-latin-D_ZTVpCC.woff2",
+          "start": 207.90000000596046,
+          "end": 866.6000000014901,
+          "encodedBytes": 20156,
+          "transferBytes": 20456
+        },
+        {
+          "path": "/data/points.geojson",
+          "start": 209.60000000149012,
+          "end": 940.1000000014901,
+          "encodedBytes": 24351,
+          "transferBytes": 24651
+        },
+        {
+          "path": "/data/regions.json",
+          "start": 209.70000000298023,
+          "end": 1487.6000000014901,
+          "encodedBytes": 78940,
+          "transferBytes": 79240
+        },
+        {
+          "path": "/assets/index-B5gSwaTm.js",
+          "start": 209.70000000298023,
+          "end": 1817.8000000044703,
+          "encodedBytes": 142742,
+          "transferBytes": 143042
+        },
+        {
+          "path": "/assets/index-DVg9YI7d.css",
+          "start": 211.40000000596046,
+          "end": 849.9000000059605,
+          "encodedBytes": 18094,
+          "transferBytes": 18394
+        },
+        {
+          "path": "/assets/lambang-jambi-114-awiAJo5d.webp",
+          "start": 2036.5,
+          "end": 2230.3000000044703,
+          "encodedBytes": 7936,
+          "transferBytes": 8236
+        }
+      ],
+      "cls": 0,
+      "startupBlockingMs": 1780,
+      "searchMs": 646,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}

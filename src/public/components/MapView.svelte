@@ -16,9 +16,23 @@
   let returnFocus: HTMLElement | null = null;
   function closeDetail() { const nomor = state.selectedNomor; state.closeDetail(); if (nomor) adapter?.centerAfterClose(nomor); }
   onMount(() => {
-    const instance = createSurveyMap({ target, popup, dataset: state.dataset, onSelect: id => id ? state.select(id) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; }, onTileTrouble: () => connection.suspect(), onTilesSlow: slow => { connection.tilesSlow = slow; } }); adapter = instance;
+    let instance: SurveyMapAdapter | null = null, disposed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // OL setup reads layout and builds canvas layers. Give the completed
+    // sidebar/header a paint first instead of doing all of that in Svelte's
+    // mounting microtask. A frame followed by a task works on older phones too.
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => {
+        if (disposed) return;
+        // Read the latest state: search, linked selection or GPS may already
+        // have changed while setup was queued. Share the effect's point array
+        // to avoid immediately replacing all freshly created features.
+        instance = createSurveyMap({ target, popup, dataset: { ...state.dataset, points: state.points }, onSelect: id => id ? state.select(id) : closeDetail(), onBasemapFallback: () => { state.layers.google = false; state.layers.esri = true; }, onTileTrouble: () => connection.suspect(), onTilesSlow: slow => { connection.tilesSlow = slow; } });
+        adapter = instance;
+      }, 0);
+    });
     const observer = new ResizeObserver(scrollHint); observer.observe(content);
-    return () => { observer.disconnect(); instance.dispose(); adapter = null; };
+    return () => { disposed = true; cancelAnimationFrame(frame); clearTimeout(timer); observer.disconnect(); instance?.dispose(); adapter = null; };
   });
   $effect(() => { adapter?.setPoints(state.points); });
   $effect(() => { adapter?.setImageryOffline(connection.offline); });
@@ -29,10 +43,10 @@
     adapter?.setSelection(id);
     if (!id && returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
   });
-  $effect(() => { const fix = locator.fix; if (!fix) { framed = false; adapter?.setUserLocation(null, null); return; } adapter?.setUserLocation(fix, nearest?.point ?? null, !!nearest && isHere(nearest.meters, fix.accuracy), !framed && !untrack(() => state.selectedNomor)); framed = true; });
+  $effect(() => { if (!adapter) return; const fix = locator.fix; if (!fix) { framed = false; adapter.setUserLocation(null, null); return; } adapter.setUserLocation(fix, nearest?.point ?? null, !!nearest && isHere(nearest.meters, fix.accuracy), !framed && !untrack(() => state.selectedNomor)); framed = true; });
   $effect(() => { for (const key of Object.keys(state.layers) as LayerKey[]) adapter?.setLayerVisibility(key, state.layers[key]); });
 </script>
-<div id="map" aria-label="Peta sebaran PUTS" bind:this={target}></div>
+<div id="map" aria-label="Peta sebaran PUTS" aria-busy={!adapter} bind:this={target}></div>
 <div id="popup" class="ol-popup" class:is-open={!!state.selected} bind:this={popup} onscroll={scrollHint} aria-label="Detail titik PUTS">
   {#if state.selected}<button id="popup-closer" class="ol-popup-closer" type="button" aria-label="Tutup info titik" onclick={closeDetail}></button>{/if}
   <div id="popup-content" bind:this={content} onscroll={scrollHint}>{#if state.selected}<PointPopup point={state.selected} dataset={state.dataset} stage={state.progress ? state.progress.get(state.selected.nomor) ?? 0 : null}/>{/if}<div class="popup-scroll-fade" aria-hidden="true"></div></div>

@@ -24,3 +24,25 @@ test('cancels pending data when unmounted and starts a fresh request on remount'
   hold = false; await page.getByRole('button', { name: 'Mount fixture', exact: true }).click();
   await expect(page.locator('.atlas-total__num')).toHaveText('500'); await expect(page.locator('.ol-viewport')).toHaveCount(1);
 });
+
+test('paints the sidebar before map setup and cancels deferred setup on unmount', async ({ page }) => {
+  await page.addInitScript(() => {
+    const pending = new Map<number, FrameRequestCallback>(); let id = 0;
+    window.requestAnimationFrame = callback => { pending.set(++id, callback); return id; };
+    window.cancelAnimationFrame = handle => { pending.delete(handle); };
+    (window as Window & { releaseFrames?: () => void }).releaseFrames = () => {
+      const callbacks = [...pending.values()]; pending.clear();
+      callbacks.forEach(callback => callback(performance.now()));
+    };
+  });
+  await page.goto('http://127.0.0.1:8127/tests/fixtures/lifecycle.html', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.atlas-total__num')).toHaveText('500');
+  // No frame has been granted yet: the readable shell must not wait for OL.
+  await expect(page.locator('.ol-viewport')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Unmount fixture' }).dispatchEvent('click');
+  await expect(page.locator('#app')).toBeEmpty();
+  await page.evaluate(() => (window as Window & { releaseFrames?: () => void }).releaseFrames?.());
+  await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+  await expect(page.locator('#app')).toBeEmpty();
+  await expect(page.locator('.ol-viewport')).toHaveCount(0);
+});

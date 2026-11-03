@@ -43,7 +43,14 @@
     if (end) document.documentElement.style.setProperty('--sheet-peek', `${Math.round(end)}px`);
   }
   onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(sidebar.querySelector('#panel-meta')!); observer.observe(near); window.addEventListener('resize', measurePeek); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); }; });
-  $effect(() => { state.activeRegion; state.statusFilter; state.query; if (scroller) scroller.scrollTop = 0; });
+  let scrollInitialized = false;
+  $effect(() => {
+    state.activeRegion; state.statusFilter; state.query;
+    // A new scroller already starts at zero. Writing scrollTop on its first
+    // effect forced a full layout while the rest of the map was still mounting.
+    if (scroller && scrollInitialized) scroller.scrollTop = 0;
+    scrollInitialized = true;
+  });
   function syncScroll() {
     sidebar.classList.toggle('is-scrolled', scroller.scrollTop > 2);
     const heads = [...scroller.querySelectorAll<HTMLElement>('.atlas-section')]; const top = scroller.getBoundingClientRect().top;

@@ -1,0 +1,169 @@
+{
+  "date": "2026-11-03",
+  "baselineCommit": "d4d886a",
+  "profile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "deviceScaleFactor": 3,
+    "cpuSlowdown": 6,
+    "network": {
+      "latencyMs": 150,
+      "downloadBitsPerSecond": 1600000,
+      "uploadBitsPerSecond": 750000
+    },
+    "runsPerVersion": 3,
+    "serviceWorkers": "blocked",
+    "thirdPartyRequests": "deterministic fixtures; not production tile/network performance",
+    "compression": "gzip",
+    "startupBlockingDefinition": "Sum of max(0, longtask duration - 50ms) before ready; not Lighthouse TBT",
+    "searchDefinition": "Time from automation beginning fill(JAMBI) to two animation frames after results; not INP"
+  },
+  "summary": {
+    "before": {
+      "readyMs": 6109,
+      "lcpMs": 4516,
+      "startupBlockingMs": 3122,
+      "searchMs": 985,
+      "cls": 0.0005401742673725277
+    },
+    "after": {
+      "readyMs": 5772,
+      "lcpMs": 4672,
+      "startupBlockingMs": 2886,
+      "searchMs": 1011,
+      "cls": 0.0005401742673725277
+    }
+  },
+  "runs": [
+    {
+      "label": "before",
+      "run": 0,
+      "readyMs": 7976,
+      "lcpMs": 6400,
+      "cls": 0.0007471753552342628,
+      "startupBlockingMs": 4659,
+      "searchMs": 985,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 1170,
+          "height": 2532
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "after",
+      "run": 0,
+      "readyMs": 6685,
+      "lcpMs": 4672,
+      "cls": 0.0007471753552342628,
+      "startupBlockingMs": 3442,
+      "searchMs": 1011,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "after",
+      "run": 1,
+      "readyMs": 5772,
+      "lcpMs": 4776,
+      "cls": 0.0005401742673725277,
+      "startupBlockingMs": 2886,
+      "searchMs": 1089,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "before",
+      "run": 1,
+      "readyMs": 6109,
+      "lcpMs": 4516,
+      "cls": 0.0005401742673725277,
+      "startupBlockingMs": 3122,
+      "searchMs": 944,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 1170,
+          "height": 2532
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "before",
+      "run": 2,
+      "readyMs": 5641,
+      "lcpMs": 4216,
+      "cls": 0.0005401742673725277,
+      "startupBlockingMs": 2859,
+      "searchMs": 1049,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 1170,
+          "height": 2532
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "label": "after",
+      "run": 2,
+      "readyMs": 5197,
+      "lcpMs": 4164,
+      "cls": 0.0005401742673725277,
+      "startupBlockingMs": 2350,
+      "searchMs": 744,
+      "rows": 143,
+      "canvas": [
+        {
+          "width": 780,
+          "height": 1688
+        }
+      ],
+      "overflow": false,
+      "errors": []
+    }
+  ],
+  "mediaSample": [
+    {
+      "bytes": 128015,
+      "width": 720,
+      "height": 960,
+      "format": "JPEG"
+    },
+    {
+      "bytes": 376322,
+      "width": 1280,
+      "height": 960,
+      "format": "JPEG"
+    },
+    {
+      "bytes": 35161,
+      "width": 210,
+      "height": 310,
+      "format": "JPEG"
+    }
+  ]
+}

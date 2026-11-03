@@ -46,6 +46,10 @@ test('fast application connection never shows weak signal while the imagery serv
 });
 
 test('genuinely high latency shows weak signal and one fast sample clears it without waiting for imagery', async ({ page, imagery }) => {
+  // Three deliberately slow probes plus recovery can use the whole default
+  // 30 s test budget. Keep that budget above the 30 s + 10 s assertion windows
+  // so teardown cannot release imagery in the middle of the final assertion.
+  test.setTimeout(45_000);
   imagery.hold = true;
   let latency = 3200;
   const samples = probes(page);

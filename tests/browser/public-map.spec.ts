@@ -7,6 +7,14 @@ import { resolve } from 'node:path';
 const { PNG } = createRequire(resolve('package.json'))('playwright-core/lib/utilsBundle') as { PNG: { sync: { read(input: Buffer): { data: Buffer } } } };
 // The bundle carries a Google key only when the build saw one in .env.local or the environment.
 const googleKey = !!(process.env.VITE_GOOGLE_MAPS_KEY || loadEnv('production', process.cwd(), 'VITE_').VITE_GOOGLE_MAPS_KEY);
+// Geometry/focus/photo checks use a fixed progress feed. Live stages change the
+// accessible point names and made these tests time out when a crew built a unit.
+// Tests of progress itself register their own, later route with explicit stages.
+test.beforeEach(async ({ page }) => {
+  await page.route('https://www.esdm.cloud/api/public/survey-progress', route => route.fulfill({
+    headers: { 'access-control-allow-origin': '*' }, json: { stages: {}, pending: {} },
+  }));
+});
 // Google is stubbed so browser runs never spend the tile quota or depend on the key's referrers.
 async function stubGoogle(page: Page, session: number) {
   const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' };
@@ -332,4 +340,25 @@ test('starts on Google, preserves original mobile controls and drags the sheet w
   await page.mouse.move(box!.x + box!.width / 2, box!.y + 12); await page.mouse.down();
   await page.mouse.move(box!.x + box!.width / 2, Math.max(20, box!.y - 300), { steps: 10 }); await page.mouse.up();
   await expect(handle).toHaveAttribute('aria-expanded', 'true');
+});
+
+test.describe('high-density phone rendering', () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true });
+  test('bounds the map backing store while keeping search and point selection usable', async ({ page }) => {
+    await stubGoogle(page, 200);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await expect(page.locator('.atlas-total__num')).toHaveText('500');
+    await expect.poll(() => page.locator('#map canvas').evaluateAll(canvases => {
+      const map = document.getElementById('map')!;
+      return canvases.some(node => node instanceof HTMLCanvasElement && node.width === map.clientWidth * 2 && node.height === map.clientHeight * 2);
+    })).toBe(true);
+    await page.getByRole('searchbox').fill('TANJUNG RADEN-007');
+    await expect(page.locator('.atlas-pt')).toHaveCount(1);
+    await page.locator('.atlas-pt').click();
+    await expect(page.locator('#popup')).toBeVisible();
+    await page.getByRole('button', { name: 'Tutup info titik' }).click();
+    await expect(page.locator('#popup')).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
 });
