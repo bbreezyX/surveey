@@ -121,7 +121,7 @@ def point_summary(request):
     return request._point_summary
 
 
-def filtered_points(request, *, confirmed_only=False):
+def filtered_points(request, *, for_export=False):
     query = request.GET.get('q', '')[:250].strip()
     rows = Point.objects.all()
     region = request.GET.get('region', '')
@@ -136,7 +136,9 @@ def filtered_points(request, *, confirmed_only=False):
     if query:
         rows = rows.filter(Q(nomor__icontains=query) | Q(state__alamat__icontains=query) |
             Q(state__nama__icontains=query) | Q(state__keterangan__icontains=query) | Q(state__jalur__icontains=query) | Q(state__status__icontains=query))
-    status = 'pasti' if confirmed_only else request.GET.get('status', '')
+    if for_export:
+        return rows.filter(archived=False, state__status='')
+    status = request.GET.get('status', '')
     if status == 'pasti':
         return rows.filter(archived=False, state__status='', state__duplikat=False)
     if status in ('Cadangan', 'Belum Ditetapkan'):
@@ -431,10 +433,10 @@ def export_xlsx(request):
     from .point_export import point_workbook
 
     permission(request.user, 'publish')
-    rows = filtered_points(request, confirmed_only=True).order_by('nomor').values('id', 'nomor', 'state')
+    rows = filtered_points(request, for_export=True).order_by('nomor').values('id', 'nomor', 'state')
     region = request.GET.get('region', '').lower().replace(' ', '-') or 'semua-wilayah'
     output = point_workbook(rows, REGIONS, REGION_ALIASES)
-    return FileResponse(output, as_attachment=True, filename=f'titik-pasti-{region}.xlsx',
+    return FileResponse(output, as_attachment=True, filename=f'titik-survei-{region}.xlsx',
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @api(['GET'])

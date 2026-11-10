@@ -59,7 +59,8 @@
   function editorState(point: ListPoint) { return { archived: point.archived, status: point.cadangan ? 'Cadangan' : point.belum ? 'Belum Ditetapkan' : '', duplikat: point.duplikat } as PointState; }
   // Search runs as the user types, like the public map's; the server does the matching.
   let searchTimer: ReturnType<typeof setTimeout> | undefined;
-  function refresh() { clearTimeout(searchTimer); listPage = 1; loadPoints(); }
+  type PointFilters = Partial<{ region: string; status: string }>;
+  function refresh(filters?: PointFilters) { clearTimeout(searchTimer); listPage = 1; loadPoints(filters); }
   function queueSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 300); }
   // The kecamatan head currently pinned at the top of the list turns navy,
   // as on the public map (custom.js syncStuck there).
@@ -77,10 +78,10 @@
   }
   function announce(text: string) { message = text; }
   function failed(e: unknown) { error = e instanceof Error ? e.message : 'Permintaan gagal.'; }
-  async function loadPoints() {
+  async function loadPoints(filters: PointFilters = {}) {
     const requestId = ++pointsRequest;
     error = ''; busy = true;
-    try { const result = await api<{items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}>(`points?${new URLSearchParams({ q, region, status, page: String(listPage), archived: archived ? '1' : '0' })}`);
+    try { const result = await api<{items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}>(`points?${new URLSearchParams({ q, region, status, page: String(listPage), archived: archived ? '1' : '0', ...filters })}`);
       if (requestId === pointsRequest) {
         points = result.items; total = result.total; pages = result.pages; counts = result.counts; gaps = result.gaps;
       }
@@ -89,8 +90,8 @@
   async function exportPoints() {
     exporting = true; error = ''; message = '';
     try {
-      await download(`export.xlsx?${new URLSearchParams({ q, region })}`, 'titik-pasti.xlsx');
-      announce('Unduhan Excel titik pasti dimulai.');
+      await download(`export.xlsx?${new URLSearchParams({ q, region })}`, 'titik-survei.xlsx');
+      announce('Unduhan Excel titik survei dimulai.');
     } catch(e) { failed(e); } finally { exporting = false; }
   }
   async function select(id: string) {
@@ -252,13 +253,13 @@
           <button type="button" class="panel-search__clear" aria-label="Hapus pencarian" onclick={() => { q = ''; refresh(); }}><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
         </label>
         <div class="filter-row">
-          <Select variant="pill" label="Kabupaten/kota" bind:value={region} onchange={refresh} options={regionOptions}/>
+          <Select variant="pill" label="Kabupaten/kota" value={region} onchange={value => { region = value; refresh({ region: value }); }} options={regionOptions}/>
         </div>
         <div class="filter-row">
-          <Select variant="pill" label="Status" bind:value={status} onchange={refresh} options={[{ value: '', label: 'Semua status' }, { value: 'pasti', label: 'Titik pasti' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum ditetapkan' }, { value: 'duplikat', label: 'Perlu verifikasi' }]}/>
+          <Select variant="pill" label="Status" value={status} onchange={value => { status = value; refresh({ status: value }); }} options={[{ value: '', label: 'Semua status' }, { value: 'pasti', label: 'Titik pasti' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum ditetapkan' }, { value: 'duplikat', label: 'Perlu verifikasi' }]}/>
           <label class="switch-row"><span class="ctl-switch"><input type="checkbox" checked={archived && status !== 'pasti'} onchange={event => { archived = event.currentTarget.checked; refresh(); }} disabled={status === 'pasti'}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Sertakan arsip</label>
         </div>
-        {#if canPublish}<div class="filter-row list-actions"><button type="button" class="text-action list-export" disabled={exporting} onclick={exportPoints} title="Unduh titik pasti beserta foto sesuai kabupaten/kota dan pencarian">{exporting ? 'Menyiapkan Excel…' : 'Ekspor titik pasti (.xlsx)'}</button></div>{/if}
+        {#if canPublish}<div class="filter-row list-actions"><button type="button" class="text-action list-export" disabled={exporting} onclick={exportPoints} title="Unduh alokasi utama yang sudah ditetapkan, termasuk titik yang perlu verifikasi">{exporting ? 'Menyiapkan Excel…' : 'Ekspor titik survei (.xlsx)'}</button></div>{/if}
       </form>
       {#if counts}<div class="atlas-summary atlas-summary--total">
         <div class="atlas-total"><span class="atlas-total__num">{counts.official}</span><span class="atlas-total__label"><span>alokasi resmi</span><span>{counts.cadangan} cadangan tidak dihitung</span></span></div>

@@ -22,18 +22,18 @@ from .media import MAX_BYTES
 from .models import Photo
 
 
+PHOTO_WIDTH = 44  # Excel column width in characters, about 308 pixels at the default scale.
 FIELDS = (
     ('Nomor', 'nomor', 38), ('Kabupaten/Kota', 'region', 28), ('Alamat', 'alamat', 48),
-    ('Foto Survei', 'photo_id', 46),
-    ('Latitude', 'lat', 17), ('Longitude', 'lon', 17), ('Tanggal Dokumentasi', 'date', 24),
-    ('Nama Anggota', 'nama', 26), ('Jalur', 'jalur', 18), ('Lokasi Rekapan', 'lokasi_rekapan', 34),
+    ('Foto Survei', 'photo_id', PHOTO_WIDTH),
+    ('Latitude', 'lat', 17), ('Longitude', 'lon', 17), ('Status Verifikasi', 'verification', 22),
+    ('Tanggal Dokumentasi', 'date', 24), ('Jalur', 'jalur', 18), ('Lokasi Rekapan', 'lokasi_rekapan', 34),
     ('Keterangan', 'keterangan', 30), ('Catatan', 'catatan', 32),
 )
 PHOTO_COLUMN = next(column for column, (_, field, _) in enumerate(FIELDS) if field == 'photo_id')
-ROW_FONT = Font(name='Arial', size=10, color='172B3A')
-HEADER_FONT = Font(name='Arial', size=10, bold=True, color='FFFFFF')
-HEADER_FILL = PatternFill('solid', fgColor='1F4E78')
-ROW_FILL = PatternFill('solid', fgColor='F2F6FA')
+ROW_FONT = Font(name='Arial', size=10, color='FF000000')
+HEADER_FONT = Font(name='Arial', size=10, bold=True, color='FFFFFFFF')
+HEADER_FILL = PatternFill('solid', fgColor='FF555555')
 ALIGNMENT = Alignment(vertical='center', wrap_text=True)
 EXPORT_LOCK = Lock()
 
@@ -64,26 +64,27 @@ def photo_image(photo):
 
 
 def place_photo(sheet, image, row):
-    scale = min(1, 300 / image.width, 224 / image.height)
-    width, height = round(image.width * scale), round(image.height * scale)
-    # Keep the drawing inside its cell so Excel can move it with a sorted row.
+    cell_width = PHOTO_WIDTH * 7
+    scale = min(1, (cell_width - 12) / image.width, 224 / image.height)
+    width, height = max(1, round(image.width * scale)), max(1, round(image.height * scale))
+    left = (cell_width - width) // 2
     image.anchor = TwoCellAnchor(editAs='twoCell',
-        _from=AnchorMarker(col=PHOTO_COLUMN, row=row - 1, colOff=pixels_to_EMU(6), rowOff=pixels_to_EMU(6)),
-        to=AnchorMarker(col=PHOTO_COLUMN, row=row - 1, colOff=pixels_to_EMU(6 + width), rowOff=pixels_to_EMU(6 + height)))
+        _from=AnchorMarker(col=PHOTO_COLUMN, row=row - 1, colOff=pixels_to_EMU(left), rowOff=pixels_to_EMU(6)),
+        to=AnchorMarker(col=PHOTO_COLUMN, row=row - 1, colOff=pixels_to_EMU(left + width), rowOff=pixels_to_EMU(6 + height)))
     sheet.add_image(image)
-    sheet.row_dimensions[row].height = max(42, (height + 12) * 0.75)
+    sheet.row_dimensions[row].height = max(28, (height + 12) * 0.75)
 
 
 def write_workbook(output, rows, regions, aliases):
     if not rows:
-        raise Problem('Tidak ada titik pasti yang cocok dengan kabupaten/kota dan pencarian ini.', 404)
+        raise Problem('Tidak ada titik survei yang cocok dengan kabupaten/kota dan pencarian ini.', 404)
     photo_ids = {row['state']['photo_id'] for row in rows if row['state'].get('photo_id')}
     photos = {str(photo.id): photo for photo in Photo.objects.filter(id__in=photo_ids, ready=True)}
     revoked = set(PublishedMedia.objects.filter(id__in=photo_ids, revoked=True).values_list('id', flat=True))
 
     book = Workbook()
     sheet = book.active
-    sheet.title = 'Titik Pasti'
+    sheet.title = 'Titik Survei'
     sheet.freeze_panes = 'B2'
     sheet.row_dimensions[1].height = 28
     for column, (label, _, width) in enumerate(FIELDS, 1):
@@ -95,7 +96,8 @@ def write_workbook(output, rows, regions, aliases):
         state = row['state']
         prefix = row['nomor'].split('-', 1)[0].upper()
         values = dict(state, nomor=row['nomor'], region=regions.get(aliases.get(prefix, prefix), prefix.title()),
-            date=date.fromisoformat(state['date']) if state.get('date') else None)
+            date=date.fromisoformat(state['date']) if state.get('date') else None,
+            verification='Perlu verifikasi' if state['duplikat'] else 'Titik pasti')
         photo_id = state.get('photo_id')
         photo = photos.get(photo_id)
         if photo and photo.point_id == row['id'] and photo.id not in revoked:
@@ -119,10 +121,7 @@ def write_workbook(output, rows, regions, aliases):
             elif field == 'date':
                 cell.number_format = 'dd/mm/yyyy'
             cell.font, cell.alignment = ROW_FONT, ALIGNMENT
-            if row_number % 2 == 0:
-                cell.fill = ROW_FILL
 
-    sheet.auto_filter.ref = sheet.dimensions
     book.save(output)
 
 
