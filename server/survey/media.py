@@ -3,6 +3,7 @@ import io
 import uuid
 import warnings
 from PIL import Image, ImageOps, UnidentifiedImageError
+from django.conf import settings
 from delivery import storage
 from .models import Photo
 from .domain import Problem
@@ -41,6 +42,10 @@ def decode(raw, name='', mime=None):
         raise Problem('Foto rusak atau tidak dapat dibaca dengan aman.')
 
 def store_photo(raw, name, actor=None, point=None, mime=None):
+    # Local admin only reads VPS media; refusing here also keeps the cleanup
+    # below from turning a clear message into a storage permission error.
+    if settings.STORAGE_BACKEND == 'ssh':
+        raise Problem('Upload foto hanya tersedia di admin produksi.', 409)
     derivative, width, height = decode(raw, name, mime)
     photo_id = uuid.uuid4()
     original_key, derivative_key = f'originals/{photo_id.hex}', f'display/{photo_id.hex}'

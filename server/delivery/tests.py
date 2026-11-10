@@ -154,3 +154,56 @@ class StorageConnectionTests(SimpleTestCase):
             server.shutdown()
             server.server_close()
             thread.join(timeout=2)
+
+
+@override_settings(STORAGE_BACKEND='ssh', SSH_MEDIA_HOST='operator@vps.test')
+class SshMediaStorageTests(SimpleTestCase):
+    key = 'display/' + 'a' * 32
+
+    def run_result(self, code, stdout=b'', stderr=b''):
+        from subprocess import CompletedProcess
+        return CompletedProcess([], code, stdout, stderr)
+
+    def test_reads_vps_media_as_the_service_account(self):
+        from unittest import mock
+        from . import storage
+        with mock.patch('delivery.storage.subprocess.run', return_value=self.run_result(0, b'jpeg')) as run:
+            self.assertEqual(storage.get(self.key).read(), b'jpeg')
+        command = run.call_args.args[0]
+        self.assertEqual(command[0], 'ssh')
+        self.assertIn('BatchMode=yes', command)
+        self.assertEqual(command[command.index('operator@vps.test'):],
+            ['operator@vps.test', 'sudo', '-n', '-u', 'surveey', 'cat', '/srv/surveey/media/' + self.key])
+
+    def test_missing_file_and_unreachable_vps_are_distinct(self):
+        from unittest import mock
+        from . import storage
+        with mock.patch('delivery.storage.subprocess.run', return_value=self.run_result(1, stderr=b'No such file')):
+            with self.assertRaises(FileNotFoundError):
+                storage.get(self.key)
+            self.assertFalse(storage.exists(self.key))
+        with mock.patch('delivery.storage.subprocess.run', return_value=self.run_result(255, stderr=b'timeout')):
+            with self.assertRaises(ConnectionError):
+                storage.get(self.key)
+            with self.assertRaises(ConnectionError):
+                storage.exists(self.key)
+        with mock.patch('delivery.storage.subprocess.run', return_value=self.run_result(0)):
+            self.assertTrue(storage.exists(self.key))
+
+    def test_local_admin_never_writes_or_deletes_vps_media(self):
+        from unittest import mock
+        from . import storage
+        with mock.patch('delivery.storage.subprocess.run') as run:
+            with self.assertRaises(PermissionError):
+                storage.put(self.key, b'x')
+            with self.assertRaises(PermissionError):
+                storage.remove(self.key)
+        run.assert_not_called()
+
+    def test_key_validation_precedes_the_remote_command(self):
+        from unittest import mock
+        from . import storage
+        with mock.patch('delivery.storage.subprocess.run') as run:
+            with self.assertRaises(ValueError):
+                storage.get('display/x; rm -rf /')
+        run.assert_not_called()

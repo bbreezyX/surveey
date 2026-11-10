@@ -27,6 +27,28 @@ class LocalProductionConfigurationTests(SimpleTestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {'database': 'django.db.backends.postgresql', 'storage': 's3'})
 
+    def test_local_admin_reads_vps_photos_over_ssh_without_bucket_credentials(self):
+        import json
+        database = {'DATABASE_URL': 'postgresql://survey_admin_app:fixture@127.0.0.1:15432/surveey', 'SURVEY_LOCAL_MEDIA': 'ssh'}
+        missing = self.configure(database)
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn('SSH_MEDIA_HOST', missing.stderr)
+        result = self.configure({**database, 'SSH_MEDIA_HOST': 'operator@vps.test'})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {'database': 'django.db.backends.postgresql', 'storage': 'ssh'})
+
+
+@override_settings(STORAGE_BACKEND='ssh', SSH_MEDIA_HOST='operator@vps.test')
+class LocalVpsUploadTests(SimpleTestCase):
+    def test_local_admin_rejects_uploads_before_touching_vps_media(self):
+        from unittest import mock
+        from .domain import Problem
+        from .media import store_photo
+        with mock.patch('delivery.storage.subprocess.run') as run, self.assertRaises(Problem) as raised:
+            store_photo(b'not inspected', 'foto.jpg')
+        run.assert_not_called()
+        self.assertIn('admin produksi', raised.exception.message)
+
 
 class AdminPathTests(TestCase):
     def setUp(self):

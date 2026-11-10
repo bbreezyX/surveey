@@ -87,6 +87,12 @@ if VPS and not VPS_RAILWAY_DATA:
     STORAGE_ROOT = Path(required('SURVEY_MEDIA_ROOT'))
     if not STORAGE_ROOT.is_absolute() or STORAGE_ROOT.resolve() != Path('/srv/surveey/media'):
         raise ImproperlyConfigured('VPS private media must use /srv/surveey/media.')
+# Production media lives on the VPS disk, owned by a service account, and the
+# broker only serves published derivatives. Local admin therefore reads drafts
+# and originals through the operator's own SSH login; it never writes there.
+if LOCAL and not TESTING and os.environ.get('SURVEY_LOCAL_MEDIA') == 'ssh':
+    STORAGE_BACKEND = 'ssh'
+    SSH_MEDIA_HOST = required('SSH_MEDIA_HOST')
 MEDIA_BROKER_TOKEN = os.environ.get('MEDIA_BROKER_TOKEN', '')
 MEDIA_BROKER_URL = os.environ.get('MEDIA_BROKER_URL', '')
 # Content-addressed copies of published derivatives; None disables the cache.

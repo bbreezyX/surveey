@@ -26,3 +26,6 @@ CSRF_COOKIE_PATH = '/admin/'
 # Kept outside the web root and separate from the public derivative cache.
 # Every hit still goes through live account/session/permission checks.
 ADMIN_MEDIA_CACHE_ROOT = Path('/tmp/survey-admin-media-cache') if (VPS or RAILWAY) else None
+# Each SSH read costs a full connection, so local admin keeps checksum-verified copies.
+if STORAGE_BACKEND == 'ssh':
+    ADMIN_MEDIA_CACHE_ROOT = ROOT / '.local/admin-media-cache'

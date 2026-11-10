@@ -4,13 +4,14 @@ Implemented locally and connected to the existing Railway `survey` project on 20
 
 ## Local setup
 
-Local administration uses the live production PostgreSQL database and private
-photo bucket. Accounts, drafts and publications are shared with the online admin.
-Use the same approved account. The launcher keeps HTTP/cookies on loopback and
-opens an SSH tunnel to Railway's private database; it does not expose a public
-database port or run migrations/imports at startup.
+Local administration uses the live production PostgreSQL database and photos on
+the VPS (since the 22 October 2026 migration). Accounts, drafts and publications are
+shared with the online admin. Use the same approved account. The launcher keeps
+HTTP/cookies on loopback and opens an SSH tunnel over Tailscale to the VPS loopback
+database; it does not expose a public database port or run migrations/imports at startup.
 
-Use Python 3.12, Node/npm, an authenticated Railway CLI and OpenSSH:
+Use Python 3.12, Node/npm, Tailscale and OpenSSH with a key already authorized for
+`ubuntu@100.64.182.105` (see `mac-operations.md`):
 
 ```powershell
 python -m venv .venv
@@ -21,17 +22,25 @@ npm run admin:connect
 npm run admin:local
 ```
 
-`admin:connect` registers a dedicated local SSH key in `~/.ssh`, reads the restricted admin
-service connection and bucket configuration, and saves them privately in ignored
+`admin:connect` reads the restricted admin database connection from
+`/srv/surveey/private/admin.env` over SSH and saves it privately in ignored
 `.local/admin-production.json`. Secrets are not printed. Run it again if the
-production service credentials change. `admin:local` refreshes the SSH destination
-and holds a loopback-only tunnel on port 15432 for the server's lifetime. Stopping
-the server stops its tunnel. The database login is `survey_admin_app`, not an
-operator/superuser login. Visit `http://127.0.0.1:8130/admin/`.
+production credentials change; a file saved before the VPS migration is rejected.
+Set `SURVEY_VPS_SSH` to use a different SSH login. `admin:local` holds a
+loopback-only tunnel from port 15432 to the VPS database for the server's lifetime.
+Stopping the server stops its tunnel. The database login is `survey_admin_app`, not
+an operator/superuser login. Visit `http://127.0.0.1:8130/admin/`.
+
+Photos stay in `/srv/surveey/media`, owned by the `surveey` service account. Local
+admin reads them through `ssh ... sudo -n -u surveey`, one connection per photo
+(about 0.3-0.4 s), and keeps checksum-verified display copies in
+`.local/admin-media-cache`. It never writes or deletes VPS media: photo upload is
+refused with a message pointing to the production admin, and publishing only checks
+that the files exist.
 
 Migrations, first imports and account recovery use the existing production
 operator workflow. The local launcher rejects initialization/restoration commands.
-It fails when the PostgreSQL connection or production bucket settings are missing;
+It fails when the PostgreSQL connection or VPS SSH settings are missing;
 there is no SQLite or local-photo fallback. A private random local Django session
 secret stays in `.local/django-secret`.
 

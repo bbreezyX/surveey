@@ -10,7 +10,7 @@ if (!existsSync(secretPath)) writeFileSync(secretPath, randomBytes(48).toString(
 const python = resolve(root, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
 if (!existsSync(python)) throw new Error('Create .venv and install server/requirements.txt first.');
 const args = process.argv.slice(2);
-// Tests never load production credentials or open the Railway tunnel.
+// Tests never load production credentials or open the VPS tunnel.
 const test = args[0] === 'test';
 const configPath = resolve(root, '.local/admin-production.json');
 let config = {};
@@ -28,6 +28,9 @@ if (test) {
   process.exit(command.status ?? 1);
 }
 if (!env.DATABASE_URL) throw new Error('Run npm run admin:connect to configure the production PostgreSQL connection.');
+// A pre-migration file still points at Railway, whose admin login is disabled.
+if (config.DATABASE_URL && !config.VPS_SSH_HOST) throw new Error('Saved connection predates the VPS migration. Run npm run admin:connect again.');
+if (config.VPS_SSH_HOST) Object.assign(env, { SURVEY_LOCAL_MEDIA: 'ssh', SSH_MEDIA_HOST: config.VPS_SSH_HOST });
 let database;
 try { database = new URL(env.DATABASE_URL); } catch { throw new Error('DATABASE_URL must be a valid PostgreSQL connection.'); }
 if (!['postgres:', 'postgresql:'].includes(database.protocol)) throw new Error('DATABASE_URL must use PostgreSQL; local SQLite is unavailable.');
@@ -53,20 +56,12 @@ function portReady(port) {
 }
 
 async function main() {
-  if (config.SSH_CONFIG && env.DATABASE_URL === config.DATABASE_URL) {
-    const railwayEnv = { ...process.env, RAILWAY_CALLER: 'skill:use-railway@1.5.2', RAILWAY_AGENT_SESSION: 'surveypjuts-local-production' };
-    // Refresh the SSH destination when Railway has replaced the database container.
-    const npmCli = process.platform === 'win32' && process.env.APPDATA ? resolve(process.env.APPDATA, 'npm/node_modules/@railway/cli/bin/railway.js') : '';
-    const useNpmCli = npmCli && existsSync(npmCli);
-    const refresh = spawnSync(useNpmCli ? process.execPath : 'railway', [...(useNpmCli ? [npmCli] : []), 'ssh', 'config', '--project', config.SSH_PROJECT, '--environment', config.SSH_ENVIRONMENT,
-      '--service', config.SSH_SERVICE, '--path', config.SSH_CONFIG, '--alias', 'survey-production-db', '--identity-file', config.SSH_IDENTITY],
-      { cwd: root, env: railwayEnv, encoding: 'utf8' });
-    if (refresh.status !== 0) throw new Error('Could not resolve the production database SSH destination; check Railway login.');
+  if (config.VPS_SSH_HOST && env.DATABASE_URL === config.DATABASE_URL) {
     const port = Number(database.port);
     if (await portReady(port)) throw new Error('The database tunnel port is already occupied. Stop the previous local admin before starting another.');
-    const tunnel = spawn('ssh', ['-F', config.SSH_CONFIG, '-i', config.SSH_IDENTITY, '-N', '-L', `127.0.0.1:${port}:127.0.0.1:5432`,
+    const tunnel = spawn('ssh', ['-N', '-L', `127.0.0.1:${port}:127.0.0.1:${config.VPS_DB_PORT}`,
       '-o', 'ExitOnForwardFailure=yes', '-o', 'BatchMode=yes', '-o', 'ServerAliveInterval=30', '-o', 'ServerAliveCountMax=3',
-      '-o', 'StrictHostKeyChecking=accept-new', '-o', `UserKnownHostsFile=${resolve(root, '.local/railway-known-hosts')}`, 'survey-production-db'],
+      '-o', 'StrictHostKeyChecking=yes', config.VPS_SSH_HOST],
       { stdio: ['ignore', 'ignore', 'pipe'] });
     children.add(tunnel);
     let failure = '';

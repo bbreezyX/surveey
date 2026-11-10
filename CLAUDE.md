@@ -7,8 +7,8 @@ This repository now uses Svelte 5, TypeScript, Vite and OpenLayers for the publi
 - `npm ci`, `npm run build`, `npm test`: public build and unit checks.
 - `npm run build:admin`: admin type check and build.
 - `npm run test:e2e`: browser checks.
-- `npm run admin:connect`: save the restricted production DB/bucket connection privately and register the dedicated local SSH key.
-- `npm run admin:local`: local admin on 127.0.0.1:8130/admin/; it opens a private SSH tunnel and shares production PostgreSQL, photos, accounts, drafts and publications. No automatic migration/import or SQLite fallback.
+- `npm run admin:connect`: read the restricted production DB connection from the VPS over SSH (Tailscale) and save it privately.
+- `npm run admin:local`: local admin on 127.0.0.1:8130/admin/; it opens a private SSH tunnel to the VPS and shares production PostgreSQL, photos (read-only; upload stays in production admin), accounts, drafts and publications. No automatic migration/import or SQLite fallback.
 - `node scripts/admin-local.mjs test survey delivery --noinput`: backend checks after installing the local virtual environment.
 
 Production runs on the VPS: a push to `master` deploys only through the `Deploy Surveey VPS` GitHub Actions workflow (`.github/workflows/deploy-vps.yml`, docs/autodeploy-vps.md). The three Railway services are a dormant fallback holding the pre-migration snapshot; their GitHub autodeploy triggers were removed on 23 October 2026 and their database roles cannot log in, so Railway no longer builds on push (re-enabling is in docs/return-to-railway.md). For the Railway topology, keep the service-specific Dockerfile settings: `server/deploy/Dockerfile.railway-public-map`, `server/deploy/Dockerfile.admin`, and `server/deploy/Dockerfile.public-data`. The public-map service reverse-proxies admin and published data to private services. Never substitute the legacy static image for this production topology. See README.md, docs/railway-deployment.md and docs/admin-operations.md for current commands and boundaries.
