@@ -63,14 +63,34 @@
 .editor { display: flex; flex-direction: column; }
 .edit-head { display: flex; align-items: flex-start; gap: 12px; padding: 16px 20px 12px; }
 .edit-title { flex: 1; min-width: 0; }
-.edit-head h2 { margin: 0 0 4px; font-size: 21px; line-height: 1.22; font-weight: 750; letter-spacing: -0.01em; overflow-wrap: anywhere; }
-.edit-id { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted-2); overflow-wrap: anywhere; }
+.edit-head h2 { margin: 0 0 4px; font-size: 21px; line-height: 1.22; font-weight: 750; letter-spacing: -0.01em; overflow-wrap: anywhere; text-wrap: balance; }
+/* Balanced so the unit number never sits alone on the second line. */
+.edit-id { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted-2); overflow-wrap: anywhere; text-wrap: balance; }
 .edit-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 8px 0 0; font-size: 12.5px; color: var(--muted-2); }
 .edit-notice { margin: 0 20px 10px; }
 .edit-form { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0; }
 .edit-scroll { flex: 1; min-height: 0; overflow: auto; padding: 4px 20px 8px; border-top: 1px solid var(--divider); }
 .edit-foot { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--divider); }
 .edit-foot p { margin: 0 auto 0 0; font-size: 12.5px; color: var(--muted-2); }
+/* Editor sections: a floated legend stops being the fieldset's "rendered
+   legend", so it no longer sits in the top border and the divider above each
+   section runs unbroken, with the padding below it actually applied. */
+.edit-scroll fieldset { margin: 18px 0 4px; }
+.edit-scroll fieldset + fieldset { margin-top: 10px; padding-top: 18px; border-top: 1px solid var(--divider); }
+.edit-scroll legend { float: left; width: 100%; margin-bottom: 12px; font-size: 15px; }
+.edit-scroll legend + * { clear: both; }
+/* The picker already writes the address; its text is shown as one line and
+   opens for editing only when needed. */
+.address-line { display: flex; align-items: baseline; gap: 10px; margin: -4px 0 14px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.address-line span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.address-line .text-action { margin: -5px -8px -5px 0; font-size: 13px; }
+/* Archiving takes a point out of every count; it sits in its own section and turns red when on. */
+.archive-row { display: grid; gap: 4px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 10px; transition: border-color var(--dur), background-color var(--dur); }
+.archive-row .switch-row { margin: 0; }
+/* Indented under the label text (36px switch + 9px gap), not under the switch. */
+.archive-row p { margin: 0; padding-left: 45px; font-size: 12.5px; line-height: 1.35; color: var(--muted-2); }
+.archive-row:has(input:checked) { border-color: var(--danger); background: var(--danger-tint); }
+.archive-row:has(input:checked) p { color: var(--danger); }
 .editor-empty { margin: auto; padding: 32px 36px; text-align: center; }
 .editor-empty h2 { margin: 0 0 8px; font-size: 19px; font-weight: 750; }
 .editor-empty p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
@@ -483,6 +503,9 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
   .app-sheet[data-pane="photo"] .wing-l, .app-sheet[data-pane="photo"] .editor { display: none; }
   .sheet-title p { display: none; }
   .edit-head, .edit-scroll, .edit-foot { padding-left: 16px; padding-right: 16px; }
+  /* The head took ~300 of 812px on a phone; a smaller title leaves the form room. */
+  .edit-head { padding-top: 12px; padding-bottom: 10px; }
+  .edit-head h2 { font-size: 18px; }
   .edit-foot p { display: none; }
   .edit-foot .btn-primary { flex: 1; }
   .page-head, .page-row, .page-foot { padding-left: 16px; padding-right: 16px; }

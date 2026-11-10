@@ -18,8 +18,9 @@
   // in the form the existing data uses: "Desa X, Kecamatan Y, Kabupaten Z".
   // The text stays editable; the picker only overwrites it once a desa is chosen.
   // onpick runs only when a desa is chosen here, not when the text is typed.
-  let { value = $bindable(), onpick }: { value: string; onpick?: (address: string) => void } = $props();
-  let tree = $state<Wilayah>([]), failed = $state(false);
+  // failed is bindable so a form can keep the free-text address open when the list never loads.
+  let { value = $bindable(), onpick, failed = $bindable(false) }: { value: string; onpick?: (address: string) => void; failed?: boolean } = $props();
+  let tree = $state<Wilayah>([]);
   let kab = $state(''), kec = $state(''), desa = $state('');
   // The address this picker last read or wrote. Picking only a kabupaten
   // leaves the text unchanged, so re-reading on every change would undo it.
@@ -47,9 +48,11 @@
 </script>
 {#if failed}<p class="hint">Daftar wilayah gagal dimuat. Alamat tetap dapat diketik.</p>
 {:else}
+  <!-- The field label already says "Kabupaten/kota"; the prefix only pushed "Batang Hari" past the
+       half-width cell. The value keeps the full official name the address is built from. -->
   <div class="pair">
     <label class="field">Kabupaten/kota<Select label="Kabupaten/kota" bind:value={kab} onchange={() => { kec = ''; desa = ''; }}
-      options={[{ value: '', label: 'Pilih kabupaten/kota' }, ...tree.map(item => ({ value: item.nama, label: item.nama }))]}/></label>
+      options={[{ value: '', label: 'Pilih kabupaten/kota' }, ...tree.map(item => ({ value: item.nama, label: item.nama.replace(/^Kabupaten /, '') }))]}/></label>
     <label class="field">Kecamatan<Select label="Kecamatan" bind:value={kec} onchange={() => desa = ''}
       options={[{ value: '', label: 'Pilih kecamatan' }, ...kecamatan.map(item => ({ value: item.nama, label: item.nama }))]}/></label>
   </div>

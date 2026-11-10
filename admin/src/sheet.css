@@ -98,7 +98,7 @@ a { color: var(--blue); }
    the control's own border instead of adding the global outline ring. */
 .field { display: block; margin: 0 0 14px; font-size: 13.5px; font-weight: 600; }
 .field input:not([type="checkbox"]), .field textarea, .input {
-  display: block; width: 100%; margin-top: 6px; padding: 10px 13px;
+  display: block; width: 100%; min-height: 44px; margin-top: 6px; padding: 10px 13px;
   font-size: 15px; font-weight: 500; color: var(--ink);
   background: var(--frost); border: 1px solid var(--hairline); border-radius: var(--radius-sm, 10px);
   transition: border-color var(--dur), background-color var(--dur);
@@ -110,6 +110,14 @@ a { color: var(--blue); }
 }
 .field textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
 .field input::placeholder, .field textarea::placeholder { color: var(--muted-2); opacity: 1; }
+/* Coordinates are typed or pasted, never stepped: the spinner arrows only
+   covered the last digits. Digits line up so lat and long compare at a glance. */
+.field input[type="number"] { appearance: textfield; -moz-appearance: textfield; font-variant-numeric: tabular-nums; }
+.field input[type="number"]::-webkit-inner-spin-button,
+.field input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* Only after the user has touched the field, so an empty form is not red on load. */
+.field input:user-invalid, .field textarea:user-invalid { border-color: var(--danger); background: #fff; }
+.field__req { margin-left: 3px; color: var(--danger); font-weight: 700; }
 input[type="checkbox"]:focus-visible { outline-offset: 0; }
 
 /* The filled button is the public popup's route button: deep blue, 12px. */
