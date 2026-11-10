@@ -259,7 +259,7 @@
           <Select variant="pill" label="Status" value={status} onchange={value => { status = value; refresh({ status: value }); }} options={[{ value: '', label: 'Semua status' }, { value: 'pasti', label: 'Titik pasti' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum ditetapkan' }, { value: 'duplikat', label: 'Perlu verifikasi' }]}/>
           <label class="switch-row"><span class="ctl-switch"><input type="checkbox" checked={archived && status !== 'pasti'} onchange={event => { archived = event.currentTarget.checked; refresh(); }} disabled={status === 'pasti'}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Sertakan arsip</label>
         </div>
-        {#if canPublish}<div class="filter-row list-actions"><button type="button" class="text-action list-export" disabled={exporting} onclick={exportPoints} title="Unduh alokasi utama yang sudah ditetapkan, termasuk titik yang perlu verifikasi">{exporting ? 'Menyiapkan Excel…' : 'Ekspor titik survei (.xlsx)'}</button></div>{/if}
+        {#if canPublish}<div class="filter-row list-actions"><button type="button" class="text-action list-export" disabled={exporting} onclick={exportPoints} title="Unduh seluruh alokasi resmi beserta foto survei">{exporting ? 'Menyiapkan Excel…' : 'Ekspor titik survei (.xlsx)'}</button></div>{/if}
       </form>
       {#if counts}<div class="atlas-summary atlas-summary--total">
         <div class="atlas-total"><span class="atlas-total__num">{counts.official}</span><span class="atlas-total__label"><span>alokasi resmi</span><span>{counts.cadangan} cadangan tidak dihitung</span></span></div>

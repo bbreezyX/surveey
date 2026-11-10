@@ -137,7 +137,7 @@ def filtered_points(request, *, for_export=False):
         rows = rows.filter(Q(nomor__icontains=query) | Q(state__alamat__icontains=query) |
             Q(state__nama__icontains=query) | Q(state__keterangan__icontains=query) | Q(state__jalur__icontains=query) | Q(state__status__icontains=query))
     if for_export:
-        return rows.filter(archived=False, state__status='')
+        return rows.filter(archived=False).exclude(state__status='Cadangan')
     status = request.GET.get('status', '')
     if status == 'pasti':
         return rows.filter(archived=False, state__status='', state__duplikat=False)

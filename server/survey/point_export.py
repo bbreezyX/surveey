@@ -98,6 +98,8 @@ def write_workbook(output, rows, regions, aliases):
         values = dict(state, nomor=row['nomor'], region=regions.get(aliases.get(prefix, prefix), prefix.title()),
             date=date.fromisoformat(state['date']) if state.get('date') else None,
             verification='Perlu verifikasi' if state['duplikat'] else 'Titik pasti')
+        if state['status'] == 'Belum Ditetapkan':
+            values.update(lat=None, lon=None, verification='Belum ditetapkan')
         photo_id = state.get('photo_id')
         photo = photos.get(photo_id)
         if photo and photo.point_id == row['id'] and photo.id not in revoked:
