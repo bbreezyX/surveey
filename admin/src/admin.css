@@ -184,18 +184,36 @@ tbody th { width: 1%; overflow-wrap: normal; }
 .panel-search__clear svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 16px 6px; }
 .filter-row .select { flex: 1 1 120px; width: auto; }
-.list-actions { justify-content: flex-end; }
-.list-actions .list-export { min-height: 32px; }
 .page .select--field { font-weight: 500; }
-.atlas-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 0 18px 10px; color: var(--muted); font-size: 13.5px; }
+.atlas-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 0 16px 10px; color: var(--muted); font-size: 13.5px; }
 .atlas-summary p { margin: 0; }
 .atlas-summary b { color: var(--ink); font-weight: 750; font-variant-numeric: tabular-nums; }
-.atlas-summary--total { flex-wrap: wrap; padding-top: 10px; padding-bottom: 14px; }
 .atlas-total { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .atlas-total__num { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
 .atlas-total__label { display: flex; flex-direction: column; font-size: 13px; line-height: 1.3; }
 .atlas-total__label > span:first-child { color: var(--ink); font-weight: 650; }
-.atlas-flags { display: flex; flex-wrap: wrap; gap: 4px 14px; width: 100%; }
+/* Overview card: the official total and the flags that need attention, set
+   apart from the filters above and the list below by a soft panel. */
+.list-overview { margin: 6px 16px 12px; padding: 12px 14px 11px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--frost); }
+.list-overview__flags { display: grid; gap: 5px; margin: 10px 0 0; padding: 9px 0 0; border-top: 1px solid var(--hairline); list-style: none; }
+.list-overview__flags .status-flag { display: flex; }
+.list-overview__flags .status-flag > span { flex: 1; min-width: 0; }
+.list-overview__flags .status-flag > b { font-weight: 750; font-variant-numeric: tabular-nums; }
+/* Export and Add: real buttons sharing one row, each half the width, so
+   neither reads as a stray link; a lone button (editors) takes the row. */
+.list-actions { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 8px; margin: 0 16px 12px; }
+.list-actions__btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 38px; padding: 0 12px; white-space: nowrap; }
+.list-actions__btn svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.list-actions__btn:disabled { color: var(--muted); cursor: progress; }
+.list-actions__btn--primary {
+  border: 0; border-radius: 999px; background: var(--blue-deep); color: #fff;
+  font-size: 13.5px; font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 69, 143, 0.2), 0 4px 10px rgba(0, 69, 143, 0.18);
+  transition: background-color var(--dur), box-shadow var(--dur), transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.list-actions__btn--primary:hover { background: #003a78; }
+.list-actions__btn--primary:active { transform: scale(0.97); transition-duration: 0.07s; }
+.list-actions__btn--primary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .status-flag { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; line-height: 1.3; }
 .status-flag::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; }
 .status-flag--duplikat { color: var(--orange-deep); }

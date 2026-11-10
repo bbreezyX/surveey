@@ -259,13 +259,24 @@
           <Select variant="pill" label="Status" value={status} onchange={value => { status = value; refresh({ status: value }); }} options={[{ value: '', label: 'Semua status' }, { value: 'pasti', label: 'Titik pasti' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum ditetapkan' }, { value: 'duplikat', label: 'Perlu verifikasi' }]}/>
           <label class="switch-row"><span class="ctl-switch"><input type="checkbox" checked={archived && status !== 'pasti'} onchange={event => { archived = event.currentTarget.checked; refresh(); }} disabled={status === 'pasti'}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Sertakan arsip</label>
         </div>
-        {#if canPublish}<div class="filter-row list-actions"><button type="button" class="text-action list-export" disabled={exporting} onclick={exportPoints} title="Unduh seluruh alokasi resmi beserta foto survei">{exporting ? 'Menyiapkan Excel…' : 'Ekspor titik survei (.xlsx)'}</button></div>{/if}
       </form>
-      {#if counts}<div class="atlas-summary atlas-summary--total">
+      <!-- Overview, actions, then the result count: the three used to be mixed
+           into the filter rows, with Export alone on a line as a bare link. -->
+      {#if counts}<div class="list-overview">
         <div class="atlas-total"><span class="atlas-total__num">{counts.official}</span><span class="atlas-total__label"><span>alokasi resmi</span><span>{counts.cadangan} cadangan tidak dihitung</span></span></div>
-        <div class="atlas-flags"><span class="status-flag status-flag--duplikat">{counts.duplikat} perlu verifikasi</span><span class="status-flag status-flag--belum">{counts.belum} belum ditetapkan</span>{#if Object.keys(gaps).length}<span class="status-flag status-flag--urut">{Object.keys(gaps).length} desa nomor belum urut</span>{/if}</div>
+        <!-- One row per flag with the number right-aligned, so the list reads as
+             a tally; inline flags wrapped unevenly in the narrow wing. -->
+        <ul class="list-overview__flags">
+          <li class="status-flag status-flag--duplikat"><span>Perlu verifikasi</span><b>{counts.duplikat}</b></li>
+          <li class="status-flag status-flag--belum"><span>Belum ditetapkan</span><b>{counts.belum}</b></li>
+          {#if Object.keys(gaps).length}<li class="status-flag status-flag--urut"><span>Desa nomor belum urut</span><b>{Object.keys(gaps).length}</b></li>{/if}
+        </ul>
       </div>{/if}
-      <div class="atlas-summary"><p><b>{total}</b> titik ditemukan</p><button type="button" class="text-action" onclick={startCreate}><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah titik</button></div>
+      <div class="list-actions">
+        {#if canPublish}<button type="button" class="btn-ghost list-actions__btn" disabled={exporting} aria-busy={exporting} onclick={exportPoints} title="Unduh alokasi resmi sesuai pencarian dan kabupaten terpilih, beserta foto survei (.xlsx)"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19h14"/></svg>{exporting ? 'Menyiapkan…' : 'Ekspor Excel'}</button>{/if}
+        <button type="button" class="list-actions__btn list-actions__btn--primary" onclick={startCreate}><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah titik</button>
+      </div>
+      <div class="atlas-summary"><p><b>{total}</b> titik ditemukan</p></div>
       <div class="sidebar-scroll" use:stuckHeads>
         {#each sections as section (section.key)}
           <div class="atlas-group">
