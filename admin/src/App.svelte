@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { api, setCsrf, emptyState, pasteCoordinates, type Account, type PointRow, type Detail, type PointState, type Counts } from './api';
+  import { api, download, setCsrf, emptyState, pasteCoordinates, type Account, type PointRow, type Detail, type PointState, type Counts } from './api';
   import { createBackdrop, type MapPoint } from './backdrop';
   import { PointEditor, badgeOf } from './editor.svelte';
   import { fold, foldAway, allowMotion, reducedMotion, narrow, UNFOLD_KEY } from './unfold';
@@ -16,6 +16,11 @@
   let account = $state<Account>(); let csrf = $state(''); let error = $state(''); let message = $state(''); let busy = $state(false);
   let page = $state<'points' | 'drafts' | 'publications' | 'accounts' | 'audit' | 'password' | 'evidence'>('points');
   let points = $state<PointRow[]>([]); let detail = $state<Detail>(); let q = $state(''); let status = $state(''); let archived = $state(false);
+  let region = $state('');
+  let regions = $state<{ value: string; label: string }[]>([]);
+  let regionOptions = $derived([{ value: '', label: 'Semua kabupaten/kota' }, ...regions]);
+  let exporting = $state(false);
+  let pointsRequest = 0;
   let listPage = $state(1); let pages = $state(1); let total = $state(0); let counts = $state<Counts>();
   // Desa whose units are not numbered 001..N (server-side, across all pages).
   let gaps = $state<Record<string, number[]>>({}); let tidying = $state('');
@@ -72,12 +77,21 @@
   }
   function announce(text: string) { message = text; }
   function failed(e: unknown) { error = e instanceof Error ? e.message : 'Permintaan gagal.'; }
-  function kabupaten(nomor: string) { return nomor.split('-')[0].toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
   async function loadPoints() {
+    const requestId = ++pointsRequest;
     error = ''; busy = true;
-    try { const result = await api<{items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}>(`points?${new URLSearchParams({ q, status, page: String(listPage), archived: archived ? '1' : '0' })}`);
-      points = result.items; total = result.total; pages = result.pages; counts = result.counts; gaps = result.gaps;
-    } catch(e) { failed(e); } finally { busy = false; }
+    try { const result = await api<{items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}>(`points?${new URLSearchParams({ q, region, status, page: String(listPage), archived: archived ? '1' : '0' })}`);
+      if (requestId === pointsRequest) {
+        points = result.items; total = result.total; pages = result.pages; counts = result.counts; gaps = result.gaps;
+      }
+    } catch(e) { if (requestId === pointsRequest) failed(e); } finally { if (requestId === pointsRequest) busy = false; }
+  }
+  async function exportPoints() {
+    exporting = true; error = ''; message = '';
+    try {
+      await download(`export.xlsx?${new URLSearchParams({ q, region })}`, 'titik-pasti.xlsx');
+      announce('Unduhan Excel titik pasti dimulai.');
+    } catch(e) { failed(e); } finally { exporting = false; }
   }
   async function select(id: string) {
     busy = true; error = ''; creating = false; pane = 'edit';
@@ -127,10 +141,10 @@
     fetch(PROGRESS_URL, { credentials: 'omit', cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(v => { if (v) progress = parseProgress(v); }).catch(() => {});
     (async () => {
       try {
-        const result = await api<{account: Account; csrf: string; points: {items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}; map: {items: MapPoint[]}}>('bootstrap');
+        const result = await api<{account: Account; csrf: string; points: {items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}; regions: typeof regions; map: {items: MapPoint[]}}>('bootstrap');
         account = result.account; csrf = result.csrf; setCsrf(csrf);
         points = result.points.items; total = result.points.total; pages = result.points.pages;
-        counts = result.points.counts; gaps = result.points.gaps;
+        counts = result.points.counts; gaps = result.points.gaps; regions = result.regions;
         backdrop?.setPoints(result.map.items);
         if (phase === 'login') {
           // Commit the login card's height with a forced reflow, then grow.
@@ -238,9 +252,13 @@
           <button type="button" class="panel-search__clear" aria-label="Hapus pencarian" onclick={() => { q = ''; refresh(); }}><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
         </label>
         <div class="filter-row">
-          <Select variant="pill" label="Status" bind:value={status} onchange={refresh} options={[{ value: '', label: 'Semua status' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum ditetapkan' }, { value: 'duplikat', label: 'Perlu verifikasi' }]}/>
-          <label class="switch-row"><span class="ctl-switch"><input type="checkbox" bind:checked={archived} onchange={refresh}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Sertakan arsip</label>
+          <Select variant="pill" label="Kabupaten/kota" bind:value={region} onchange={refresh} options={regionOptions}/>
         </div>
+        <div class="filter-row">
+          <Select variant="pill" label="Status" bind:value={status} onchange={refresh} options={[{ value: '', label: 'Semua status' }, { value: 'pasti', label: 'Titik pasti' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum ditetapkan' }, { value: 'duplikat', label: 'Perlu verifikasi' }]}/>
+          <label class="switch-row"><span class="ctl-switch"><input type="checkbox" checked={archived && status !== 'pasti'} onchange={event => { archived = event.currentTarget.checked; refresh(); }} disabled={status === 'pasti'}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Sertakan arsip</label>
+        </div>
+        {#if canPublish}<div class="filter-row list-actions"><button type="button" class="text-action list-export" disabled={exporting} onclick={exportPoints} title="Unduh titik pasti beserta foto sesuai kabupaten/kota dan pencarian">{exporting ? 'Menyiapkan Excel…' : 'Ekspor titik pasti (.xlsx)'}</button></div>{/if}
       </form>
       {#if counts}<div class="atlas-summary atlas-summary--total">
         <div class="atlas-total"><span class="atlas-total__num">{counts.official}</span><span class="atlas-total__label"><span>alokasi resmi</span><span>{counts.cadangan} cadangan tidak dihitung</span></span></div>
@@ -280,7 +298,7 @@
             {/each}
           </div>
         {:else}
-          <div class="panel-empty"><p>{q || status ? 'Tidak ada titik yang cocok dengan pencarian ini.' : 'Belum ada titik untuk ditampilkan.'}</p>{#if q || status}<div class="panel-empty__actions"><button type="button" onclick={() => { q = ''; status = ''; refresh(); }}>Hapus pencarian</button></div>{/if}</div>
+          <div class="panel-empty"><p>{q || status || region ? 'Tidak ada titik yang cocok dengan filter ini.' : 'Belum ada titik untuk ditampilkan.'}</p>{#if q || status || region}<div class="panel-empty__actions"><button type="button" onclick={() => { q = ''; status = ''; region = ''; refresh(); }}>Reset filter</button></div>{/if}</div>
         {/each}
       </div>
       <div class="list-pager">

@@ -23,16 +23,31 @@ export class ApiError extends Error {
   constructor(message: string, public status: number, public details: unknown) { super(message); }
 }
 export function setCsrf(value: string) { csrf = value; }
-export async function api<T>(path: string, method = 'GET', payload?: unknown): Promise<T> {
+async function request(path: string, method: string, payload?: unknown) {
   const form = payload instanceof FormData;
   const response = await fetch(`/admin/api/${path}`, { method, credentials: 'same-origin', cache: 'no-store',
     headers: method === 'GET' ? {} : { 'X-CSRFToken': csrf, ...(!form ? { 'Content-Type': 'application/json' } : {}) },
     body: payload === undefined ? undefined : form ? payload : JSON.stringify(payload),
   });
   if (response.status === 401) { window.location.assign('/admin/'); throw new ApiError('Sesi berakhir. Halaman masuk ditampilkan kembali.', 401, null); }
-  const result = await response.json().catch(() => ({ error: 'Server tidak dapat menyelesaikan permintaan.' }));
-  if (!response.ok) throw new ApiError(result.error || 'Permintaan gagal.', response.status, result.details);
-  return result as T;
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({ error: 'Server tidak dapat menyelesaikan permintaan.' }));
+    throw new ApiError(result.error || 'Permintaan gagal.', response.status, result.details);
+  }
+  return response;
+}
+export async function api<T>(path: string, method = 'GET', payload?: unknown): Promise<T> {
+  const response = await request(path, method, payload);
+  return response.json();
+}
+export async function download(path: string, fallbackName: string) {
+  const response = await request(path, 'GET');
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = response.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ?? fallbackName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function photoUrl(id: string | null) { return id ? `/admin/api/photos/${id}/display` : ''; }
 export function emptyState(): PointState { return { nomor: '', nama: '', jalur: '', alamat: '', keterangan: '',

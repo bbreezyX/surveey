@@ -23,6 +23,11 @@ from .login_assets import login_assets
 from . import services
 from delivery.media_cache import open_cached
 
+# Kepmendagri region tree for Jambi, shared with the address picker.
+WILAYAH = (Path(__file__).resolve().parent / 'data' / 'wilayah-jambi.json').read_bytes()
+REGIONS = {entry['nama'].removeprefix('Kabupaten ').upper(): entry['nama'] for entry in json.loads(WILAYAH)}
+REGION_ALIASES = {'MUARO BUNGO': 'BUNGO'}
+
 def response(value, status=200):
     return JsonResponse(value, status=status, json_dumps_params={'ensure_ascii': False})
 
@@ -116,19 +121,35 @@ def point_summary(request):
     return request._point_summary
 
 
-def point_list_payload(request):
+def filtered_points(request, *, confirmed_only=False):
     query = request.GET.get('q', '')[:250].strip()
     rows = Point.objects.all()
+    region = request.GET.get('region', '')
+    if region:
+        if region not in REGIONS:
+            raise Problem('Kabupaten/kota tidak dikenal.')
+        matches = Q(nomor__istartswith=region + '-')
+        for alias, canonical in REGION_ALIASES.items():
+            if canonical == region:
+                matches |= Q(nomor__istartswith=alias + '-')
+        rows = rows.filter(matches)
     if query:
         rows = rows.filter(Q(nomor__icontains=query) | Q(state__alamat__icontains=query) |
             Q(state__nama__icontains=query) | Q(state__keterangan__icontains=query) | Q(state__jalur__icontains=query) | Q(state__status__icontains=query))
-    status = request.GET.get('status', '')
+    status = 'pasti' if confirmed_only else request.GET.get('status', '')
+    if status == 'pasti':
+        return rows.filter(archived=False, state__status='', state__duplikat=False)
     if status in ('Cadangan', 'Belum Ditetapkan'):
         rows = rows.filter(state__status=status)
     elif status == 'duplikat':
         rows = rows.filter(state__duplikat=True)
     if request.GET.get('archived') != '1':
         rows = rows.filter(archived=False)
+    return rows
+
+
+def point_list_payload(request):
+    rows = filtered_points(request)
     try:
         page = max(1, int(request.GET.get('page', 1)))
     except ValueError:
@@ -156,6 +177,7 @@ def bootstrap(request):
     points = point_list_payload(request)
     return response({'account': account_view(request.user), 'csrf': get_token(request),
         'idle_seconds': 1800, 'absolute_seconds': 28800, 'points': points,
+        'regions': [{'value': key, 'label': label} for key, label in sorted(REGIONS.items(), key=lambda entry: entry[1])],
         'map': {'items': map_items((p['id'], p['state']) for p in point_summary(request) if not p['archived'])}})
 
 
@@ -185,11 +207,6 @@ def point_map(request):
     # Every active point's position and status in one response, for the
     # dashboard's map backdrop; the list endpoint pages at 50.
     return response({'items': map_items(Point.objects.filter(archived=False).values_list('pk', 'state'))})
-
-# Kepmendagri region tree for Jambi (kab/kota → kecamatan → desa/kel), built
-# by scripts/build_wilayah_jambi.py. Served from our own origin because the
-# admin's CSP keeps connect-src to a short allowlist; read once, it never changes at runtime.
-WILAYAH = (Path(__file__).resolve().parent / 'data' / 'wilayah-jambi.json').read_bytes()
 
 @api(['GET'])
 def wilayah(request):
@@ -408,6 +425,17 @@ def export_csv(request):
     result = HttpResponse('\ufeff' + output.getvalue(), content_type='text/csv; charset=utf-8')
     result['Content-Disposition'] = 'attachment; filename="points.csv"'
     return result
+
+@api(['GET'])
+def export_xlsx(request):
+    from .point_export import point_workbook
+
+    permission(request.user, 'publish')
+    rows = filtered_points(request, confirmed_only=True).order_by('nomor').values('id', 'nomor', 'state')
+    region = request.GET.get('region', '').lower().replace(' ', '-') or 'semua-wilayah'
+    output = point_workbook(rows, REGIONS, REGION_ALIASES)
+    return FileResponse(output, as_attachment=True, filename=f'titik-pasti-{region}.xlsx',
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @api(['GET'])
 def legacy_evidence(request):
