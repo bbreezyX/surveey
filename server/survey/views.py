@@ -1,5 +1,6 @@
 import json
 import mimetypes
+import re
 from functools import wraps
 from pathlib import Path
 from django.conf import settings
@@ -11,6 +12,7 @@ from django.db.models import Count, Prefetch, Q
 from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
 from delivery import storage
@@ -136,9 +138,10 @@ def filtered_points(request, *, for_export=False):
     if query:
         rows = rows.filter(Q(nomor__icontains=query) | Q(state__alamat__icontains=query) |
             Q(state__nama__icontains=query) | Q(state__keterangan__icontains=query) | Q(state__jalur__icontains=query) | Q(state__status__icontains=query))
-    if for_export:
-        return rows.filter(archived=False).exclude(state__status='Cadangan')
     status = request.GET.get('status', '')
+    # The official allocation: what the overview counts and what the Excel export holds.
+    if for_export or status == 'resmi':
+        return rows.filter(archived=False).exclude(state__status='Cadangan')
     if status == 'pasti':
         return rows.filter(archived=False, state__status='', state__duplikat=False)
     if status in ('Cadangan', 'Belum Ditetapkan'):
@@ -434,9 +437,16 @@ def export_xlsx(request):
 
     permission(request.user, 'publish')
     rows = filtered_points(request, for_export=True).order_by('nomor').values('id', 'nomor', 'state')
-    region = request.GET.get('region', '').lower().replace(' ', '-') or 'semua-wilayah'
     output = point_workbook(rows, REGIONS, REGION_ALIASES)
-    return FileResponse(output, as_attachment=True, filename=f'titik-survei-{region}.xlsx',
+    # A name a person can read in Downloads: what, which area, which search, when.
+    # The ISO date sorts exports by day. The search keeps only characters every
+    # filesystem accepts and ASCII, so the header stays a plain filename="…".
+    parts = ['Titik Survei PUTS 2026', REGIONS.get(request.GET.get('region', ''), 'Semua Kabupaten-Kota')]
+    search = ' '.join(re.sub(r'[^A-Za-z0-9 .-]', ' ', request.GET.get('q', '')).split())[:40].strip(' .-')
+    if search:
+        parts.append(f'Cari {search}')
+    parts.append(f'{timezone.localdate():%Y-%m-%d}')
+    return FileResponse(output, as_attachment=True, filename=' - '.join(parts) + '.xlsx',
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @api(['GET'])

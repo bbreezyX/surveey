@@ -16,6 +16,8 @@
   let account = $state<Account>(); let csrf = $state(''); let error = $state(''); let message = $state(''); let busy = $state(false);
   let page = $state<'points' | 'drafts' | 'publications' | 'accounts' | 'audit' | 'password' | 'evidence'>('points');
   let points = $state<PointRow[]>([]); let detail = $state<Detail>(); let q = $state(''); let status = $state(''); let archived = $state(false);
+  // Both official-only filters leave archived points out by definition, so the archive switch is off for them.
+  let officialOnly = $derived(status === 'resmi' || status === 'pasti');
   let region = $state('');
   let regions = $state<{ value: string; label: string }[]>([]);
   let regionOptions = $derived([{ value: '', label: 'Semua kabupaten/kota' }, ...regions]);
@@ -90,7 +92,7 @@
   async function exportPoints() {
     exporting = true; error = ''; message = '';
     try {
-      await download(`export.xlsx?${new URLSearchParams({ q, region })}`, 'titik-survei.xlsx');
+      await download(`export.xlsx?${new URLSearchParams({ q, region })}`, 'Titik Survei PUTS 2026.xlsx');
       announce('Unduhan Excel titik survei dimulai.');
     } catch(e) { failed(e); } finally { exporting = false; }
   }
@@ -256,8 +258,8 @@
           <Select variant="pill" label="Kabupaten/kota" value={region} onchange={value => { region = value; refresh({ region: value }); }} options={regionOptions}/>
         </div>
         <div class="filter-row">
-          <Select variant="pill" label="Status" value={status} onchange={value => { status = value; refresh({ status: value }); }} options={[{ value: '', label: 'Semua status' }, { value: 'pasti', label: 'Titik pasti' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum ditetapkan' }, { value: 'duplikat', label: 'Perlu verifikasi' }]}/>
-          <label class="switch-row"><span class="ctl-switch"><input type="checkbox" checked={archived && status !== 'pasti'} onchange={event => { archived = event.currentTarget.checked; refresh(); }} disabled={status === 'pasti'}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Sertakan arsip</label>
+          <Select variant="pill" label="Status" value={status} onchange={value => { status = value; refresh({ status: value }); }} options={[{ value: '', label: 'Semua status' }, { value: 'resmi', label: 'Alokasi resmi' }, { value: 'pasti', label: 'Titik pasti' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum ditetapkan' }, { value: 'duplikat', label: 'Perlu verifikasi' }]}/>
+          <label class="switch-row"><span class="ctl-switch"><input type="checkbox" checked={archived && !officialOnly} onchange={event => { archived = event.currentTarget.checked; refresh(); }} disabled={officialOnly}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Sertakan arsip</label>
         </div>
       </form>
       <!-- Overview, actions, then the result count: the three used to be mixed
