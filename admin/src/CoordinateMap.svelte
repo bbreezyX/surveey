@@ -11,7 +11,9 @@
   import { containsCoordinate } from 'ol/extent';
   import { Style, Circle, Fill, Stroke } from 'ol/style';
   import { satelliteLayers } from '../../src/public/map/google-tiles';
+  import { distance, formatDistance } from './api';
   let { lat = $bindable(), lon = $bindable(), original }: { lat: number; lon: number; original?: { lat: number; lon: number } } = $props();
+  let moved = $derived(original && [lat, lon, original.lat, original.lon].every(Number.isFinite) ? distance(original, { lat, lon }) : null);
   let target: HTMLDivElement;
   let map = $state<Map>();
   let source: VectorSource;
@@ -51,5 +53,9 @@
   });
 </script>
 <div class="coordinate-map" bind:this={target} aria-label="Peta penyuntingan koordinat"></div>
-<button type="button" disabled={!Number.isFinite(lat) || !Number.isFinite(lon)} onclick={() => map?.getView().setCenter(fromLonLat([lon, lat]))}>Lihat lokasi baru</button>
-<p class="hint">Klik pada peta atau pergeseran pin kuning mengubah koordinat baru. Pin abu-abu menandai lokasi sebelumnya. Pemindahan pin tidak menandai lokasi sebagai terverifikasi.</p>
+<!-- The legend replaces the paragraph that explained the two pins in words. -->
+<div class="map-bar">
+  <p class="map-legend"><span class="map-dot map-dot--new" aria-hidden="true"></span>Baru{#if original}<span class="map-dot map-dot--old" aria-hidden="true"></span>Lama{#if moved}<span class="map-legend__distance" title="Jarak pin baru dari lokasi lama">· {formatDistance(moved)}</span>{/if}{/if}</p>
+  <button type="button" class="btn-ghost" disabled={!Number.isFinite(lat) || !Number.isFinite(lon)} onclick={() => map?.getView().setCenter(fromLonLat([lon, lat]))}>Lihat lokasi baru</button>
+</div>
+<p class="hint">Klik peta atau geser pin; verifikasi tidak berubah.</p>

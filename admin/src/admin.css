@@ -392,14 +392,28 @@ tbody th { width: 1%; overflow-wrap: normal; }
 .dropzone__text { display: grid; gap: 2px; min-width: 0; }
 .dropzone__text strong { font-size: 14px; font-weight: 700; color: var(--ink); }
 .dropzone__text small { font-size: 12px; line-height: 1.35; color: var(--muted); }
-.coordinate-map { height: 240px; margin-bottom: 10px; overflow: hidden; border-radius: 12px; background: #1d2a36; }
-.coordinate-map + button {
-  min-height: 36px; padding: 0 14px; font-size: 13.5px; font-weight: 650; color: var(--ink);
-  background: #fff; border: 1px solid var(--hairline-strong); border-radius: 999px;
+/* Inside the "Foto baru" slot the zone takes the photo's 3:4 box, stacked and centred. */
+.photo-slot { position: relative; }
+.photo-slot .dropzone { flex-direction: column; justify-content: center; gap: 8px; aspect-ratio: 3 / 4; margin: 0; padding: 12px; text-align: center; }
+.photo-slot .dropzone__text strong { font-size: 13px; }
+/* With a new photo chosen, the zone shrinks to a "Ganti foto" pill over its bottom edge. */
+.photo-slot .dropzone--over {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; aspect-ratio: auto; flex-direction: row; gap: 6px;
+  min-height: 34px; padding: 4px 10px; border: 0; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94); box-shadow: 0 1px 3px rgba(20, 38, 53, 0.25);
 }
-.coordinate-map + button:hover:not(:disabled) { border-color: var(--blue); color: var(--blue-deep); }
-.coordinate-map + button:focus-visible { outline: none; border-color: var(--blue); }
-.coordinate-map + button + .hint { margin-top: 10px; }
+.photo-slot .dropzone--over .dropzone__icon { width: 22px; height: 22px; box-shadow: none; background: none; }
+.photo-slot .dropzone--over:hover, .photo-slot .dropzone--over:focus-within { background: #fff; }
+.coordinate-map { height: 240px; margin-bottom: 10px; overflow: hidden; border-radius: 12px; background: #1d2a36; }
+/* Under the map: the pin legend and the recentre button share one row. */
+.map-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.map-bar .btn-ghost { flex: none; min-height: 32px; padding: 0 12px; font-size: 13px; }
+.map-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.map-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; }
+/* The pins' own colours from CoordinateMap.svelte. */
+.map-dot--new { background: #fee50f; border: 2.5px solid #293d50; }
+.map-dot--old { margin-left: 6px; background: #66717c; border: 1.5px solid #fff; box-shadow: 0 0 0 1px #66717c; }
+.map-legend__distance { font-weight: 500; color: var(--muted-2); font-variant-numeric: tabular-nums; }
 details { margin: 0 0 8px; padding: 10px 12px; background: var(--frost); border: 1px solid var(--divider); border-radius: 10px; }
 summary { cursor: pointer; font-size: 13px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
 details p { font-size: 13px; line-height: 1.5; }
@@ -408,6 +422,60 @@ pre { margin: 8px 0; padding: 10px; font-size: 11.5px; line-height: 1.55; white-
 .history-photos figure { display: grid; gap: 8px; margin: 0; }
 .history-photos img { width: 100%; border-radius: 8px; }
 details .btn-ghost { margin-top: 6px; }
+/* ---------- Right wing: history ----------
+   Each observation or revision is one card: a date title with its coordinates
+   or time beside it, a short summary when open, and the raw record folded away. */
+.wing h4 { display: flex; align-items: center; gap: 6px; }
+.wing-count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--atlas-paper); color: var(--muted); font-size: 11.5px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.history-item { padding: 0; background: #fff; border-color: var(--hairline); }
+.history-item > summary { display: flex; align-items: baseline; gap: 8px; padding: 10px 12px; list-style: none; }
+.history-item > summary::-webkit-details-marker { display: none; }
+.history-item > summary::after {
+  content: ""; flex: none; align-self: center; width: 6px; height: 6px; margin-left: auto;
+  border-right: 2px solid var(--muted-2); border-bottom: 2px solid var(--muted-2);
+  rotate: 45deg; translate: 0 -2px; transition: rotate var(--dur) var(--ease-out);
+}
+.history-item[open] > summary::after { rotate: 225deg; translate: 0 2px; }
+.history-item[open] > summary { border-bottom: 1px solid var(--divider); }
+/* One body box with an even 10px rhythm: the sections used separate margins,
+   and a later rule zeroed the source line's indent so it touched the card edge. */
+.history-item__body { display: grid; gap: 10px; padding: 10px 12px 12px; }
+.history-item__body > * { margin: 0; min-width: 0; }
+.history-item__title { display: inline-flex; align-items: center; gap: 6px; flex: none; font-weight: 700; color: var(--ink); }
+.history-item__current { padding: 0 6px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-deep); font-size: 11px; font-weight: 700; line-height: 17px; }
+.history-item__meta { min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.history-item__text { color: var(--ink); }
+.history-photo { display: grid; gap: 6px; margin: 0; }
+/* The photo sits centred on a soft panel the card's width, so portrait and
+   landscape evidence line up the same way instead of hanging off the left. */
+.history-photo__frame { display: flex; justify-content: center; padding: 6px; border-radius: 10px; background: var(--frost); }
+.history-photo__frame img { display: block; max-width: 100%; max-height: 240px; border-radius: 6px; }
+.history-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.history-row .text-action { margin: 0 -8px; font-size: 13px; text-decoration: none; }
+.history-row .raw-data[open] { flex-basis: 100%; order: 2; }
+.text-action--danger { color: var(--danger); }
+.text-action--danger:hover:not(:disabled) { background: var(--danger-tint); color: var(--danger); }
+.text-action:disabled { opacity: 0.5; cursor: default; }
+.history-fields { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; font-size: 13px; line-height: 1.45; }
+.history-fields dt { color: var(--muted); }
+.history-fields dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+/* Confirming a restore or revocation: the reason and the two buttons on one soft panel. */
+.history-action { padding: 10px; border-radius: 10px; background: var(--frost); }
+.history-action .field { margin: 0 0 8px; font-size: 13px; }
+.history-action textarea { background: #fff; }
+.history-action__buttons { display: flex; justify-content: flex-end; gap: 8px; }
+.history-action__buttons .btn-ghost, .history-action__buttons .btn-primary { min-height: 34px; margin: 0; padding: 0 14px; font-size: 13px; box-shadow: none; }
+.btn-danger {
+  min-height: 34px; padding: 0 14px; font-size: 13px; font-weight: 650; color: var(--danger);
+  background: #fff; border: 1px solid #e3b4b0; border-radius: 999px; transition: background-color var(--dur), border-color var(--dur);
+}
+.btn-danger:hover:not(:disabled) { background: var(--danger-tint); border-color: var(--danger); }
+.btn-danger:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
+.btn-danger:disabled { opacity: 0.5; }
+.raw-data { margin: 0; padding: 0; background: none; border: 0; border-radius: 0; }
+.raw-data > summary { display: inline-block; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.raw-data > summary:hover { color: var(--blue-deep); }
+.raw-data pre { max-height: 220px; overflow: auto; background: var(--frost); }
 
 /* ---------- Wide pages (wings folded, sheet widened) ----------
    Built from the public panel's parts: a panel head, frost section bars

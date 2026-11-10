@@ -61,7 +61,7 @@ export function pasteCoordinates(event: ClipboardEvent, target: { lat: number; l
   if (!pair) return;
   event.preventDefault(); target.lat = pair.lat; target.lon = pair.lon;
 }
-export function distance(a: PointState, b: PointState) {
+export function distance(a: Pick<PointState, 'lat' | 'lon'>, b: Pick<PointState, 'lat' | 'lon'>) {
   const rad = Math.PI / 180, x = a.lat*rad, y = b.lat*rad;
   const h = Math.sin((y-x)/2)**2 + Math.cos(x)*Math.cos(y)*Math.sin((b.lon-a.lon)*rad/2)**2;
   return Math.round(6371008.8*2*Math.asin(Math.min(1, Math.sqrt(h))));
