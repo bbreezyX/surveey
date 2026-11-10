@@ -26,20 +26,21 @@ export function toListPoint(row: PointRow): ListPoint {
   };
 }
 
-// Sections per kabupaten + kecamatan, in list order (the API sorts by Nomor).
+// Keep the order of first occurrence. Nomor sorting can interleave similar
+// kecamatan names such as Siulak and Siulak Mukai in the same page.
 export function listSections(rows: PointRow[]) {
-  const sections: { key: string; title: string; kabupaten: string; items: ListPoint[] }[] = [];
+  const sections = new Map<string, { key: string; title: string; kabupaten: string; items: ListPoint[] }>();
   for (const row of rows) {
     const point = toListPoint(row);
     const key = `${point.kabupaten}|${point.display.kecamatan}`;
-    let section = sections[sections.length - 1];
-    if (!section || section.key !== key) {
+    let section = sections.get(key);
+    if (!section) {
       section = { key, title: point.display.kecamatan ? `Kec. ${point.display.kecamatan}` : point.kabupaten, kabupaten: point.kabupaten, items: [] };
-      sections.push(section);
+      sections.set(key, section);
     }
     section.items.push(point);
   }
-  return sections.map(section => ({
+  return Array.from(sections.values(), section => ({
     ...section,
     groups: desaGroups(section.items).map(group => {
       const head = groupHead(group, section.title);
