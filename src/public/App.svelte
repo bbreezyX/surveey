@@ -14,7 +14,7 @@
   import { createLocator } from './state/locate.svelte';
   import { createConnection } from './state/connection.svelte';
   import ConnectionStatus from './components/ConnectionStatus.svelte';
-  import { linkedNomor } from '../shared/survey/report';
+  import { linkedNomor, linkedReport } from '../shared/survey/report';
   import { recallOpenDetail, rememberOpenDetail } from './state/detail-memory';
   let model = $state.raw<SurveyState | null>(null), adapter = $state.raw<SurveyMapAdapter | null>(null), error = $state('');
   let controller: AbortController | null = null, disposed = false;
@@ -33,18 +33,29 @@
     const nomor = linkedNomor(location.search);
     // No link names a point: a reader coming back to a discarded tab gets the detail they left open.
     if (!nomor) { const open = touchDevice ? recallOpenDetail() : null; if (open) state.openLinked(open); return; }
-    state.openLinked(nomor);
-    const params = new URLSearchParams(location.search); params.delete('nomor');
+    const stage = linkedReport(location.search);
+    if (state.openLinked(nomor) && stage) state.markReported(nomor, stage);
+    const params = new URLSearchParams(location.search); params.delete('nomor'); params.delete('lapor');
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
   }
   function applyProgress(state: SurveyState, feed: ProgressFeed) { state.progress = feed.stages; state.pending = feed.pending; }
+  // The feed can answer a moment before the report a crew just sent is in it: ask a few more times, then
+  // leave the card without its tick rather than claim a report esdm.cloud does not show.
+  async function confirmReport(state: SurveyState, attempt: AbortController) {
+    for (let tries = 3; tries > 0 && state.reportAwaited; tries--) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (disposed || attempt.signal.aborted || model !== state || !state.reportAwaited) return;
+      const feed = await loadProgress(attempt.signal, true);
+      if (feed && !disposed && !attempt.signal.aborted && model === state) applyProgress(state, feed);
+    }
+  }
   async function load() {
     controller?.abort(); const attempt = new AbortController(); controller = attempt;
     error = ''; model = null;
     // Build progress comes from esdm.cloud and never holds up the map; it lands on the pins when it arrives.
-    const progress = loadProgress(attempt.signal);
+    const progress = loadProgress(attempt.signal, linkedReport(location.search) !== null);
     connection.loading(true);
-    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset); openLinkedPoint(state); model = state; void progress.then(value => { if (!disposed && !attempt.signal.aborted && value) applyProgress(state, value); }); } }
+    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset); openLinkedPoint(state); model = state; void progress.then(value => { if (disposed || attempt.signal.aborted) return; if (value) applyProgress(state, value); void confirmReport(state, attempt); }); } }
     catch (problem) { if (!disposed && !attempt.signal.aborted) { error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; connection.suspect(); } }
     finally { if (controller === attempt) connection.loading(false); }
   }

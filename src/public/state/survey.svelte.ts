@@ -1,7 +1,7 @@
 import type { SurveyDataset, SurveyPoint, StatusFilter } from '../../shared/survey/types';
 import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
-import type { SurveyPending, SurveyProgress } from '../../shared/survey/progress';
+import { reportReceipt, type SurveyPending, type SurveyProgress } from '../../shared/survey/progress';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
 export function createSurveyState(initial: SurveyDataset) {
   // Replaced in place when a reconnect brings newer data, so the open region, search, filter, selected
@@ -12,6 +12,9 @@ export function createSurveyState(initial: SurveyDataset) {
   // Null until esdm.cloud answers; the map, list and popup show no build status before then.
   let progress = $state.raw<SurveyProgress | null>(null);
   let pending = $state.raw<SurveyPending | null>(null);
+  // The stage a crew says it just reported on esdm.cloud/lapangan (?lapor=), for the point it came back to.
+  let reported = $state.raw<{ nomor: string; stage: number } | null>(null);
+  const receipt = $derived(reported && progress ? reportReceipt(reported.stage, progress.get(reported.nomor) ?? 0, pending?.get(reported.nomor)) : null);
   let fitRevision = $state(0), fitReason = $state<'initial' | 'region' | 'search' | 'filter'>('initial');
   let panelOpen = $state(false), sidebarCollapsed = $state(false);
   // The card of the detail just closed is marked briefly so the eye lands on it, then lets go.
@@ -59,6 +62,11 @@ export function createSurveyState(initial: SurveyDataset) {
     get selectionOrigin() { return selectionOrigin; },
     get progress() { return progress; }, set progress(value: SurveyProgress | null) { progress = value; },
     get pending() { return pending; }, set pending(value: SurveyPending | null) { pending = value; },
+    // The report the open point's card confirms with a tick, once the feed holds it; gone when the card closes.
+    get reportedReceipt() { return reported && receipt && reported.nomor === selectedNomor ? { stage: reported.stage, receipt } : null; },
+    // Still unconfirmed: the feed read before the report landed, so it is worth asking again.
+    get reportAwaited() { return !!reported && !receipt; },
+    markReported(nomor: string, stage: number) { reported = { nomor, stage }; },
     get recentNomor() { return recentNomor; },
     get selectedNomor() { return selectedNomor; }, get selected() { return selected; },
     get visiblePoints() { return visiblePoints; }, get visibleIds() { return visibleIds; },
@@ -76,6 +84,7 @@ export function createSurveyState(initial: SurveyDataset) {
     setFilter(filter: StatusFilter) { recentNomor = null; statusFilter = filter; selectedNomor = null; fitReason = 'filter'; fitRevision++; },
     select(nomor: string | null, origin: HTMLElement | null = null) {
       if (nomor) { recentNomor = null; selectionOrigin = origin; panelOpen = false; }
+      if (nomor !== selectedNomor) reported = null;
       selectedNomor = nomor;
     },
     // Closing a detail leaves the reader on the map. On phones it used to pull the list sheet back up
@@ -83,7 +92,7 @@ export function createSurveyState(initial: SurveyDataset) {
     // map the reader had just closed the card to see disappeared again. The list opens on request only.
     closeDetail() {
       const point = selected;
-      selectedNomor = null; recentNomor = point?.nomor ?? null;
+      selectedNomor = null; reported = null; recentNomor = point?.nomor ?? null;
       clearTimeout(recentTimer); recentTimer = setTimeout(() => { recentNomor = null; }, 2800);
     },
   };

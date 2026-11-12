@@ -34,6 +34,12 @@ export function pendingSummary(stages: readonly number[]): string {
 export function pendingLabel(stages: readonly number[]): string {
   return `${BUILD_STAGES[stages[stages.length - 1] - 1]} Menunggu`;
 }
+// A crew back from esdm.cloud/lapangan names the stage it reported; the address alone proves nothing, so the
+// tick is drawn only once the feed holds that report: waiting for review, or already accepted.
+export type ReportReceipt = 'pending' | 'accepted';
+export function reportReceipt(stage: number, accepted: number, pending: readonly number[] | undefined): ReportReceipt | null {
+  return accepted >= stage ? 'accepted' : pending?.includes(stage) ? 'pending' : null;
+}
 // The stages run in order, so the badge counts rather than colour-codes: a blue pie fills a quarter per
 // finished stage (Galian, Cor, Tiang) and reads without the legend or telling hues apart, which a 14px
 // mark on satellite imagery, colour-blind readers and the yellow/orange pin statuses all argue against.

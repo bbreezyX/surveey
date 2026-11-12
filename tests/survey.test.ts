@@ -3,8 +3,8 @@ import { getPointFlags, countOfficialPoints } from '../src/shared/survey/status'
 import { parseCoordinateQuery, formatCoordPair } from '../src/shared/survey/coordinates';
 import { legacyPhotoUrl } from '../src/shared/survey/media';
 import { latestDocumentationDate } from '../src/shared/survey/dates';
-import { linkedNomor, progressReportUrl } from '../src/shared/survey/report';
-import { parsePending, parseProgress, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary } from '../src/shared/survey/progress';
+import { linkedNomor, linkedReport, progressReportUrl } from '../src/shared/survey/report';
+import { parsePending, parseProgress, reportReceipt, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary } from '../src/shared/survey/progress';
 describe('survey evidence and counting', () => {
   it('ignores malformed and impossible optional dates without normalizing them', () => {
     expect(latestDocumentationDate(['32/13/2026', '31/02/9999', '29/02/2025', ''])).toBeNull();
@@ -37,6 +37,18 @@ describe('progress report link', () => {
     expect(linkedNomor('?nomor=MUARO+JAMBI-JAMBI+LUAR+KOTA-MENDALO+DARAT-012&x=1')).toBe('MUARO JAMBI-JAMBI LUAR KOTA-MENDALO DARAT-012');
     expect(linkedNomor('?nomor=%20%20')).toBeNull();
     expect(linkedNomor('')).toBeNull();
+  });
+  it('reads the stage a crew reported on the way back, and only a real one', () => {
+    expect(linkedReport('?nomor=KERINCI-SIULAK-DUSUN%20DALAM-001&lapor=1')).toBe(1);
+    expect(linkedReport('?lapor=4')).toBe(4);
+    expect(['?lapor=0', '?lapor=5', '?lapor=2.5', '?lapor=galian', '?nomor=x', ''].map(linkedReport)).toEqual([null, null, null, null, null, null]);
+  });
+  it('draws the tick only for a report the feed holds', () => {
+    expect(reportReceipt(2, 1, [2])).toBe('pending');
+    expect(reportReceipt(2, 2, undefined)).toBe('accepted');
+    expect(reportReceipt(1, 3, [4])).toBe('accepted');
+    expect(reportReceipt(2, 1, [3])).toBeNull();
+    expect(reportReceipt(1, 0, undefined)).toBeNull();
   });
 });
 describe('build progress from esdm.cloud', () => {

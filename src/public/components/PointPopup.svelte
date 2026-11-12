@@ -3,13 +3,14 @@
   import { legacyPhotoUrl } from '../../shared/survey/media';
   import { googleMapsUrl } from '../../shared/survey/coordinates';
   import { progressReportUrl } from '../../shared/survey/report';
-  import { BUILD_STAGES, lampAwaitsNight, stageDone, stageSummary } from '../../shared/survey/progress';
+  import { BUILD_STAGES, lampAwaitsNight, stageDone, stageSummary, type ReportReceipt } from '../../shared/survey/progress';
   import { STATUS_LABEL } from '../../shared/survey/status';
   import { regionKey } from '../data/regions';
   import Shape from './Shape.svelte';
   import Icon from './Icon.svelte';
   // stage is null until esdm.cloud has answered, so a slow or failed fetch shows nothing rather than "Belum Dimulai".
-  let { point, dataset, stage = null }: { point: SurveyPoint; dataset: SurveyDataset; stage?: number | null } = $props();
+  // reported: the stage a crew just sent from esdm.cloud/lapangan, set only once the feed holds that report.
+  let { point, dataset, stage = null, reported = null }: { point: SurveyPoint; dataset: SurveyDataset; stage?: number | null; reported?: { stage: number; receipt: ReportReceipt } | null } = $props();
   const photo = $derived(legacyPhotoUrl(point.photo));
   const kind = $derived(point.belum ? 'belum' : point.duplikat ? 'duplikat' : point.cadangan ? 'cadangan' : null);
   const sharedCoordinateCount = $derived(dataset.points.filter(p => p.latNum.toFixed(6) === point.latNum.toFixed(6) && p.lonNum.toFixed(6) === point.lonNum.toFixed(6)).length);
@@ -26,6 +27,14 @@
   {/if}
   {#if kind}<div class={`feature-popup__note feature-popup__note--${kind}`} role="note"><span class="feature-popup__note-mark" aria-hidden="true">{kind === 'belum' ? '?' : kind === 'duplikat' ? '!' : ''}</span><p><strong class="feature-popup__note-title">{STATUS_LABEL[kind].legend}</strong> {note}</p></div>{/if}
   <div class="feature-popup__body">
+    {#if reported}
+      <!-- Back from reporting: the ring and tick draw once, as on esdm.cloud's own "Laporan Terkirim" screen. It leads
+           the card: lower down, short phones (320x568) hid it under the pinned action row until the card was scrolled. -->
+      <p class="feature-popup__reported" role="status">
+        <svg class="feature-popup__reported-mark" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true"><circle class="feature-popup__reported-disc" cx="14" cy="14" r="12"/><circle class="feature-popup__reported-ring" cx="14" cy="14" r="12" pathLength="1"/><path class="feature-popup__reported-tick" d="M8.8 14.4 12.4 17.9 19.4 10.6" pathLength="1"/></svg>
+        <span class="feature-popup__reported-text"><strong>Laporan {BUILD_STAGES[reported.stage - 1]} Terkirim</strong><span>{reported.receipt === 'accepted' ? 'Sudah Diterima' : 'Menunggu Diperiksa'}</span></span>
+      </p>
+    {/if}
     <!-- Code and region read as one line; the coordinate moves out of the meta list into a compact badge that wraps under them when the region name is long. -->
     <p class="feature-popup__eyebrow"><span class="feature-popup__id">Titik {point.display.code} · {point.kabupaten}</span><span class="feature-popup__coord" title={point.belum ? 'Koordinat Perkiraan' : 'Koordinat'}>{#if point.belum}<span aria-hidden="true">≈ </span><span class="visually-hidden">Koordinat Perkiraan </span>{:else}<span class="visually-hidden">Koordinat </span>{/if}{point.koordinat}</span></p>
     <h3 class="feature-popup__title">{point.display.primary}</h3>
@@ -50,5 +59,5 @@
     <div class="feature-popup__rule"></div>
   </div>
   <!-- Every point can be reported, Cadangan too: crews may build on a reserve site the locals swapped in before the office hears of it. The row sits outside the body so it can stay pinned to the foot of the whole card on phones. -->
-  <div class="feature-popup__actions">{#if !point.belum}<a class="feature-popup__route" href={googleMapsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka titik ini di Google Maps; rute bisa dimulai dari sana"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>Google Maps</strong></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a>{/if}<a class="feature-popup__report" href={progressReportUrl(point.nomor)} target="_blank" rel="noopener" title="Lapor progres galian, cor, tiang, atau lampu untuk titik ini" aria-label="Lapor progres titik ini"><Icon name="camera" size={16}/><span>Lapor</span></a></div>
+  <div class="feature-popup__actions">{#if !point.belum}<a class="feature-popup__route" href={googleMapsUrl(point)} target="_blank" rel="noopener noreferrer" title="Buka titik ini di Google Maps; rute bisa dimulai dari sana"><span class="feature-popup__route-icon"><Icon name="route" size={18}/></span><span class="feature-popup__route-text"><strong>Google Maps</strong></span><span class="feature-popup__route-ext"><Icon name="external" size={12}/></span></a>{/if}<a class="feature-popup__report" href={progressReportUrl(point.nomor)} title="Lapor progres galian, cor, tiang, atau lampu untuk titik ini" aria-label="Lapor progres titik ini"><Icon name="camera" size={16}/><span>Lapor</span></a></div>
 </div>
