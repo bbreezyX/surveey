@@ -1,0 +1,551 @@
+/* The sidebar's progress view (mockups/survey/d-gabungan.html): the province
+   counted by build stage, the kabupaten atlas with a stage bar per cell, and
+   each kabupaten as a crew's work list. It reuses the list's own pieces (unit
+   tiles, kecamatan bands, the pending pill, the popup's Lapor pill) and the
+   pin badges, so nothing here needs a legend of its own. Green still means
+   terpasang only; stages under way are blue, not started is grey. */
+
+/* View switch: two pressed-state buttons in one frosted track, like the search
+   field above it. A border, not only the white fill, marks the chosen half, so
+   it still reads in forced colours. Neither label changes weight when chosen,
+   so the halves never shift. */
+.list-mode {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin: 0 16px 12px;
+    padding: 3px;
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    background: var(--frost);
+}
+
+.list-mode button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13.5px;
+    font-weight: 650;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color var(--dur),
+        border-color var(--dur),
+        color var(--dur);
+}
+
+.list-mode button:hover {
+    color: var(--ink);
+}
+
+.list-mode button[aria-pressed="true"] {
+    border-color: var(--hairline-strong);
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.08);
+}
+
+.list-mode__share {
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--green-tint);
+    color: var(--green);
+    font-size: 11.5px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The headline number turns green: in this view it counts terpasang units. */
+.atlas-total--progress .atlas-total__num {
+    color: var(--green);
+}
+
+.progress-share {
+    flex: none;
+    color: var(--muted-2);
+    font-size: 13px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.progress-share b {
+    font-size: 15px;
+}
+
+/* Stage bar: one segment per stage, sized by its units. */
+.stage-bar {
+    display: flex;
+    gap: 2px;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--divider);
+}
+
+.stage-bar i {
+    display: block;
+    min-width: 2px;
+}
+
+.stage-bar i:first-child { border-radius: 999px 0 0 999px; }
+.stage-bar i:last-child { border-radius: 0 999px 999px 0; }
+.stage-bar i:only-child { border-radius: 999px; }
+.stage-bar__s3 { background: var(--green); }
+.stage-bar__s2 { background: var(--blue); }
+.stage-bar__s1 { background: #7fb4e0; }
+.stage-bar__s0 { background: var(--divider); }
+
+.stage-bar--thin {
+    gap: 1px;
+    height: 5px;
+}
+
+.stage-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 16px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+}
+
+.stage-legend li {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    color: var(--muted);
+}
+
+.stage-legend b {
+    margin-left: auto;
+    color: var(--ink);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+.stage-legend--tight {
+    font-size: 12.5px;
+}
+
+.stage-legend__badge,
+.stage-legend__badge svg {
+    display: block;
+    flex: none;
+    width: 14px;
+    height: 14px;
+}
+
+/* ---------- Province screen ---------- */
+
+.progress-sum {
+    padding: 4px 18px 14px;
+}
+
+/* Open reports: neutral with a clock, as on the list's pending pill. */
+.progress-waiting {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 9px 12px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    transition:
+        border-color var(--dur),
+        background-color var(--dur);
+}
+
+.progress-waiting:hover {
+    border-color: var(--blue);
+    background: var(--row-hover);
+}
+
+.progress-waiting svg {
+    flex: none;
+}
+
+.progress-waiting b {
+    color: var(--ink);
+    font-weight: 750;
+}
+
+.progress-waiting::after {
+    content: "";
+    flex: none;
+    width: 6px;
+    height: 6px;
+    margin-left: auto;
+    border: solid currentColor;
+    border-width: 1.6px 1.6px 0 0;
+    color: var(--muted-2);
+    transform: rotate(45deg);
+}
+
+/* The progress grid reuses the atlas cells, whose rows snap to their top edge (sidebar.css). Here the
+   summary and the sticky "Semua Wilayah" head sit above the grid, so proximity snapping jumped the list
+   to the first row on load and left that row's outline under the head. This list scrolls freely. */
+.sidebar-scroll:has(.progress-grid-head) {
+    scroll-snap-type: none;
+}
+
+/* Progress cells: RegionGrid's cell plus a stage bar and what is left. */
+.progress-cell {
+    gap: 4px;
+}
+
+/* A finished kabupaten says so with the pin's check and a green ground, not with the bar's colour alone;
+   the tint drops out in forced colours, the check and the words stay. Hover keeps the usual row tint. */
+.progress-cell.is-done:not(:hover) {
+    background: var(--green-tint);
+}
+
+.progress-cell .atlas-cell__meta.is-done {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--green);
+    font-weight: 700;
+}
+
+.progress-cell .atlas-cell__meta.is-done svg {
+    flex: none;
+}
+
+.progress-cell .stage-bar {
+    margin: 2px 0 1px;
+}
+
+.progress-cell__left {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.progress-cell__left > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.progress-cell__left svg {
+    flex: none;
+    width: 12px;
+    height: 12px;
+}
+
+.progress-cell__left .is-none {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+/* Thumbnail dots by stage (Shape kindOf): not started, under way, terpasang. */
+.atlas-dot--p0 {
+    fill: #fff;
+    stroke: var(--ink);
+}
+
+.atlas-dot--p1 {
+    fill: var(--blue);
+    stroke: #fff;
+}
+
+.atlas-dot--p2 {
+    fill: var(--green);
+    stroke: #fff;
+}
+
+/* ---------- One kabupaten: the work list ---------- */
+
+/* With every group shut the list is short; opening one makes it scroll, and a classic scrollbar (Windows)
+   then took its width from the list, so counts, chevrons and Lapor buttons jumped left. The gutter stays
+   reserved instead. Browsers without scrollbar-gutter, and overlay scrollbars, keep today's behaviour. */
+.sidebar-scroll:has(.work-sum) {
+    scrollbar-gutter: stable;
+}
+
+.work-sum {
+    padding: 0 18px 12px;
+}
+
+/* This phone's last report: the popup's "Laporan Terkirim" band, kept small. */
+.work-mine {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 16px 12px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--green-tint);
+    color: var(--green);
+    font-size: 12.5px;
+    line-height: 1.3;
+}
+
+.work-mine > span {
+    color: var(--muted-2);
+}
+
+.work-mine svg {
+    flex: none;
+}
+
+.work-mine strong {
+    display: block;
+    color: var(--green);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.work-mine.is-waiting {
+    background: var(--frost);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+    color: var(--muted);
+}
+
+.work-mine.is-waiting strong {
+    color: var(--ink);
+}
+
+/* One group per next report, native disclosure so each keeps its own open
+   state; the summary sticks while its rows scroll under it. */
+.work-group {
+    border-top: 1px solid var(--divider);
+}
+
+.work-group summary {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px 12px 18px;
+    background: #fff;
+    cursor: pointer;
+    list-style: none;
+    transition: background-color var(--dur);
+}
+
+.work-group summary::-webkit-details-marker {
+    display: none;
+}
+
+.work-group summary:hover {
+    background: var(--row-hover);
+}
+
+.work-group[open] summary {
+    border-bottom: 1px solid var(--divider);
+}
+
+.work-group summary::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    margin: 0 4px 3px 2px;
+    border: solid var(--muted-2);
+    border-width: 0 1.8px 1.8px 0;
+    transform: rotate(45deg);
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.work-group[open] summary::after {
+    transform: translateY(3px) rotate(-135deg);
+}
+
+.work-group__badge,
+.work-group__badge svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+}
+
+.work-group__badge--wait {
+    color: var(--muted);
+}
+
+.work-group__title {
+    display: block;
+    font-size: 14.5px;
+    font-weight: 750;
+    line-height: 1.25;
+}
+
+.work-group__note {
+    display: block;
+    color: var(--muted);
+    font-size: 12.5px;
+}
+
+.work-group__count {
+    min-width: 30px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--frost);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+    font-size: 13px;
+    font-weight: 750;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.work-group.is-next .work-group__count {
+    background: var(--ink);
+    box-shadow: none;
+    color: #fff;
+}
+
+.work-group.is-done .work-group__count {
+    background: var(--green-tint);
+    box-shadow: none;
+    color: var(--green);
+}
+
+.work-group__empty {
+    margin: 0;
+    padding: 4px 18px 14px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.work-desa {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 16px 5px 18px;
+    border-bottom: 1px solid var(--divider);
+    background: var(--frost);
+}
+
+.work-desa__title {
+    min-width: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.work-desa__kec {
+    flex: none;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.work-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 16px;
+    border-bottom: 1px solid var(--divider);
+}
+
+.work-row__main {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    min-height: 56px;
+    padding: 8px 4px 8px 18px;
+    border: 0;
+    background: none;
+    text-align: left;
+    transition: background-color var(--dur);
+}
+
+.work-row__main:hover .atlas-unit:not(.is-active) {
+    border-color: var(--blue);
+    background-color: var(--blue-tint);
+}
+
+.work-row__text {
+    display: grid;
+    justify-items: start;
+    gap: 3px;
+    min-width: 0;
+}
+
+.work-row__coord {
+    overflow: hidden;
+    max-width: 100%;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+}
+
+.work-row__coord.is-none {
+    color: var(--muted-2);
+    font-style: italic;
+}
+
+/* The popup's outlined Lapor pill at list size. */
+.work-row__lapor {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex: none;
+    min-height: 36px;
+    padding: 0 13px 0 11px;
+    border: 1px solid var(--blue);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--blue-deep);
+    font: 700 12.5px/1.2 var(--font-ui);
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color var(--dur),
+        border-color var(--dur),
+        scale var(--dur-press) var(--ease-out);
+}
+
+.work-row__lapor:hover {
+    border-color: var(--blue-deep);
+    background: #f2f6fb;
+}
+
+.work-row__lapor:active {
+    scale: 0.97;
+}
+
+.work-row__lapor:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.work-row__done {
+    flex: none;
+    color: var(--green);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* A closed phone sheet peeks to the count under the search; the switch only
+   appears once the sheet is open, so that peek keeps its height. */
+@media (max-width: 959px) {
+    body:not(.is-panel-open) .list-mode {
+        display: none;
+    }
+}

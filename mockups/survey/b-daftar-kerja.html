@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup B: Daftar Kerja</title>
+<link rel="stylesheet" href="../../src/public/styles/fonts.css">
+<link rel="stylesheet" href="../../src/public/styles/tokens.css">
+<link rel="stylesheet" href="base.css">
+<style>
+/* B: Daftar Kerja. Built for the person holding the phone at the site: pick
+   the wilayah you work (remembered on this phone), see how far it got, then
+   the units sorted by the report they need next, each with its own Lapor.
+   The feed has no reporter names, so "mine" is the wilayah plus the reports
+   this phone sent (the ?lapor= return the map already reads). */
+
+.work-label { display: block; margin: 2px 0 6px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+
+/* The wilayah picker is a native select dressed as the search field: the
+   phone's own picker opens, and the choice is kept on this device. */
+.work-pick {
+  position: relative;
+  margin: 0 16px 14px;
+}
+
+.work-pick select {
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  padding: 0 40px 0 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--frost);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  transition: border-color var(--dur), background-color var(--dur);
+}
+
+.work-pick select:hover { border-color: var(--hairline-strong); }
+.work-pick select:focus-visible { outline: none; border-color: var(--blue); background: #fff; }
+
+.work-pick::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -6px;
+  border: solid var(--muted-2);
+  border-width: 0 1.8px 1.8px 0;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.work-sum { padding: 0 16px 14px; }
+
+.work-sum__row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.work-sum__row p { margin: 0; color: var(--muted); font-size: 13.5px; }
+.work-sum__row p b { color: var(--ink); font-size: 22px; font-weight: 800; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.work-sum__row p b.is-done { color: var(--green); }
+.work-sum__pct { color: var(--muted-2); font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+/* This phone's last report: the popup's "Laporan Terkirim" band, kept small. */
+.mine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--green-tint);
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: var(--muted-2);
+}
+
+.mine svg { flex: none; }
+.mine strong { display: block; color: var(--green); font-size: 13px; font-weight: 700; }
+.mine.is-pending { background: var(--frost); box-shadow: inset 0 0 0 1px var(--hairline); }
+.mine.is-pending strong { color: var(--ink); }
+
+/* Groups by the next report due. Native disclosure: works without script,
+   and each group keeps its own open state. */
+.todo { border-top: 1px solid var(--divider); }
+.todo + .todo { border-top: 1px solid var(--divider); }
+
+.todo summary {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px 12px 18px;
+  background: #fff;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color var(--dur);
+}
+
+.todo summary::-webkit-details-marker { display: none; }
+.todo summary:hover { background: var(--row-hover); }
+.todo[open] summary { border-bottom: 1px solid var(--divider); }
+.todo summary .badge { width: 18px; height: 18px; }
+.todo__title { display: block; font-size: 14.5px; font-weight: 750; line-height: 1.25; }
+.todo__sub { display: block; color: var(--muted); font-size: 12.5px; font-weight: 500; }
+.todo__count {
+  min-width: 30px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--frost);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 750;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.todo.is-next .todo__count { background: var(--ink); box-shadow: none; color: #fff; }
+.todo.is-done .todo__count { background: var(--green-tint); box-shadow: none; color: var(--green); }
+
+.todo summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin: 0 4px 3px 2px;
+  border: solid var(--muted-2);
+  border-width: 0 1.8px 1.8px 0;
+  transform: rotate(45deg);
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.todo[open] summary::after { transform: translate(0, 3px) rotate(-135deg); }
+
+.todo__empty { margin: 0; padding: 4px 18px 14px; color: var(--muted); font-size: 13px; }
+
+.desa-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px 4px 18px;
+  background: var(--frost);
+  border-bottom: 1px solid var(--divider);
+}
+
+.desa-head b { font-size: 13.5px; font-weight: 700; }
+.desa-head span { flex: none; color: var(--muted); font-size: 12px; font-weight: 600; }
+
+.job {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 16px 8px 18px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.job__text { display: grid; gap: 3px; min-width: 0; }
+.job__text small { overflow: hidden; color: var(--muted); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.job__text .stage-pill { justify-self: start; }
+
+.job__done { color: var(--green); font-size: 12px; font-weight: 700; }
+</style>
+</head>
+<body>
+<svg class="map" id="map" role="img" aria-label="Latar peta (disederhanakan untuk mockup)"></svg>
+<div class="masthead" aria-hidden="true"><img src="../../src/public/assets/lambang-jambi-60.webp" alt=""><span><small>Dinas ESDM Provinsi Jambi</small><b>Sebaran PUTS 2026</b></span></div>
+<div class="map-chip map-chip--layers" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5Zm-9 9 9 5 9-5m-18 5 9 5 9-5"/></svg></div>
+<div class="map-legend" id="legend" aria-hidden="true"></div>
+<div class="map-zoom" aria-hidden="true"><span>−</span><span>+</span></div>
+
+<aside class="sidebar" id="sidebar" aria-label="Daftar kerja pelapor">
+  <button class="sheet-handle" type="button" aria-label="Tutup daftar kerja"><i></i><span>Tutup Daftar Kerja</span></button>
+  <div class="atlas-detail">
+    <div class="atlas-detail__bar">
+      <button class="atlas-back" type="button" id="back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg><span>Peta Sebaran</span></button>
+      <button class="panel-collapse" type="button" aria-label="Sembunyikan daftar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15M16 10l-2 2 2 2"/></svg></button>
+    </div>
+    <div class="atlas-detail__main"><div><h1>Daftar Kerja</h1><p>Titik yang perlu dilaporkan berikutnya</p></div><div class="atlas-locator" id="locator" role="img"></div></div>
+  </div>
+  <div class="work-pick"><label class="visually-hidden" for="region">Wilayah kerja</label><select id="region"></select></div>
+  <div class="panel-scroll" id="scroll"><div class="panel-screen" id="screen"></div></div>
+  <p class="sidebar-footer"><span class="sidebar-footer__title">Hanya tahap yang sudah diterima yang dihitung</span><span class="sidebar-footer__meta" id="foot"></span></p>
+</aside>
+
+<script src="data.js"></script>
+<script src="mock.js"></script>
+<script>
+(function () {
+  "use strict";
+  var K = window.Mock, M = K.data, esc = K.esc;
+  var sidebar = document.getElementById("sidebar"), screen = document.getElementById("screen"), scroll = document.getElementById("scroll"), select = document.getElementById("region"), locator = document.getElementById("locator");
+  var KEY = "mock-survey-wilayah-kerja";
+
+  K.switcher("b-daftar-kerja.html");
+  document.getElementById("foot").textContent = "Progres dari esdm.cloud · " + M.taken;
+  document.getElementById("legend").innerHTML = [1, 2, 3, 4].map(function (s) { return "<span>" + K.badge(s) + (s === 4 ? "Terpasang" : K.STAGES[s - 1]) + "</span>"; }).join("") + '<span><i class="dot dot--belum"></i>Belum Ditetapkan</span><span><i class="dot dot--duplikat"></i>Perlu Konfirmasi</span>';
+  var mapEl = document.getElementById("map");
+
+  select.innerHTML = M.order.map(function (name) {
+    var t = K.tally(K.unitsOf(name));
+    return '<option value="' + esc(name) + '">' + esc(name) + " · " + t.s[4] + "/" + t.total + " terpasang</option>";
+  }).join("");
+
+  // Remembered per phone, like the map's other conveniences; private windows simply start on the default.
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) { /* storage blocked */ }
+  select.value = M.order.indexOf(saved) >= 0 ? saved : "Batanghari";
+
+  var TICK = '<svg viewBox="0 0 28 28" width="24" height="24" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="#fff" stroke="#1f8f4e" stroke-width="2"/><path d="M8.8 14.4 12.4 17.9 19.4 10.6" fill="none" stroke="#1f8f4e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  // Next report due, by accepted stage: 0 needs Galian, 1 Cor, 2 Tiang, 3 Lampu (the night photo).
+  var GROUPS = [
+    { stage: 0, title: "Lapor Galian", sub: "Belum ada tahap diterima" },
+    { stage: 1, title: "Lapor Cor", sub: "Galian sudah diterima" },
+    { stage: 2, title: "Lapor Tiang", sub: "Cor sudah diterima" },
+    { stage: 3, title: "Lapor Lampu", sub: "Tiang terpasang, menunggu foto malam" },
+  ];
+
+  // Grouped under the allocation line (Lokasi Rekapan) as the live list groups them, with the
+  // coordinate under each code. Inside a stage group every row shares that stage, so a row
+  // carries a pill only when it says something the group does not: an open report.
+  function rows(list, done) {
+    var groups = {};
+    list.forEach(function (u) { var k = u.r + "|" + u.kec; (groups[k] = groups[k] || []).push(u); });
+    return Object.keys(groups).map(function (k) {
+      var items = groups[k], parts = k.split("|");
+      return '<div class="desa-head"><b>' + esc(parts[0].replace(/, Kec\. .*$/, "")) + "</b><span>Kec. " + esc(parts[1]) + "</span></div>" + items.map(function (u) {
+        var pend = u.p.length ? '<span class="stage-pill is-pending">' + K.CLOCK + K.STAGES[u.p[u.p.length - 1] - 1] + " Menunggu</span>" : "";
+        var label = "Titik " + u.c + " " + u.desa;
+        return '<div class="job"><span class="atlas-unit' + (u.f ? " is-" + u.f : "") + '">' + esc(u.c) + '</span><span class="job__text">' + pend + '<small class="num">' + (u.f === "belum" ? "Belum ada koordinat" : esc(u.ll)) + "</small></span>" +
+          (done ? '<span class="job__done">Selesai</span>' : '<a class="lapor" href="#" data-lapor="' + esc(u.c + " " + u.desa) + '" aria-label="Lapor ' + esc(label) + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>Lapor</a>') + "</div>";
+      }).join("");
+    }).join("");
+  }
+
+  function render(dir) {
+    var region = select.value, units = K.official(K.unitsOf(region)), t = K.tally(units);
+    locator.innerHTML = K.locator(region);
+    locator.setAttribute("aria-label", "Letak " + region + " di Provinsi Jambi");
+    K.map(mapEl, region);
+
+    var waiting = units.filter(function (u) { return u.p.length; });
+    // First group with work in it opens; the rest stay shut so the list starts short.
+    var firstOpen = GROUPS.find(function (g) { return units.some(function (u) { return u.s === g.stage && !u.p.length; }); });
+    var mine = units.find(function (u) { return u.p.length; }) || units.find(function (u) { return u.s >= 1; });
+
+    var html = '<section class="work-sum" aria-label="Progres ' + esc(region) + '"><div class="work-sum__row"><p><b class="' + (t.s[4] === t.total ? "is-done" : "") + '">' + t.s[4] + "</b> dari " + t.total + ' titik terpasang</p><span class="work-sum__pct">' + t.pct + "%</span></div>" + K.dist(t) + "</section>";
+
+    if (mine) {
+      var pending = mine.p.length;
+      html += '<p class="mine' + (pending ? " is-pending" : "") + '">' + (pending ? '<svg viewBox="0 0 14 14" width="22" height="22" aria-hidden="true" style="color:var(--muted)"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' : TICK) +
+        "<span><strong>Laporan " + K.STAGES[(pending ? mine.p[mine.p.length - 1] : mine.s) - 1] + " titik " + esc(mine.c) + " " + esc(mine.desa) + "</strong>Dikirim dari HP ini · " + (pending ? "Menunggu diperiksa" : "Sudah diterima") + "</span></p>";
+    }
+
+    GROUPS.forEach(function (g) {
+      var list = units.filter(function (u) { return u.s === g.stage && !u.p.length; });
+      if (!list.length) return; // An empty step is already a zero in the bar above; no group for it.
+      var open = g === firstOpen;
+      html += '<details class="todo' + (open ? " is-next" : "") + '"' + (open ? " open" : "") + "><summary>" + K.badge(g.stage) + '<span><span class="todo__title">' + g.title + '</span><span class="todo__sub">' + g.sub + '</span></span><span class="todo__count">' + list.length + "</span></summary>" + (list.length ? rows(list) : '<p class="todo__empty">Tidak ada titik di tahap ini.</p>') + "</details>";
+    });
+    if (waiting.length) html += '<details class="todo"><summary><svg class="badge" viewBox="0 0 14 14" aria-hidden="true" style="color:var(--muted)"><circle cx="7" cy="7" r="5.6" fill="#fff" stroke="currentColor" stroke-width="1.4"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="todo__title">Menunggu Diperiksa</span><span class="todo__sub">Sudah dikirim, belum diterima kantor</span></span><span class="todo__count">' + waiting.length + "</span></summary>" + rows(waiting) + "</details>";
+    var done = units.filter(function (u) { return u.s >= 4; });
+    html += '<details class="todo is-done"><summary>' + K.badge(4) + '<span><span class="todo__title">Terpasang</span><span class="todo__sub">Lampu menyala, semua tahap diterima</span></span><span class="todo__count">' + done.length + "</span></summary>" + (done.length ? rows(done, true) : '<p class="todo__empty">Belum ada titik terpasang.</p>') + "</details>";
+
+    screen.innerHTML = html;
+    if (dir) { scroll.scrollTop = 0; K.enter(sidebar, dir); }
+  }
+
+  select.addEventListener("change", function () {
+    try { localStorage.setItem(KEY, select.value); } catch (e) { /* storage blocked */ }
+    render("fwd");
+  });
+  document.getElementById("back").addEventListener("click", function () { K.toast("Di halaman asli: kembali ke daftar Sebaran"); });
+
+  render();
+})();
+</script>
+</body>
+</html>

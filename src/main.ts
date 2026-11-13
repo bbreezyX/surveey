@@ -7,6 +7,7 @@ import './public/styles/fonts.css';
 import './public/styles/tokens.css';
 import './public/styles/layout.css';
 import './public/styles/sidebar.css';
+import './public/styles/progress.css';
 import './public/styles/controls.css';
 import './public/styles/popup.css';
 import './public/styles/responsive.css';

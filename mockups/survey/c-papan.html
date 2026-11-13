@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup C: Papan Progres</title>
+<link rel="stylesheet" href="../../src/public/styles/fonts.css">
+<link rel="stylesheet" href="../../src/public/styles/tokens.css">
+<link rel="stylesheet" href="base.css">
+<style>
+/* C: Papan Progres. The sidebar stays as it is today plus one strip that
+   always shows the province's progress; tapping it opens a board over the
+   map: stage totals, how many units passed each stage, open reports, and a
+   kabupaten table. "Salin Ringkasan" puts the same numbers on the clipboard
+   as plain text, for the WhatsApp groups the crews already report in. */
+
+.panel-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  margin: 0 16px 12px;
+  padding-left: 44px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--frost);
+  color: var(--muted-2);
+  font-size: 14px;
+}
+
+.panel-search svg { position: absolute; left: 15px; }
+
+.atlas-summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px 12px; }
+.atlas-total { display: flex; align-items: center; gap: 10px; margin: 0; }
+.atlas-total > b { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.atlas-total > span { display: flex; flex-direction: column; font-size: 13px; line-height: 1.3; }
+.atlas-total > span > span:first-child { font-weight: 650; }
+.atlas-fit { display: inline-flex; align-items: center; gap: 6px; padding: 6px 2px; border: 0; background: none; color: var(--blue); font-size: 13.5px; font-weight: 650; }
+
+/* The one addition to today's sidebar: progress at a glance, and the way in. */
+.prog-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 12px;
+  width: calc(100% - 32px);
+  margin: 0 16px 14px;
+  padding: 10px 12px 11px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  background: #fff;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--dur), background-color var(--dur), scale var(--dur-press) var(--ease-out);
+}
+
+.prog-strip:hover { border-color: var(--blue); background: var(--row-hover); }
+.prog-strip:active { scale: 0.99; }
+.prog-strip__text { font-size: 13px; color: var(--muted); }
+.prog-strip__text b { color: var(--green); font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.prog-strip__go { display: inline-flex; align-items: center; gap: 5px; color: var(--blue); font-size: 13px; font-weight: 700; }
+.prog-strip__go::after { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 1.6px 1.6px 0 0; transform: rotate(45deg); }
+.prog-strip .dist { grid-column: 1 / -1; }
+
+.atlas-grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--divider); }
+.atlas-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--divider); background: #fff; text-align: left; }
+.atlas-cell:nth-child(odd) { border-right: 1px solid var(--divider); }
+.atlas-cell__shape { display: block; height: 54px; margin-bottom: 6px; }
+.atlas-cell__shape svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.atlas-cell__name { font-size: 14.5px; font-weight: 700; line-height: 1.25; }
+.atlas-cell__meta { color: var(--muted); font-size: 13px; }
+.atlas-cell__meta b { color: var(--ink); font-weight: 750; }
+.atlas-dot { fill: var(--yellow); stroke: var(--ink); stroke-width: 0.8; vector-effect: non-scaling-stroke; }
+
+/* ---------- The board ---------- */
+
+.board {
+  width: min(1120px, calc(100vw - 48px));
+  max-width: none;
+  max-height: calc(100dvh - var(--mock-top) - 48px);
+  margin: auto;
+  translate: 0 calc(var(--mock-top) / 2);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-lg);
+  background: var(--atlas-paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.board[open] { display: flex; flex-direction: column; animation: board-in 240ms var(--ease-out); }
+.board:modal { overscroll-behavior: contain; }
+.board::backdrop { background: rgba(20, 32, 44, 0.52); overflow: hidden; overscroll-behavior: contain; }
+
+@keyframes board-in { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
+@media (prefers-reduced-motion: reduce) { @keyframes board-in { from { opacity: 0; } } }
+
+.board__head {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 14px 20px;
+  border-bottom: 1px solid var(--atlas-edge);
+}
+
+.board__head img { width: 38px; height: auto; }
+.board__org { margin: 0; color: var(--muted); font-size: 13px; font-weight: 600; }
+.board__head h2 { margin: 1px 0 0; font-size: 19px; font-weight: 750; letter-spacing: -0.01em; line-height: 1.2; }
+.board__meta { margin: 2px 0 0; color: var(--muted-2); font-size: 12.5px; }
+
+.copy { position: relative; }
+
+.btn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 16px 0 13px;
+  border: 1px solid var(--blue);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--blue-deep);
+  font-size: 13px;
+  font-weight: 700;
+  transition: background-color var(--dur), border-color var(--dur);
+}
+
+.btn-copy:hover { border-color: var(--blue-deep); background: #f2f6fb; }
+.btn-copy .i-check { display: none; }
+.btn-copy[data-copied] .i-copy { display: none; }
+.btn-copy[data-copied] .i-check { display: block; }
+
+.tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  padding: 4px 9px;
+  border-radius: var(--radius-xs);
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--dur);
+  pointer-events: none;
+}
+
+.tip:not(:empty) { opacity: 1; }
+
+.board__close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.board__close:hover { background: rgba(255, 255, 255, 0.7); color: var(--ink); }
+
+.board__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 20px 20px; scrollbar-width: thin; }
+
+.card { padding: 14px 16px 16px; border-radius: var(--radius-md); background: var(--surface); box-shadow: 0 1px 2px rgba(20, 38, 53, 0.06); }
+.card h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 12px; font-size: 14.5px; font-weight: 750; }
+.card h3 small { color: var(--muted-2); font-size: 12px; font-weight: 600; }
+
+/* Stage totals: terpasang leads and is the only green number. */
+.kpis { display: grid; grid-template-columns: 1.6fr repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.kpi { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface); box-shadow: 0 1px 2px rgba(20, 38, 53, 0.06); }
+.kpi__label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.kpi > b { font-size: 26px; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.kpi--main > b { color: var(--green); font-size: 34px; }
+.kpi--main small { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.kpi--main small b { color: var(--ink); font-weight: 750; }
+.kpi--main .dist { margin-top: 8px; }
+.kpi.is-zero > b { color: var(--disabled-ink); }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+
+/* How many units reached each stage, cumulative: a native <progress> per stage. */
+.reach { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.reach li { display: grid; grid-template-columns: 74px minmax(0, 1fr) 92px; align-items: center; gap: 12px; font-size: 13px; }
+.reach__name { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.reach__num { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.reach__num b { color: var(--ink); font-weight: 750; }
+
+.reach progress {
+  appearance: none;
+  border: 0 solid;
+  overflow: clip;
+  width: 100%;
+  height: 10px;
+  --progress-bar-radius: 1e5px;
+  border-radius: var(--progress-bar-radius);
+  background: var(--divider);
+}
+
+.reach progress::-webkit-progress-bar { background: transparent; }
+.reach progress::-webkit-progress-value { background: var(--progress-fill, var(--blue)); border-radius: var(--progress-bar-radius); }
+.reach progress::-moz-progress-bar { background: var(--progress-fill, var(--blue)); border-radius: var(--progress-bar-radius); }
+.reach li.is-lampu progress { --progress-fill: var(--green); }
+
+.wait-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.wait-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--divider); }
+.wait-list li:last-child { border-bottom: 0; }
+.wait-list b { display: block; font-size: 13.5px; font-weight: 700; }
+.wait-list small { display: block; color: var(--muted); font-size: 12px; }
+.wait-empty { margin: 0; color: var(--muted); font-size: 13px; }
+.wait-note { margin: 10px 0 0; color: var(--muted-2); font-size: 12px; }
+
+/* Kabupaten table; cards under 600px of its own width. */
+.table-card { container-type: inline-size; }
+.table-wrap { overflow: auto; }
+
+.prog-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.prog-table th, .prog-table td { padding: 9px 10px; border-bottom: 1px solid var(--divider); text-align: right; white-space: nowrap; }
+.prog-table thead th { position: sticky; top: 0; background: #fff; color: var(--muted); font-size: 12px; font-weight: 650; }
+.prog-table thead th span { display: inline-flex; align-items: center; gap: 4px; }
+.prog-table thead .badge { width: 12px; height: 12px; }
+.prog-table th[scope="row"], .prog-table thead th:first-child { text-align: left; }
+.prog-table th[scope="row"] { font-weight: 700; }
+.prog-table td.is-zero { color: var(--disabled-ink); }
+.prog-table td.is-done { color: var(--green); font-weight: 750; }
+.prog-table tbody tr:hover { background: var(--row-hover); }
+.prog-table tfoot th, .prog-table tfoot td { border-bottom: 0; border-top: 1px solid var(--hairline-strong); font-weight: 750; }
+.prog-cell { display: grid; grid-template-columns: minmax(60px, 1fr) 40px; align-items: center; gap: 8px; min-width: 150px; }
+.prog-cell b { font-weight: 750; }
+
+@container (width < 600px) {
+  .prog-table, .prog-table tbody, .prog-table tfoot, .prog-table tr, .prog-table th, .prog-table td { display: block; }
+  .prog-table thead { display: none; }
+  .prog-table tr { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px 8px; padding: 12px 0; border-bottom: 1px solid var(--divider); }
+  .prog-table tbody tr:hover { background: none; }
+  .prog-table th, .prog-table td { padding: 0; border: 0; text-align: left; }
+  .prog-table th[scope="row"] { grid-column: 1 / -1; order: -2; font-size: 14.5px; }
+  .prog-table td[data-label]::before { content: attr(data-label); display: block; color: var(--muted); font-size: 11px; font-weight: 600; }
+  .prog-table td.col-total { display: none; }
+  .prog-table td.col-prog { grid-column: 1 / -1; order: -1; margin-bottom: 4px; }
+  .prog-table tfoot tr { border-top: 1px solid var(--hairline-strong); border-bottom: 0; }
+  .prog-table tfoot th, .prog-table tfoot td { border-top: 0; }
+}
+
+@media (max-width: 959px) {
+  .board {
+    width: 100vw;
+    max-height: none;
+    height: calc(100dvh - var(--mock-top) - 12px);
+    margin: auto 0 0;
+    translate: none;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .board__head { grid-template-columns: minmax(0, 1fr) auto; padding: 14px 12px 12px 16px; }
+  .board__head img { display: none; }
+  .board__head .copy { grid-column: 1 / -1; grid-row: 2; }
+  .btn-copy { width: 100%; justify-content: center; }
+  .tip { right: 50%; translate: 50% 0; }
+  .board__body { padding: 12px 12px 20px; }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .kpi--main { grid-column: 1 / -1; }
+  .cols { grid-template-columns: 1fr; }
+  .reach li { grid-template-columns: 64px minmax(0, 1fr) 80px; gap: 10px; }
+}
+</style>
+</head>
+<body>
+<svg class="map" id="map" role="img" aria-label="Latar peta (disederhanakan untuk mockup)"></svg>
+<div class="masthead" aria-hidden="true"><img src="../../src/public/assets/lambang-jambi-60.webp" alt=""><span><small>Dinas ESDM Provinsi Jambi</small><b>Sebaran PUTS 2026</b></span></div>
+<div class="map-chip map-chip--layers" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5Zm-9 9 9 5 9-5m-18 5 9 5 9-5"/></svg></div>
+<div class="map-legend" id="legend" aria-hidden="true"></div>
+<div class="map-zoom" aria-hidden="true"><span>−</span><span>+</span></div>
+
+<aside class="sidebar" id="sidebar" aria-label="Daftar titik PUTS">
+  <button class="sheet-handle" type="button" aria-label="Tutup daftar titik"><i></i><span>Tutup Daftar Titik</span></button>
+  <div class="atlas-head"><img src="../../src/public/assets/lambang-jambi-76.webp" alt="Lambang Provinsi Jambi" width="38" height="39"><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15M16 10l-2 2 2 2"/></svg></button></div>
+  <div class="panel-search" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>Cari lokasi atau kabupaten…</div>
+  <div class="atlas-summary"><p class="atlas-total"><b id="total"></b><span><span>Titik PUTS</span><span>di <b>10</b> kabupaten/kota</span></span></p><button class="atlas-fit" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/><circle cx="12" cy="12" r="2.2"/></svg>Lihat Semua</button></div>
+  <button class="prog-strip" type="button" id="open-board" command="show-modal" commandfor="board"></button>
+  <div class="panel-scroll"><div class="atlas-grid" id="grid"></div></div>
+  <p class="sidebar-footer"><span class="sidebar-footer__title">Survey Lapangan &amp; Pelaksanaan</span><span class="sidebar-footer__meta">s.d. 6 Oktober 2026 · Dinas ESDM Jambi</span></p>
+</aside>
+
+<dialog class="board" id="board" closedby="any" aria-labelledby="board-title">
+  <header class="board__head">
+    <img src="../../src/public/assets/lambang-jambi-76.webp" alt="" width="38" height="39">
+    <div><p class="board__org">Dinas ESDM Provinsi Jambi</p><h2 id="board-title">Progres Pembangunan PUTS 2026</h2><p class="board__meta" id="board-meta"></p></div>
+    <span class="copy"><button class="btn-copy" type="button" command="--copy" commandfor="board" id="copy"><svg class="i-copy" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><svg class="i-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Salin Ringkasan</button><span class="tip" role="status"></span></span>
+    <button class="board__close" type="button" command="close" commandfor="board" aria-label="Tutup papan progres" autofocus><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m7 7 10 10M7 17 17 7"/></svg></button>
+  </header>
+  <div class="board__body" id="board-body"></div>
+</dialog>
+
+<script src="data.js"></script>
+<script src="mock.js"></script>
+<script>
+(function () {
+  "use strict";
+  var K = window.Mock, M = K.data, esc = K.esc;
+  var all = K.tally(M.units), board = document.getElementById("board");
+
+  K.switcher("c-papan.html");
+  K.map(document.getElementById("map"));
+  document.getElementById("legend").innerHTML = [1, 2, 3, 4].map(function (s) { return "<span>" + K.badge(s) + (s === 4 ? "Terpasang" : K.STAGES[s - 1]) + "</span>"; }).join("") + '<span><i class="dot dot--belum"></i>Belum Ditetapkan</span><span><i class="dot dot--duplikat"></i>Perlu Konfirmasi</span>';
+  document.getElementById("total").textContent = all.total;
+  document.getElementById("board-meta").textContent = "Per " + M.taken + " · hanya tahap yang sudah diterima esdm.cloud";
+
+  document.getElementById("open-board").innerHTML = '<span class="prog-strip__text"><b>' + all.s[4] + "</b> dari " + all.total + ' terpasang · <span class="num">' + all.pct + '%</span></span><span class="prog-strip__go">Progres</span>' + K.dist(all, true);
+
+  document.getElementById("grid").innerHTML = M.order.map(function (name) {
+    var units = K.official(K.unitsOf(name)), kec = new Set(units.map(function (u) { return u.kec; })).size;
+    return '<button class="atlas-cell" type="button"><span class="atlas-cell__shape">' + K.thumb(name).replace(/class="prog-dot s\d"/g, 'class="atlas-dot"') + '</span><span class="atlas-cell__name">' + esc(name) + '</span><span class="atlas-cell__meta"><b>' + units.length + "</b> titik di " + kec + " kecamatan</span></button>";
+  }).join("");
+
+  var rows = M.order.map(function (name) { return { name: name, t: K.tally(K.unitsOf(name)) }; })
+    .sort(function (a, b) { return b.t.s[4] / b.t.total - a.t.s[4] / a.t.total || a.t.s[0] - b.t.s[0]; });
+
+  function cell(n, label, cls) { return '<td data-label="' + label + '" class="' + (cls || "") + (n ? "" : " is-zero") + '">' + (n || "–") + "</td>"; }
+
+  var kpis = '<section class="kpis" aria-label="Jumlah per tahap"><div class="kpi kpi--main"><span class="kpi__label">' + K.badge(4) + "Terpasang</span><b>" + all.s[4] + "</b><small>dari <b>" + all.total + "</b> titik · <b>" + all.pct + "%</b></small>" + K.dist(all) + "</div>" +
+    [3, 2, 1, 0].map(function (s) { return '<div class="kpi' + (all.s[s] ? "" : " is-zero") + '"><span class="kpi__label">' + K.badge(s) + K.STAGE_ROW[s] + "</span><b>" + all.s[s] + "</b></div>"; }).join("") + "</section>";
+
+  var reach = '<section class="card"><h3>Sudah melewati tahap <small>dari ' + all.total + " titik</small></h3><ul class=\"reach\">" + K.STAGES.map(function (name, i) {
+    var n = all.reached[i], pct = Math.round((n / all.total) * 100), id = "reach-" + i;
+    return '<li class="' + (i === 3 ? "is-lampu" : "") + '"><span class="reach__name" id="' + id + '">' + K.badge(i + 1) + name + '</span><progress max="' + all.total + '" value="' + n + '" aria-labelledby="' + id + '"></progress><span class="reach__num"><b>' + n + "</b> · " + pct + "%</span></li>";
+  }).join("") + "</ul></section>";
+
+  var waiting = '<section class="card"><h3>Menunggu diperiksa <small>' + all.pending.length + " laporan</small></h3>" + (all.pending.length ? '<ul class="wait-list">' + all.pending.map(function (u) {
+    var stage = u.p[u.p.length - 1];
+    return '<li><span class="atlas-unit">' + esc(u.c) + "</span><span><b>" + esc(u.desa) + "</b><small>" + esc(u.k) + " · Kec. " + esc(u.kec) + '</small></span><span class="stage-pill is-pending">' + K.CLOCK + K.STAGES[stage - 1] + " Menunggu</span></li>";
+  }).join("") + "</ul>" : '<p class="wait-empty">Semua laporan sudah diperiksa.</p>') + '<p class="wait-note">Laporan dari esdm.cloud/lapangan masuk hitungan setelah diterima kantor.</p></section>';
+
+  var table = '<section class="card table-card"><h3 id="table-title">Per kabupaten <small>urut dari yang paling maju</small></h3><div class="table-wrap" role="region" aria-labelledby="table-title" tabindex="0"><table class="prog-table"><thead><tr><th scope="col">Kabupaten</th><th scope="col">Titik</th>' +
+    [0, 1, 2, 3, 4].map(function (s) { return '<th scope="col"><span>' + K.badge(s) + (s === 0 ? "Belum" : s === 4 ? "Terpasang" : K.STAGES[s - 1]) + "</span></th>"; }).join("") + '<th scope="col">Progres</th></tr></thead><tbody>' +
+    rows.map(function (r) {
+      var t = r.t;
+      return '<tr><th scope="row">' + esc(r.name) + "</th>" + cell(t.total, "Titik", "col-total") + cell(t.s[0], "Belum") + cell(t.s[1], "Galian") + cell(t.s[2], "Cor") + cell(t.s[3], "Tiang") + cell(t.s[4], "Terpasang", t.s[4] === t.total ? "is-done" : "") +
+        '<td class="col-prog"><span class="prog-cell">' + K.dist(t, true) + "<b>" + t.pct + "%</b></span></td></tr>";
+    }).join("") + '</tbody><tfoot><tr><th scope="row">Jumlah</th>' + cell(all.total, "Titik", "col-total") + cell(all.s[0], "Belum") + cell(all.s[1], "Galian") + cell(all.s[2], "Cor") + cell(all.s[3], "Tiang") + cell(all.s[4], "Terpasang") + '<td class="col-prog"><span class="prog-cell">' + K.dist(all, true) + "<b>" + all.pct + "%</b></span></td></tr></tfoot></table></div></section>";
+
+  document.getElementById("board-body").innerHTML = kpis + '<div class="cols">' + reach + waiting + "</div>" + table;
+
+  // Plain text for a WhatsApp group: the same numbers, nothing the board does not show.
+  function summaryText() {
+    return ["Progres PUTS 2026 · " + M.taken, "Terpasang " + all.s[4] + "/" + all.total + " (" + all.pct + "%)", "Cor selesai " + all.s[2] + " · Galian selesai " + all.s[1] + " · Belum dimulai " + all.s[0], "", "Per kabupaten:"]
+      .concat(rows.map(function (r) { return "- " + r.name + ": " + r.t.s[4] + "/" + r.t.total + " terpasang"; }))
+      .concat(["", "Peta: https://survey.esdm.cloud/"]).join("\n");
+  }
+
+  var timer;
+  function report(button, ok) {
+    var tip = button.nextElementSibling;
+    clearTimeout(timer);
+    button.removeAttribute("data-copied");
+    tip.textContent = "";
+    void button.offsetWidth;
+    if (ok) button.setAttribute("data-copied", "");
+    requestAnimationFrame(function () { tip.textContent = ok ? "Ringkasan disalin" : "Gagal menyalin"; });
+    timer = setTimeout(function () { button.removeAttribute("data-copied"); tip.textContent = ""; }, 2000);
+  }
+
+  function copy(button) {
+    navigator.clipboard.writeText(summaryText()).then(function () { report(button, true); }, function () { report(button, false); });
+  }
+
+  // Invoker commands where supported (show-modal, close, --copy); a click stand-in elsewhere, one path only.
+  if ("CommandEvent" in window && "commandForElement" in HTMLButtonElement.prototype) {
+    document.addEventListener("command", function (event) { if (event.command === "--copy") copy(event.source); }, true);
+  } else {
+    document.addEventListener("click", function (event) {
+      var button = event.target.closest("button[command]");
+      if (!button) return;
+      var command = button.getAttribute("command");
+      if (command === "show-modal") board.showModal();
+      else if (command === "close") board.close();
+      else if (command === "--copy") copy(button);
+    });
+  }
+
+  // Light dismiss where closedby is missing: press and release both outside the board.
+  if (!("closedBy" in HTMLDialogElement.prototype)) {
+    var outside = function (e) { var r = board.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+    var pressedOutside = false;
+    board.addEventListener("pointerdown", function (e) { pressedOutside = outside(e); });
+    board.addEventListener("pointerup", function (e) { if (pressedOutside && outside(e)) board.close(); });
+  }
+
+  // The mockup opens on the board; closing it shows the sidebar strip that reopens it.
+  board.showModal();
+})();
+</script>
+</body>
+</html>

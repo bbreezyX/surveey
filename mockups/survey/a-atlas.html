@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup A: Atlas Progres</title>
+<link rel="stylesheet" href="../../src/public/styles/fonts.css">
+<link rel="stylesheet" href="../../src/public/styles/tokens.css">
+<link rel="stylesheet" href="base.css">
+<style>
+/* A: Atlas Progres. The sidebar the crews already know gains a second view.
+   "Sebaran" is today's atlas; "Progres" is the same atlas counted by build
+   stage: one province summary, then the kabupaten cells with their stage
+   bar, and inside a kabupaten a board of unit tiles to see what is left. */
+
+.mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 0 16px 12px;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--frost);
+}
+
+.mode[hidden] { display: none; }
+
+.mode button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 650;
+  transition: background-color var(--dur), color var(--dur), border-color var(--dur);
+}
+
+.mode button:hover { color: var(--ink); }
+/* A border, not only a fill, marks the chosen half: it survives forced colours. */
+.mode button[aria-selected="true"] {
+  border-color: var(--hairline-strong);
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(20, 38, 53, 0.08);
+}
+
+.mode__pct {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--green-tint);
+  color: var(--green);
+  font-size: 11.5px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Province summary: the "500 Titik PUTS" row, counted by stage. */
+.prog-sum { padding: 2px 16px 14px; border-bottom: 1px solid var(--divider); }
+
+.prog-sum__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.prog-total { display: flex; align-items: center; gap: 10px; margin: 0; }
+.prog-total > b { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; color: var(--green); font-variant-numeric: tabular-nums; }
+.prog-total > span { display: flex; flex-direction: column; font-size: 13px; line-height: 1.3; }
+.prog-total > span > span:first-child { font-weight: 650; }
+.prog-total b b, .prog-total span b { font-weight: 750; }
+
+.prog-pct { color: var(--muted-2); font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.prog-pct b { color: var(--ink); font-size: 15px; font-weight: 750; }
+
+/* Legend under the bar: the pin badges with their counts, so a stage is
+   read by its drawing and number, never by the shade of blue alone. */
+.prog-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 14px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.prog-legend li { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--muted); }
+.prog-legend b { margin-left: auto; color: var(--ink); font-weight: 750; font-variant-numeric: tabular-nums; }
+
+.prog-pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  transition: border-color var(--dur), background-color var(--dur);
+}
+
+.prog-pending:hover { border-color: var(--blue); background: var(--row-hover); }
+.prog-pending svg { flex: none; width: 15px; height: 15px; }
+.prog-pending b { color: var(--ink); font-weight: 750; }
+.prog-pending::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border: solid var(--muted-2);
+  border-width: 1.6px 1.6px 0 0;
+  transform: rotate(45deg);
+}
+
+/* Kabupaten cells: today's atlas grid with a stage bar. */
+.atlas-grid { display: grid; grid-template-columns: 1fr 1fr; }
+
+.atlas-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px 13px;
+  border: 0;
+  border-bottom: 1px solid var(--divider);
+  background: #fff;
+  text-align: left;
+  transition: background-color var(--dur);
+}
+
+.atlas-cell:nth-child(odd) { border-right: 1px solid var(--divider); }
+.atlas-cell:hover { background: var(--row-hover); }
+.atlas-cell:hover .atlas-shape { fill: #d9e9f7; stroke: var(--blue); }
+.atlas-cell__shape { display: block; height: 54px; margin-bottom: 4px; }
+.atlas-cell__shape svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.atlas-cell__name { font-size: 14.5px; font-weight: 700; line-height: 1.25; }
+.atlas-cell__meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.atlas-cell__meta b { color: var(--ink); font-weight: 750; }
+.atlas-cell__meta.is-done b, .atlas-cell__meta.is-done { color: var(--green); font-weight: 700; }
+.atlas-cell .dist { margin: 2px 0 1px; }
+
+.atlas-cell__rest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-cell__rest span { display: inline-flex; align-items: center; gap: 3px; }
+.atlas-cell__rest .badge { width: 12px; height: 12px; }
+.atlas-cell__rest .is-none { color: var(--muted); font-weight: 600; }
+
+.atlas-dot { fill: var(--yellow); stroke: var(--ink); stroke-width: 0.8; vector-effect: non-scaling-stroke; }
+
+.status-flag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; line-height: 1.3; margin-top: 3px; }
+.status-flag::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; }
+.status-flag--duplikat { color: var(--orange-deep); }
+.status-flag--duplikat::before { border: 2px solid var(--orange); background: var(--yellow); }
+.status-flag--belum { color: var(--muted); }
+.status-flag--belum::before { border: 1.5px dashed var(--muted-2); background: #fff; }
+
+/* One kabupaten: filter pills (the list's own), then a tile board. */
+.region-sum { padding: 0 16px 12px; }
+.region-sum .prog-legend { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); font-size: 12.5px; }
+
+.atlas-pills { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 12px; }
+
+.atlas-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 9px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+  transition: background-color var(--dur), border-color var(--dur), color var(--dur);
+}
+
+.atlas-pill:first-child { padding-left: 12px; }
+.atlas-pill:hover { border-color: var(--blue); }
+.atlas-pill b { font-weight: 750; font-variant-numeric: tabular-nums; }
+.atlas-pill .badge, .atlas-pill svg { width: 13px; height: 13px; }
+.atlas-pill[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; }
+.atlas-pill[aria-pressed="true"] .badge circle[fill="#fff"] { fill: #fff; }
+
+.board-desa { padding: 12px 18px 14px; border-bottom: 1px solid var(--divider); }
+.board-desa:last-child { border-bottom: 0; }
+.board-desa__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.board-desa__title { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.board-desa__count { flex: none; color: var(--muted); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.board { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* A tile is the unit's code wearing its pin badge in the corner; under way
+   tints blue, terpasang tints green, not started stays white. */
+.tile { position: relative; padding: 0; border: 0; background: none; }
+.tile .atlas-unit { min-width: 48px; height: 36px; transition: border-color var(--dur), background-color var(--dur); }
+.tile.s1 .atlas-unit, .tile.s2 .atlas-unit, .tile.s3 .atlas-unit { border-color: #9cc3e4; background: var(--blue-tint); color: var(--blue-deep); }
+.tile.s4 .atlas-unit { border-color: #9fd2b3; background: var(--green-tint); color: var(--green); }
+.tile:hover .atlas-unit { border-color: var(--blue); }
+.tile > .badge { position: absolute; top: -5px; right: -5px; width: 15px; height: 15px; }
+.tile__wait {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--hairline-strong);
+  color: var(--muted);
+}
+.tile__wait svg { width: 11px; height: 11px; }
+
+.board-empty { margin: 0; padding: 28px 24px; color: var(--muted); text-align: center; }
+
+@media (max-width: 959px) {
+  .prog-legend { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<svg class="map" id="map" role="img" aria-label="Latar peta (disederhanakan untuk mockup)"></svg>
+<div class="masthead" aria-hidden="true"><img src="../../src/public/assets/lambang-jambi-60.webp" alt=""><span><small>Dinas ESDM Provinsi Jambi</small><b>Sebaran PUTS 2026</b></span></div>
+<div class="map-chip map-chip--layers" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5Zm-9 9 9 5 9-5m-18 5 9 5 9-5"/></svg></div>
+<div class="map-legend" id="legend" aria-hidden="true"></div>
+<div class="map-zoom" aria-hidden="true"><span>−</span><span>+</span></div>
+
+<aside class="sidebar" id="sidebar" aria-label="Daftar titik PUTS">
+  <button class="sheet-handle" type="button" aria-label="Tutup daftar titik"><i></i><span>Tutup Daftar Titik</span></button>
+  <div id="top"></div>
+  <div class="mode" focusgroup="tablist nomemory" aria-label="Tampilan daftar">
+    <button type="button" id="tab-sebaran" aria-selected="false">Sebaran</button>
+    <button type="button" id="tab-progres" aria-selected="true" focusgroupstart>Progres <span class="mode__pct" id="pct"></span></button>
+  </div>
+  <div class="panel-scroll" id="scroll"><div class="panel-screen" id="screen" role="tabpanel" aria-labelledby="tab-progres"></div></div>
+  <p class="sidebar-footer"><span class="sidebar-footer__title">Survey Lapangan &amp; Pelaksanaan</span><span class="sidebar-footer__meta" id="foot"></span></p>
+</aside>
+
+<script src="data.js"></script>
+<script src="mock.js"></script>
+<script>
+(function () {
+  "use strict";
+  var K = window.Mock, M = K.data, esc = K.esc;
+  var sidebar = document.getElementById("sidebar"), top = document.getElementById("top"), screen = document.getElementById("screen"), scroll = document.getElementById("scroll");
+  var tabs = [document.getElementById("tab-sebaran"), document.getElementById("tab-progres")];
+  var state = { mode: "progres", region: null, filter: null };
+  var all = K.tally(M.units);
+
+  var mapEl = document.getElementById("map");
+  K.switcher("a-atlas.html");
+  K.map(mapEl);
+  document.getElementById("pct").textContent = all.pct + "%";
+  document.getElementById("foot").textContent = "Progres dari esdm.cloud · " + M.taken;
+  document.getElementById("legend").innerHTML = [1, 2, 3, 4].map(function (s) { return "<span>" + K.badge(s) + (s === 4 ? "Terpasang" : K.STAGES[s - 1]) + "</span>"; }).join("") + '<span><i class="dot dot--belum"></i>Belum Ditetapkan</span><span><i class="dot dot--duplikat"></i>Perlu Konfirmasi</span>';
+
+  var ICON_COLLAPSE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15M16 10l-2 2 2 2"/></svg>';
+  var ICON_BACK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>';
+
+  function legend(t, cls) {
+    return '<ul class="prog-legend' + (cls ? " " + cls : "") + '">' + [4, 3, 2, 1, 0].map(function (s) {
+      return "<li>" + K.badge(s) + "<span>" + K.STAGE_ROW[s] + "</span><b>" + t.s[s] + "</b></li>";
+    }).join("") + "</ul>";
+  }
+
+  // What is left in a cell, by the pins' own badges: "25 cor · 3 galian · 22 belum".
+  function rest(t) {
+    if (t.s[4] === t.total) return "";
+    if (t.s[0] === t.total) return '<span class="atlas-cell__rest"><span class="is-none">' + K.badge(0) + "Belum dimulai</span></span>";
+    return '<span class="atlas-cell__rest">' + [3, 2, 1, 0].filter(function (s) { return t.s[s]; }).map(function (s) {
+      return '<span title="' + K.STAGE_ROW[s] + '">' + K.badge(s) + t.s[s] + "</span>";
+    }).join("") + "</span>";
+  }
+
+  function head() {
+    if (!state.region) {
+      top.innerHTML = '<div class="atlas-head"><img src="../../src/public/assets/lambang-jambi-76.webp" alt="Lambang Provinsi Jambi" width="38" height="39"><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar">' + ICON_COLLAPSE + "</button></div>";
+      return;
+    }
+    var t = K.tally(K.unitsOf(state.region));
+    top.innerHTML = '<div class="atlas-detail"><div class="atlas-detail__bar"><button class="atlas-back" type="button" data-back aria-label="Kembali ke semua wilayah">' + ICON_BACK + '<span>Semua Wilayah</span></button><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar">' + ICON_COLLAPSE + '</button></div><div class="atlas-detail__main"><div><h1>' + esc(state.region) + "</h1><p><b>" + t.s[4] + "</b> dari <b>" + t.total + "</b> titik terpasang</p></div>" + '<div class="atlas-locator" role="img" aria-label="Letak ' + esc(state.region) + ' di Provinsi Jambi">' + K.locator(state.region) + "</div></div></div>";
+  }
+
+  function provinceScreen() {
+    var cells = M.order.map(function (name) {
+      var t = K.tally(K.unitsOf(name)), done = t.s[4] === t.total;
+      var label = [name, t.s[4] + " dari " + t.total + " terpasang"].concat([3, 2, 1, 0].filter(function (s) { return t.s[s]; }).map(function (s) { return t.s[s] + " " + K.STAGE_ROW[s].toLowerCase(); })).join(", ");
+      return '<button class="atlas-cell" type="button" data-region="' + esc(name) + '" aria-label="' + esc(label) + ', buka">' +
+        '<span class="atlas-cell__shape">' + K.thumb(name) + "</span>" +
+        '<span class="atlas-cell__name">' + esc(name) + "</span>" +
+        '<span class="atlas-cell__meta' + (done ? " is-done" : "") + '">' + (done ? "Semua terpasang · " + t.total : "<b>" + t.s[4] + "</b>/" + t.total + " terpasang") + "</span>" +
+        K.dist(t, true) + rest(t) + "</button>";
+    }).join("");
+    var pending = all.pending.length ? '<button class="prog-pending" type="button" data-pending>' + K.CLOCK + "<span><b>" + all.pending.length + " laporan</b> menunggu diperiksa</span></button>" : "";
+    return '<section class="prog-sum" aria-label="Ringkasan progres provinsi"><div class="prog-sum__row"><p class="prog-total" role="status"><b>' + all.s[4] + "</b><span><span>Titik Terpasang</span><span>dari <b>" + all.total + '</b> titik PUTS</span></span></p><span class="prog-pct"><b>' + all.pct + "%</b> selesai</span></div>" + K.dist(all) + legend(all) + pending + '</section><div class="atlas-grid">' + cells + "</div>";
+  }
+
+  function regionScreen() {
+    var units = K.official(K.unitsOf(state.region)), t = K.tally(units);
+    var pills = '<div class="atlas-pills" role="group" aria-label="Saring menurut tahap"><button class="atlas-pill" type="button" data-filter="" aria-pressed="' + (state.filter === null) + '">Semua <b>' + t.total + "</b></button>" +
+      [0, 1, 2, 3, 4].filter(function (s) { return t.s[s]; }).map(function (s) {
+        return '<button class="atlas-pill" type="button" data-filter="' + s + '" aria-pressed="' + (state.filter === s) + '">' + K.badge(s) + (s === 0 ? "Belum" : s === 4 ? "Terpasang" : K.STAGES[s - 1]) + " <b>" + t.s[s] + "</b></button>";
+      }).join("") +
+      (t.pending.length ? '<button class="atlas-pill" type="button" data-filter="p" aria-pressed="' + (state.filter === "p") + '">' + K.CLOCK + "Menunggu <b>" + t.pending.length + "</b></button>" : "") + "</div>";
+    var shown = units.filter(function (u) { return state.filter === null || (state.filter === "p" ? u.p.length : u.s === state.filter); });
+    var kec = {};
+    shown.forEach(function (u) { (kec[u.kec] = kec[u.kec] || []).push(u); });
+    var body = Object.keys(kec).map(function (name) {
+      var list = kec[name], kt = K.tally(units.filter(function (u) { return u.kec === name; }));
+      var desa = {};
+      list.forEach(function (u) { (desa[u.desa] = desa[u.desa] || []).push(u); });
+      return '<div class="atlas-section" role="heading" aria-level="3">Kec. ' + esc(name) + "<span>" + kt.s[4] + "/" + kt.total + " terpasang</span></div>" + Object.keys(desa).map(function (d) {
+        var items = desa[d];
+        return '<div class="board-desa"><div class="board-desa__head"><span class="board-desa__title">' + esc(d) + '</span><span class="board-desa__count">' + items.filter(function (u) { return u.s === 4; }).length + "/" + items.length + ' terpasang</span></div><div class="board">' + items.map(function (u) {
+          var label = "Titik " + u.c + ", " + K.stageSummary(u.s) + (u.p.length ? ", " + u.p.map(function (s) { return K.STAGES[s - 1]; }).join(", ") + " menunggu diperiksa" : "");
+          return '<button class="tile s' + u.s + '" type="button" data-unit="' + esc(u.c) + '" aria-label="' + esc(label) + '" title="' + esc(label) + '"><span class="atlas-unit' + (u.f ? " is-" + u.f : "") + '">' + esc(u.c) + "</span>" + (u.s ? K.badge(u.s) : "") + (u.p.length ? '<span class="tile__wait">' + K.CLOCK + "</span>" : "") + "</button>";
+        }).join("") + "</div></div>";
+      }).join("");
+    }).join("");
+    return '<div class="region-sum">' + K.dist(t) + legend(t) + "</div>" + pills + (body || '<p class="board-empty">Tidak ada titik di tahap ini.</p>');
+  }
+
+  // Today's "Sebaran" atlas, kept as it is, so the switch shows what it sits beside.
+  function sebaranScreen() {
+    return '<div class="atlas-grid">' + M.order.map(function (name) {
+      var units = K.official(K.unitsOf(name)), kec = new Set(units.map(function (u) { return u.kec; })).size;
+      var dup = units.filter(function (u) { return u.f === "duplikat"; }).length, bel = units.filter(function (u) { return u.f === "belum"; }).length;
+      var svg = K.thumb(name).replace(/class="prog-dot s\d"/g, 'class="atlas-dot"');
+      return '<button class="atlas-cell" type="button"><span class="atlas-cell__shape">' + svg + '</span><span class="atlas-cell__name">' + esc(name) + '</span><span class="atlas-cell__meta"><b>' + units.length + "</b> titik di " + kec + " kecamatan</span>" + (dup ? '<span class="status-flag status-flag--duplikat">' + dup + " perlu konfirmasi</span>" : "") + (bel ? '<span class="status-flag status-flag--belum">' + bel + " belum ditetapkan</span>" : "") + "</button>";
+    }).join("") + "</div>";
+  }
+
+  function render(dir) {
+    head();
+    tabs.forEach(function (tab) { var on = tab.id === "tab-" + state.mode; tab.setAttribute("aria-selected", on); tab.toggleAttribute("focusgroupstart", on); });
+    screen.setAttribute("aria-labelledby", "tab-" + state.mode);
+    screen.innerHTML = state.mode === "sebaran" ? sebaranScreen() : state.region ? regionScreen() : provinceScreen();
+    document.querySelector(".mode").hidden = !!state.region;
+    if (dir) { scroll.scrollTop = 0; K.enter(sidebar, dir); K.map(mapEl, state.region); }
+  }
+
+  sidebar.addEventListener("click", function (event) {
+    var el = event.target.closest("button");
+    if (!el) return;
+    if (el.hasAttribute("data-region")) { state.region = el.getAttribute("data-region"); state.filter = null; render("fwd"); top.querySelector("[data-back]").focus({ preventScroll: true }); }
+    else if (el.hasAttribute("data-back")) { var from = state.region; state.region = null; render("back"); var cell = screen.querySelector('[data-region="' + from + '"]'); if (cell) cell.focus({ preventScroll: true }); }
+    else if (el.hasAttribute("data-filter")) { var f = el.getAttribute("data-filter"); state.filter = f === "" ? null : f === "p" ? "p" : +f; render(); }
+    else if (el.hasAttribute("data-pending")) { var u = all.pending[0]; state.region = u.k; state.filter = "p"; render("fwd"); }
+    else if (el.hasAttribute("data-unit")) K.toast("Di halaman asli: titik " + el.getAttribute("data-unit") + " dibuka di peta, dengan tombol Lapor");
+    else if (el.id === "tab-sebaran" || el.id === "tab-progres") { var mode = el.id.slice(4); if (mode !== state.mode) { state.mode = mode; state.region = null; render(mode === "progres" ? "fwd" : "back"); } }
+  });
+
+  // focusgroup gives the tablist its arrow keys natively; elsewhere a small stand-in does the same two-tab job.
+  if (!Object.prototype.hasOwnProperty.call(HTMLElement.prototype, "focusGroup")) {
+    var mode = document.querySelector(".mode");
+    mode.setAttribute("role", "tablist");
+    tabs.forEach(function (tab) { tab.setAttribute("role", "tab"); });
+    mode.addEventListener("keydown", function (event) {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      var next = tabs[(tabs.indexOf(document.activeElement) + 1) % 2];
+      next.focus(); next.click();
+    });
+    var sync = function () { tabs.forEach(function (tab) { tab.tabIndex = tab.getAttribute("aria-selected") === "true" ? 0 : -1; }); };
+    new MutationObserver(sync).observe(mode, { attributes: true, subtree: true, attributeFilter: ["aria-selected"] });
+    sync();
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -81,6 +81,27 @@ test('shows a stage reported on esdm.cloud/lapangan when the reader returns, wit
   for (const mode of modes!) expect(mode).toBe('no-cache');
 });
 
+test('counts build stages in the progress view and lists a kabupaten by the report due next', async ({ page }) => {
+  let feed: { stages: Record<string, number>; pending: Record<string, number[]> } = { stages: {}, pending: {} };
+  await page.route('https://www.esdm.cloud/api/public/survey-progress', route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: feed }));
+  await page.goto('/'); await expect(page.locator('.atlas-total__num')).toHaveText('500');
+  await page.getByRole('searchbox').fill('TANJUNG RADEN-007');
+  const nomor = (await page.locator('.atlas-pt').getAttribute('data-item-id'))!;
+  await page.getByRole('searchbox').fill('');
+  feed = { stages: { [nomor]: 2 }, pending: {} };
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.getByRole('button', { name: /^Progres/ }).click();
+  await expect(page.locator('.atlas-total--progress .atlas-total__num')).toHaveText('0');
+  await page.getByRole('button', { name: /^Kota Jambi, 0 dari 72 terpasang, 1 cor selesai/ }).click();
+  await expect(page.locator('.work-group__title')).toHaveText(['Lapor Galian', 'Lapor Tiang', 'Terpasang']);
+  const tiang = page.locator('details.work-group', { hasText: 'Lapor Tiang' });
+  await tiang.locator('summary').click();
+  await expect(tiang.getByRole('link', { name: /^Lapor progres titik/ })).toHaveAttribute('href', `https://www.esdm.cloud/lapangan?nomor=${encodeURIComponent(nomor)}`);
+  // The view is this phone's: a reload comes back to it.
+  await page.reload();
+  await expect(page.getByRole('button', { name: /^Progres/ })).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('keeps the chosen marker visible while its ordinary point layer is hidden', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await page.goto('/');
   await page.getByRole('button', { name: 'Tampilkan pilihan layer' }).click();

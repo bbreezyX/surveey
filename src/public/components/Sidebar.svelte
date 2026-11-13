@@ -11,6 +11,10 @@
   import { lambang, lambangSrcset } from '../assets/lambang';
   import Icon from './Icon.svelte';
   import NearbyList from './NearbyList.svelte';
+  import ProgressSummary from './ProgressSummary.svelte';
+  import ProgressGrid from './ProgressGrid.svelte';
+  import WorkList from './WorkList.svelte';
+  import { doneShare, tallyStages, WORK_DONE } from '../../shared/survey/progress';
   import type { Locator as GpsLocator } from '../state/locate.svelte';
   let { state, onfit, onrefresh, refreshing = false, locator }: { state: SurveyState; onfit: () => void; onrefresh: () => void; refreshing?: boolean; locator: GpsLocator } = $props();
   let sidebar: HTMLElement, scroller: HTMLDivElement, search: HTMLInputElement, near: HTMLDivElement;
@@ -20,13 +24,18 @@
   const regionCount = $derived(countOfficialPoints(regionPoints));
   const filterCount = $derived(state.statusFilter ? regionPoints.filter(point => point[state.statusFilter!] && !point.cadangan).length : 0);
   const summary = $derived(state.statusFilter ? state.query ? `${state.count} dari ${filterCount} ${STATUS_LABEL[state.statusFilter].count}` : `${filterCount} ${STATUS_LABEL[state.statusFilter].count} dari ${regionCount} titik` : `${state.count} dari ${regionCount} titik`);
+  // The progress view replaces the atlas and the kabupaten list while nothing is searched; a search always
+  // answers with the ordinary list, whichever view is chosen.
+  const progressView = $derived(state.listMode === 'progres' && !state.query);
+  const provinceTally = $derived(state.progress ? tallyStages(state.points, state.progress, state.pending) : null);
+  const regionTally = $derived(state.progress ? tallyStages(regionPoints, state.progress, state.pending) : null);
   let enterTimer: ReturnType<typeof setTimeout> | undefined;
   const latest = $derived(latestDocumentationDate(state.points.map(point => point.tanggal)));
   // Set only when the service worker answered from its stored copy (no or too slow a connection).
   const storedLabel = $derived(state.storedAt ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(state.storedAt) : '');
   const dateLabel = $derived(latest ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(latest) : '2026');
-  async function openRegion(name: string | null, filter: StatusFilter = null) {
-    const previous = state.activeRegion; state.openRegion(name, filter); await tick();
+  async function openRegion(name: string | null, filter: StatusFilter = null, waiting = false) {
+    const previous = state.activeRegion; state.openRegion(name, filter); if (waiting) state.showWaitingFirst(); await tick();
     if (name !== previous) { sidebar.removeAttribute('data-enter'); void sidebar.offsetWidth; sidebar.dataset.enter = name ? 'fwd' : 'back'; clearTimeout(enterTimer); enterTimer = setTimeout(() => sidebar.removeAttribute('data-enter'), 320); }
     if (name) sidebar.querySelector<HTMLButtonElement>('.atlas-back')?.focus({ preventScroll: true });
     else [...sidebar.querySelectorAll<HTMLButtonElement>('[data-region]')].find(button => button.dataset.region === previous)?.focus({ preventScroll: true });
@@ -45,7 +54,7 @@
   onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(sidebar.querySelector('#panel-meta')!); observer.observe(near); window.addEventListener('resize', measurePeek); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); }; });
   let scrollInitialized = false;
   $effect(() => {
-    state.activeRegion; state.statusFilter; state.query;
+    state.activeRegion; state.statusFilter; state.query; state.listMode;
     // A new scroller already starts at zero. Writing scrollTop on its first
     // effect forced a full layout while the rest of the map was still mounting.
     if (scroller && scrollInitialized) scroller.scrollTop = 0;
@@ -65,14 +74,22 @@
   <div class="panel-top" id="panel-top">
     {#if state.activeRegion}
       <div class="atlas-detail"><div class="atlas-detail__bar"><button class="atlas-back" type="button" aria-label="Kembali ke semua wilayah" onclick={() => openRegion(null)}><Icon name="back" size={16}/><span class="atlas-back__label">Semua Wilayah</span></button><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar" onclick={collapse}><Icon name="collapse"/></button></div>
-        <div class="atlas-detail__main"><div><h1>{state.activeRegion}</h1><p><b>{countOfficialPoints(regionPoints)}</b> titik<span class="atlas-detail__kec"> di <b>{new Set(regionPoints.filter(p => !p.cadangan).map(p => p.display.kecamatan)).size}</b> kecamatan</span></p></div><div class="atlas-locator" role="img" aria-label={`Letak ${state.activeRegion} di Provinsi Jambi`}><Locator regions={state.dataset.boundaries} active={state.activeRegion}/></div></div></div>
+        <div class="atlas-detail__main"><div><h1>{state.activeRegion}</h1>{#if progressView && regionTally}<p><b>{regionTally.stages[WORK_DONE]}</b> dari <b>{regionTally.total}</b> titik terpasang</p>{:else}<p><b>{countOfficialPoints(regionPoints)}</b> titik<span class="atlas-detail__kec"> di <b>{new Set(regionPoints.filter(p => !p.cadangan).map(p => p.display.kecamatan)).size}</b> kecamatan</span></p>{/if}</div><div class="atlas-locator" role="img" aria-label={`Letak ${state.activeRegion} di Provinsi Jambi`}><Locator regions={state.dataset.boundaries} active={state.activeRegion}/></div></div></div>
     {:else}<div class="atlas-head"><img src={lambang} srcset={lambangSrcset} sizes="38px" alt="Lambang Provinsi Jambi" width="38" height="39" decoding="async"/><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar" onclick={collapse}><Icon name="collapse"/></button></div>{/if}
   </div>
   <div class="panel-search-row"><div class="panel-search"><span class="panel-search__icon"><Icon name="search" size={18}/></span><input id="list-search" type="search" aria-label="Cari titik PUTS" placeholder={state.activeRegion ? `Cari dalam ${state.activeRegion}…` : "Cari lokasi atau kabupaten…"} title="Cari titik, lokasi, kabupaten, atau koordinat" autocomplete="off" bind:value={state.query} bind:this={search} onfocus={() => { if (innerWidth < 960) state.panelOpen = true; }}/>{#if state.query}<button class="panel-search__clear" id="list-search-clear" type="button" aria-label="Hapus pencarian" onclick={() => { state.query = ''; search.focus({ preventScroll: true }); }}><Icon name="close" size={16}/></button>{/if}</div><button class="locate-btn" class:is-seeking={locator.status === 'seeking'} type="button" aria-label="Titik di dekatku" title={locator.status === 'off' ? 'Tampilkan titik di dekat lokasiku' : 'Matikan lokasi'} aria-pressed={locator.status !== 'off'} onclick={locator.toggle}><Icon name="locate" size={22}/><span class="locate-btn__label">Terdekat</span></button></div>
   <!-- Under the search so the phone sheet's peek carries the nearest unit, not just the search field. -->
   <div class="sheet-near" bind:this={near}><NearbyList {state} {locator}/></div>
   <div class="panel-meta" id="panel-meta">
-    {#if state.activeRegion}
+    <!-- Two pressed-state buttons, as the status pills are: Sebaran is today's atlas and list, Progres the build
+         stages and each kabupaten's work list. Hidden while a search answers, and on a closed phone sheet. -->
+    {#if !state.query}<div class="list-mode" role="group" aria-label="Tampilan daftar">
+      <button type="button" aria-pressed={state.listMode === 'sebaran'} onclick={() => { state.listMode = 'sebaran'; }}>Sebaran</button>
+      <button type="button" aria-pressed={state.listMode === 'progres'} onclick={() => { state.listMode = 'progres'; }}>Progres{#if provinceTally}<span class="list-mode__share">{doneShare(provinceTally)}%</span>{/if}</button>
+    </div>{/if}
+    {#if progressView}
+      {#if !state.activeRegion}<div class="atlas-summary atlas-summary--total"><p class="atlas-total atlas-total--progress" role="status">{#if provinceTally}<b class="atlas-total__num">{provinceTally.stages[WORK_DONE]}</b><span class="atlas-total__label"><span>Titik Terpasang</span><span>dari <b>{provinceTally.total}</b> titik PUTS</span></span>{:else}<span class="atlas-total__label"><span>Memuat progres…</span><span>dari esdm.cloud</span></span>{/if}</p>{#if provinceTally}<span class="progress-share"><b>{doneShare(provinceTally)}%</b> selesai</span>{/if}</div>{/if}
+    {:else if state.activeRegion}
       {#if filterFlags.length}<div class="atlas-pills" role="group" aria-label="Saring menurut status">
         <button class="atlas-pill" aria-pressed={state.statusFilter === null} onclick={() => state.setFilter(null)}>Semua <b>{countOfficialPoints(regionPoints)}</b></button>
         {#each filterFlags as key (key)}
@@ -84,6 +101,6 @@
     {:else if state.query}<p class="atlas-summary" role="status">{state.count} titik cocok di {new Set(state.visiblePoints.map(point => point.kabupaten)).size} kabupaten</p>
     {:else}<div class="atlas-summary atlas-summary--total"><p class="atlas-total" role="status"><b class="atlas-total__num">{state.count}</b><span class="atlas-total__label"><span>Titik PUTS</span><span>di <b>{state.regionNames.length}</b> kabupaten/kota</span></span></p><button id="fit-map" type="button" class="atlas-fit" aria-label="Lihat semua" title="Tampilkan semua titik di peta" onclick={onfit}><Icon name="fit" size={16}/><span>Lihat Semua</span></button></div>{/if}
   </div>
-  <div class="sidebar-scroll" bind:this={scroller} onscroll={syncScroll}><div id="list-data" aria-live="polite">{#if !state.points.length}<p class="list-empty">Belum ada titik untuk ditampilkan.</p>{:else if !state.activeRegion && !state.query}<RegionGrid {state} onopen={openRegion}/>{:else}<PointList {state}/>{/if}</div></div>
+  <div class="sidebar-scroll" bind:this={scroller} onscroll={syncScroll}><div id="list-data" aria-live="polite">{#if !state.points.length}<p class="list-empty">Belum ada titik untuk ditampilkan.</p>{:else if progressView}{#if !state.progress}<p class="list-empty">Memuat progres dari esdm.cloud…</p>{:else if state.activeRegion}<WorkList {state} progress={state.progress} openWaiting={state.waitingFirst}/>{:else}<ProgressSummary {state} progress={state.progress} onopen={(name, waiting) => openRegion(name, null, waiting)}/><ProgressGrid {state} progress={state.progress} onopen={name => openRegion(name)}/>{/if}{:else if !state.activeRegion && !state.query}<RegionGrid {state} onopen={openRegion}/>{:else}<PointList {state}/>{/if}</div></div>
   <p class="sidebar-footer"><span class="sidebar-footer__title">Survey Lapangan &amp; Pelaksanaan</span><span class="sidebar-footer__meta">s.d. {dateLabel} · Dinas ESDM Jambi</span>{#if storedLabel}<span class="sidebar-footer__stored" role="status">Data tersimpan {storedLabel} — koneksi lemah atau terputus. <button type="button" onclick={onrefresh} disabled={refreshing}>{refreshing ? 'Memperbarui…' : 'Perbarui'}</button></span>{/if}</p>
 </aside>

@@ -4,7 +4,7 @@ import { parseCoordinateQuery, formatCoordPair } from '../src/shared/survey/coor
 import { legacyPhotoUrl } from '../src/shared/survey/media';
 import { latestDocumentationDate } from '../src/shared/survey/dates';
 import { linkedNomor, linkedReport, progressReportUrl } from '../src/shared/survey/report';
-import { parsePending, parseProgress, reportReceipt, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary } from '../src/shared/survey/progress';
+import { parsePending, parseProgress, reportReceipt, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary, tallyStages, doneShare, workGroups, workBadgeSvg, NEXT_REPORT, NOT_STARTED_BADGE, WORK_DONE } from '../src/shared/survey/progress';
 describe('survey evidence and counting', () => {
   it('ignores malformed and impossible optional dates without normalizing them', () => {
     expect(latestDocumentationDate(['32/13/2026', '31/02/9999', '29/02/2025', ''])).toBeNull();
@@ -73,5 +73,34 @@ describe('build progress from esdm.cloud', () => {
   });
   it('names the last finished stage, and a lit lamp as terpasang', () => {
     expect([0, 1, 2, 3, 4].map(stageSummary)).toEqual(['Belum Dimulai', 'Galian Selesai', 'Cor Selesai', 'Tiang Selesai', 'Terpasang']);
+  });
+});
+
+describe('progress summary and work list', () => {
+  const units = [
+    { nomor: 'A-001', cadangan: false }, { nomor: 'A-002', cadangan: false }, { nomor: 'A-003', cadangan: false },
+    { nomor: 'A-004', cadangan: false }, { nomor: 'A-005', cadangan: false }, { nomor: 'A-006', cadangan: true },
+    { nomor: 'A-007', cadangan: false },
+  ];
+  const progress = new Map([['A-002', 1], ['A-003', 2], ['A-004', 4], ['A-005', 1], ['A-006', 4], ['A-007', 3]]);
+  const pending = new Map([['A-005', [2]], ['A-006', [1]]]);
+  it('counts official units by step, a pole accepted at Tiang as terpasang, and the ones waiting for review', () => {
+    const tally = tallyStages(units, progress, pending);
+    expect(tally).toEqual({ total: 6, stages: [1, 2, 1, 2], waiting: 1 });
+    expect(doneShare(tally)).toBe(33);
+    expect(doneShare(tallyStages([], progress, null))).toBe(0);
+  });
+  it('sorts units by the report they need next and keeps open reports apart', () => {
+    const groups = workGroups(units, progress, pending);
+    expect(groups.due.map(list => list.map(unit => unit.nomor))).toEqual([['A-001'], ['A-002'], ['A-003']]);
+    expect(groups.waiting.map(unit => unit.nomor)).toEqual(['A-005']);
+    expect(groups.done.map(unit => unit.nomor)).toEqual(['A-004', 'A-007']);
+    expect(NEXT_REPORT.map(step => step.title)).toEqual(['Lapor Galian', 'Lapor Cor', 'Lapor Tiang']);
+  });
+  it('draws a not-started badge apart from every stage badge', () => {
+    expect([1, 2, 3, 4].map(stageBadgeSvg)).not.toContain(NOT_STARTED_BADGE);
+    expect(NOT_STARTED_BADGE).not.toContain('#0072bc');
+    expect(workBadgeSvg(0)).toBe(NOT_STARTED_BADGE);
+    expect(workBadgeSvg(WORK_DONE)).toBe(stageBadgeSvg(4));
   });
 });

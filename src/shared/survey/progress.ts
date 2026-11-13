@@ -59,3 +59,48 @@ export function stageBadgeSvg(stage: number): string {
 export function stageSummary(stage: number): string {
   return stage >= 4 ? 'Terpasang' : stage >= 1 ? `${BUILD_STAGES[stage - 1]} Selesai` : 'Belum Dimulai';
 }
+// The progress view counts Galian, Cor and terpasang, folding esdm.cloud's Tiang into terpasang: the lamp
+// head goes up with the pole and no unit has been accepted at Tiang without Lampu, so to the field a standing
+// pole is terpasang. Pins, popup and the map legend keep all four stages, as /lapangan reports them; while no
+// unit sits at Tiang alone, this view's terpasang and the green pins agree.
+export const WORK_DONE = 3;
+export const workStep = (stage: number) => Math.min(stage, WORK_DONE);
+// Its counts sit beside the badges, so they read as a sentence would: "81 galian selesai".
+export const STAGE_COUNT_LABEL = ['Belum dimulai', 'Galian selesai', 'Cor selesai', 'Terpasang'] as const;
+// Only the progress view needs a mark for "nothing accepted yet": a hollow grey ring, so it reads as empty
+// beside the blue pies without claiming any stage. Never drawn on a pin.
+export const NOT_STARTED_BADGE = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.4" fill="#fff" stroke="#8a99a9" stroke-width="1.4"/></svg>';
+// A step's badge: the pin's pie for Galian and Cor, its green check for terpasang.
+export const workBadgeSvg = (step: number) => step >= WORK_DONE ? stageBadgeSvg(BUILD_STAGES.length) : step ? stageBadgeSvg(step) : NOT_STARTED_BADGE;
+interface ProgressUnit { nomor: string; cadangan: boolean }
+// Units per step (stages[0]: none yet, stages[WORK_DONE]: terpasang) plus those with a report waiting for
+// review. Official units only: Cadangan sits outside the allocation and every other count leaves it out.
+export interface StageTally { total: number; stages: number[]; waiting: number }
+export function tallyStages(units: readonly ProgressUnit[], progress: SurveyProgress, pending: SurveyPending | null): StageTally {
+  const stages = [0, 0, 0, 0]; let total = 0, waiting = 0;
+  for (const unit of units) {
+    if (unit.cadangan) continue;
+    total++; stages[workStep(progress.get(unit.nomor) ?? 0)]++;
+    if (pending?.get(unit.nomor)?.length) waiting++;
+  }
+  return { total, stages, waiting };
+}
+export const doneShare = (tally: StageTally) => tally.total ? Math.round((tally.stages[WORK_DONE] / tally.total) * 100) : 0;
+// A crew's work list, by the report each unit needs next. A unit whose report is still waiting for review
+// sits apart: sending that stage again does not help, the office has to look first.
+export const NEXT_REPORT = [
+  { title: 'Lapor Galian', note: 'Belum ada tahap diterima' },
+  { title: 'Lapor Cor', note: 'Galian sudah diterima' },
+  { title: 'Lapor Tiang', note: 'Cor sudah diterima' },
+] as const;
+export function workGroups<T extends ProgressUnit>(units: readonly T[], progress: SurveyProgress, pending: SurveyPending | null) {
+  const due: T[][] = [[], [], []], waiting: T[] = [], done: T[] = [];
+  for (const unit of units) {
+    if (unit.cadangan) continue;
+    const step = workStep(progress.get(unit.nomor) ?? 0);
+    if (pending?.get(unit.nomor)?.length) waiting.push(unit);
+    else if (step === WORK_DONE) done.push(unit);
+    else due[step].push(unit);
+  }
+  return { due, waiting, done };
+}

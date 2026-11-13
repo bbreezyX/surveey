@@ -16,6 +16,7 @@
   import ConnectionStatus from './components/ConnectionStatus.svelte';
   import { linkedNomor, linkedReport } from '../shared/survey/report';
   import { recallOpenDetail, rememberOpenDetail } from './state/detail-memory';
+  import { recallWorkMemory, rememberLastReport, rememberListMode } from './state/work-memory';
   let model = $state.raw<SurveyState | null>(null), adapter = $state.raw<SurveyMapAdapter | null>(null), error = $state('');
   let controller: AbortController | null = null, disposed = false;
   const locator = createLocator(), connection = createConnection();
@@ -34,7 +35,7 @@
     // No link names a point: a reader coming back to a discarded tab gets the detail they left open.
     if (!nomor) { const open = touchDevice ? recallOpenDetail() : null; if (open) state.openLinked(open); return; }
     const stage = linkedReport(location.search);
-    if (state.openLinked(nomor) && stage) state.markReported(nomor, stage);
+    if (state.openLinked(nomor) && stage) { state.markReported(nomor, stage); if (state.lastReport) rememberLastReport(state.lastReport); }
     const params = new URLSearchParams(location.search); params.delete('nomor'); params.delete('lapor');
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
   }
@@ -55,7 +56,7 @@
     // Build progress comes from esdm.cloud and never holds up the map; it lands on the pins when it arrives.
     const progress = loadProgress(attempt.signal, linkedReport(location.search) !== null);
     connection.loading(true);
-    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset); openLinkedPoint(state); model = state; void progress.then(value => { if (disposed || attempt.signal.aborted) return; if (value) applyProgress(state, value); void confirmReport(state, attempt); }); } }
+    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset, recallWorkMemory()); openLinkedPoint(state); model = state; void progress.then(value => { if (disposed || attempt.signal.aborted) return; if (value) applyProgress(state, value); void confirmReport(state, attempt); }); } }
     catch (problem) { if (!disposed && !attempt.signal.aborted) { error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; connection.suspect(); } }
     finally { if (controller === attempt) connection.loading(false); }
   }
@@ -111,6 +112,8 @@
     if (!untrack(() => state.selectedNomor)) { if (reason === 'search') fitTimer = setTimeout(schedule, 250); else schedule(); }
   });
   $effect(() => { const progress = model?.progress; if (progress && adapter) adapter.setProgress(progress); });
+  // The sidebar view is kept on this phone for the next visit.
+  $effect(() => { if (model) rememberListMode(model.listMode); });
   $effect(() => { if (model?.selectedNomor) { cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); } });
   function fitAll() { if (model) { clearTimeout(fitTimer); cancelAnimationFrame(fitFrame); model.select(null); adapter?.fitToPoints(model.visibleIds); } }
   async function expandSidebar() { if (model) { model.sidebarCollapsed = false; await tick(); adapter?.updateSize(); document.getElementById('list-search')?.focus({ preventScroll: true }); } }

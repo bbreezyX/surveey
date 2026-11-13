@@ -2,8 +2,10 @@ import type { SurveyDataset, SurveyPoint, StatusFilter } from '../../shared/surv
 import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
 import { reportReceipt, type SurveyPending, type SurveyProgress } from '../../shared/survey/progress';
+import type { LastReport, ListMode, WorkMemory } from './work-memory';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
-export function createSurveyState(initial: SurveyDataset) {
+// memory: what this phone kept from earlier visits (work-memory.ts); App reads and writes the storage.
+export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {}) {
   // Replaced in place when a reconnect brings newer data, so the open region, search, filter, selected
   // point and layer switches all survive; only the points under them change.
   let dataset = $state.raw(initial), storedAt = $state(initial.storedAt ?? null);
@@ -15,6 +17,12 @@ export function createSurveyState(initial: SurveyDataset) {
   // The stage a crew says it just reported on esdm.cloud/lapangan (?lapor=), for the point it came back to.
   let reported = $state.raw<{ nomor: string; stage: number } | null>(null);
   const receipt = $derived(reported && progress ? reportReceipt(reported.stage, progress.get(reported.nomor) ?? 0, pending?.get(reported.nomor)) : null);
+  // The sidebar's two views: "sebaran" is the atlas and list, "progres" counts build stages and turns a
+  // kabupaten into a work list. lastReport: the last report this phone sent, kept past the card that confirmed it.
+  let listMode = $state<ListMode>(memory.listMode ?? 'sebaran');
+  let lastReport = $state.raw<LastReport | null>(memory.lastReport ?? null);
+  // Set when the "menunggu diperiksa" line opened the kabupaten, so its waiting group opens first.
+  let waitingFirst = $state(false);
   let fitRevision = $state(0), fitReason = $state<'initial' | 'region' | 'search' | 'filter'>('initial');
   let panelOpen = $state(false), sidebarCollapsed = $state(false);
   // The card of the detail just closed is marked briefly so the eye lands on it, then lets go.
@@ -66,7 +74,13 @@ export function createSurveyState(initial: SurveyDataset) {
     get reportedReceipt() { return reported && receipt && reported.nomor === selectedNomor ? { stage: reported.stage, receipt } : null; },
     // Still unconfirmed: the feed read before the report landed, so it is worth asking again.
     get reportAwaited() { return !!reported && !receipt; },
-    markReported(nomor: string, stage: number) { reported = { nomor, stage }; },
+    markReported(nomor: string, stage: number) { reported = { nomor, stage }; lastReport = { at: Date.now(), nomor, stage }; },
+    get lastReport() { return lastReport; },
+    get listMode() { return listMode; },
+    // The progress view has no status pills, so a filter left on from the list would hide units from the map
+    // that the work list still shows.
+    set listMode(value: ListMode) { if (value === 'progres' && statusFilter) { statusFilter = null; fitReason = 'filter'; fitRevision++; } listMode = value; },
+    get waitingFirst() { return waitingFirst; }, showWaitingFirst() { waitingFirst = true; },
     get recentNomor() { return recentNomor; },
     get selectedNomor() { return selectedNomor; }, get selected() { return selected; },
     get visiblePoints() { return visiblePoints; }, get visibleIds() { return visibleIds; },
@@ -80,7 +94,7 @@ export function createSurveyState(initial: SurveyDataset) {
       selectedNomor = point.nomor; return true;
     },
     get sidebarCollapsed() { return sidebarCollapsed; }, set sidebarCollapsed(value: boolean) { sidebarCollapsed = value; },
-    openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { recentNomor = null; activeRegion = name; statusFilter = filter; selectedNomor = null; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
+    openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { recentNomor = null; waitingFirst = false; activeRegion = name; statusFilter = filter; selectedNomor = null; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
     setFilter(filter: StatusFilter) { recentNomor = null; statusFilter = filter; selectedNomor = null; fitReason = 'filter'; fitRevision++; },
     select(nomor: string | null, origin: HTMLElement | null = null) {
       if (nomor) { recentNomor = null; selectionOrigin = origin; panelOpen = false; }

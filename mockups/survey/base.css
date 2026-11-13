@@ -1,0 +1,485 @@
+/* Shared plumbing for the three progress-summary mockups. Colours, radii,
+   easing and type come from the public map itself (tokens.css and fonts.css
+   are linked straight from src/public/styles), so nothing here redefines a
+   token; these rules only rebuild the pieces of the live sidebar the mockups
+   sit inside: panel shell, header, summary row, region cells, unit tiles and
+   stage pills, with the same sizes as sidebar.css and responsive.css. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  /* The mockup switcher strip; the real page has none. */
+  --mock-top: 30px;
+  background: #16211a;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- Mockup chrome (not part of the design) ---------- */
+
+.mock-bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 100;
+  height: var(--mock-top);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  background: #0e151b;
+  color: #c9d4de;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mock-bar__label { margin-right: 6px; color: #8a99a9; }
+
+.mock-bar a {
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.mock-bar a:hover { background: rgba(255, 255, 255, 0.08); }
+.mock-bar a[aria-current="page"] { background: var(--yellow); color: var(--ink); }
+.mock-bar__note { margin-left: auto; padding-left: 12px; color: #8a99a9; font-weight: 500; }
+
+/* ---------- Map backdrop: BIG outlines + pins, drawn in SVG ---------- */
+
+.map {
+  position: fixed;
+  inset: var(--mock-top) 0 0 0;
+  display: block;
+  width: 100%;
+  height: calc(100% - var(--mock-top));
+}
+
+.map__land { fill: #2c4229; }
+.map__region { fill: #324c2e; stroke: rgba(255, 255, 255, 0.82); stroke-width: 1.3; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.map__region:nth-child(3n) { fill: #2f4630; }
+.map__region:nth-child(3n + 1) { fill: #384f2f; }
+.map__region.is-focus { fill: #3f5a36; stroke: #fff; stroke-width: 2.2; }
+.map__label {
+  fill: #fff;
+  font: 650 34px var(--font-ui);
+  paint-order: stroke;
+  stroke: rgba(15, 25, 18, 0.85);
+  stroke-width: 7px;
+  stroke-linejoin: round;
+  text-anchor: middle;
+}
+.map__pin { stroke: var(--ink); stroke-width: 1.2; vector-effect: non-scaling-stroke; fill: var(--yellow); }
+.map__pin--duplikat { stroke: var(--orange); stroke-width: 2.4; }
+.map__pin--belum { fill: #fff; stroke-dasharray: 2 1.6; }
+
+/* Live-map furniture, simplified: legend, layer chip, zoom. */
+.map-legend {
+  position: fixed;
+  left: calc(var(--panel-left) + var(--panel-width) + (100vw - var(--panel-left) - var(--panel-width)) / 2);
+  bottom: 20px;
+  z-index: 5;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 12px;
+  border: 1px solid var(--ctl-border);
+  border-radius: 999px;
+  background: var(--ctl-surface);
+  box-shadow: var(--ctl-shadow);
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.map-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.map-legend svg { width: 13px; height: 13px; }
+.map-legend .dot { width: 10px; height: 10px; border-radius: 50%; }
+.map-legend .dot--belum { border: 1.5px dashed var(--muted-2); background: #fff; }
+.map-legend .dot--duplikat { border: 2px solid var(--orange); background: var(--yellow); }
+
+.map-chip {
+  position: fixed;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: var(--ctl-chip);
+  height: var(--ctl-chip);
+  border: 1px solid var(--ctl-border);
+  border-radius: 999px;
+  background: var(--ctl-surface);
+  box-shadow: var(--ctl-shadow);
+  color: var(--ink);
+}
+
+.map-chip--layers { top: calc(var(--mock-top) + 20px); right: 20px; }
+
+.map-zoom {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 5;
+  display: flex;
+  border: 1px solid var(--ctl-border);
+  border-radius: 999px;
+  background: var(--ctl-surface);
+  box-shadow: var(--ctl-shadow);
+}
+
+.map-zoom span { display: grid; place-items: center; width: 44px; height: 40px; font-size: 18px; font-weight: 600; }
+.map-zoom span + span { border-left: 1px solid var(--ctl-border); }
+
+/* Phone masthead: the card the live page pins above the sheet. */
+.masthead { display: none; }
+
+/* ---------- Sidebar shell (desktop panel, phone sheet) ---------- */
+
+.sidebar {
+  position: fixed;
+  top: calc(var(--panel-top) + var(--mock-top));
+  bottom: var(--panel-top);
+  left: var(--panel-left);
+  z-index: 22;
+  width: var(--panel-width);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(20, 38, 53, 0.14), 0 18px 48px rgba(20, 38, 53, 0.3);
+}
+
+.sheet-handle { display: none; }
+
+.panel-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c6d3df transparent;
+}
+
+/* Screen change inside the panel: the app's own 260ms slide toward where the
+   reader is going (sidebar.css, data-enter). */
+.sidebar[data-enter="fwd"] .panel-screen { animation: panel-in-fwd 260ms var(--ease-out); }
+.sidebar[data-enter="back"] .panel-screen { animation: panel-in-back 260ms var(--ease-out); }
+@keyframes panel-in-fwd { from { opacity: 0; transform: translateX(16px); } }
+@keyframes panel-in-back { from { opacity: 0; transform: translateX(-16px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar[data-enter] .panel-screen { animation-name: panel-fade; }
+  @keyframes panel-fade { from { opacity: 0; } }
+}
+
+.atlas-head {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px 14px 18px;
+}
+
+.atlas-head img { display: block; width: 38px; height: auto; }
+.atlas-head__org { margin: 0; color: var(--muted); font-size: 13px; font-weight: 600; }
+.atlas-head__title { margin: 1px 0 0; font-size: 19px; font-weight: 750; letter-spacing: -0.01em; line-height: 1.2; }
+
+.panel-collapse {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.panel-collapse:hover { background: var(--frost); color: var(--ink); }
+
+.atlas-detail { padding: 14px 12px 12px 18px; }
+.atlas-detail__bar { display: flex; align-items: center; justify-content: space-between; }
+
+.atlas-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 0 0 -6px;
+  padding: 5px 10px 5px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.atlas-back:hover { background: var(--blue-tint); color: var(--blue-deep); }
+
+.atlas-detail__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+  padding-right: 6px;
+}
+
+.atlas-detail h1 { margin: 0; font-size: 22px; font-weight: 750; letter-spacing: -0.01em; line-height: 1.2; }
+.atlas-detail p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+.atlas-detail p b { color: var(--ink); font-weight: 750; }
+.atlas-locator { height: 84px; }
+.atlas-locator svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.loc-region { fill: #e5ecf2; stroke: #fff; stroke-width: 0.9; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.loc-region.is-active { fill: var(--ink); stroke: var(--ink); }
+
+/* Region silhouette (Shape.svelte) with units as dots in progress colours:
+   white = not started, blue = under way, green = terpasang. */
+.atlas-shape {
+  fill: #e5ecf2;
+  stroke: #8ea2b5;
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition: fill var(--dur), stroke var(--dur);
+}
+
+.prog-dot { stroke-width: 0.8; vector-effect: non-scaling-stroke; }
+.prog-dot.s0 { fill: #fff; stroke: var(--ink); }
+.prog-dot.s1, .prog-dot.s2, .prog-dot.s3 { fill: var(--blue); stroke: #fff; }
+.prog-dot.s4 { fill: var(--green); stroke: #fff; }
+
+.sidebar-footer {
+  flex: none;
+  margin: 0;
+  padding: 10px 18px 14px;
+  border-top: 1px solid var(--divider);
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.sidebar-footer__title { display: block; color: var(--ink-soft); font-weight: 600; line-height: 1.4; }
+.sidebar-footer__meta { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.45; }
+
+/* ---------- Progress pieces shared by all three ---------- */
+
+/* Stage badge: the pin's own drawing (progress.ts stageBadgeSvg). */
+.badge { flex: none; width: 14px; height: 14px; }
+
+/* Stage pill, as on the list's unit cards. */
+.stage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px 2px 3px;
+  border-radius: 999px;
+  background: var(--blue-tint);
+  color: var(--blue-deep);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.stage-pill.is-done { background: var(--green-tint); color: var(--green); }
+.stage-pill.is-none { background: var(--frost); color: var(--muted); padding-left: 7px; }
+
+.stage-pill.is-pending {
+  padding-left: 4px;
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  background: #fff;
+  color: var(--muted);
+}
+
+.stage-pill svg { flex: none; width: 12px; height: 12px; }
+
+/* Distribution bar: one segment per stage, in the popup's language. Blue
+   deepens with each stage, green only for terpasang, grey for not started;
+   the legend under it carries the pin badges, so no stage is told by hue alone. */
+.dist {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--divider);
+  gap: 2px;
+}
+
+.dist > i { display: block; min-width: 0; }
+.dist > i:first-child { border-radius: 999px 0 0 999px; }
+.dist > i:last-child { border-radius: 0 999px 999px 0; }
+.dist .s4 { background: var(--green); }
+.dist .s3 { background: var(--blue-deep); }
+.dist .s2 { background: var(--blue); }
+.dist .s1 { background: #7fb4e0; }
+.dist .s0 { background: var(--divider); }
+.dist--thin { height: 5px; gap: 1px; }
+
+/* Unit tile, as in the list. */
+.atlas-unit {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 42px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid #c6d3df;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-unit.is-duplikat { border: 2px solid var(--orange); background: var(--orange-tint); color: var(--orange-deep); }
+.atlas-unit.is-belum { border: 1.5px dashed var(--muted-2); color: var(--muted); }
+.atlas-unit.is-cadangan { border-color: var(--hatch-edge); background: var(--hatch); text-shadow: var(--hatch-halo); }
+
+/* Kecamatan band, as in the list. */
+.atlas-section {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  border-block: 1px solid #c6d3df;
+  background: var(--hairline);
+  font-size: 14.5px;
+  font-weight: 750;
+}
+
+.atlas-section span { font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
+
+/* Lapor: the popup's outlined blue pill, smaller for list rows. */
+.lapor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: none;
+  min-height: 34px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--blue);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--blue-deep);
+  font: 700 12.5px/1.2 var(--font-ui);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--dur), border-color var(--dur), scale var(--dur-press) var(--ease-out);
+}
+
+.lapor:hover { border-color: var(--blue-deep); background: #f2f6fb; }
+.lapor:active { scale: 0.97; }
+
+/* Mockup toast: where a real link would have gone. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 76px;
+  z-index: 120;
+  translate: -50% 0;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out), translate var(--dur) var(--ease-out);
+  pointer-events: none;
+}
+
+.toast.is-on { opacity: 1; translate: -50% -6px; }
+
+/* ---------- Phone: the panel becomes the open bottom sheet ---------- */
+
+@media (max-width: 959px) {
+  .map { height: 40%; }
+  .map-legend, .map-zoom { display: none; }
+  .map-chip--layers { top: calc(var(--mock-top) + 12px); right: 12px; width: 40px; height: 40px; }
+
+  .masthead {
+    position: fixed;
+    top: calc(var(--mock-top) + 12px);
+    left: 50%;
+    z-index: 5;
+    translate: -50% 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 48px;
+    padding: 0 14px 0 8px;
+    border: 1px solid var(--ctl-border);
+    border-radius: 999px;
+    background: var(--ctl-surface);
+    box-shadow: var(--ctl-shadow);
+    white-space: nowrap;
+  }
+
+  .masthead img { width: 28px; height: auto; }
+  .masthead small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; line-height: 1.2; }
+  .masthead b { display: block; font-size: 14px; font-weight: 750; line-height: 1.2; }
+
+  .sidebar {
+    top: calc(var(--mock-top) + 72px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -2px 6px rgba(20, 38, 53, 0.12), 0 -14px 36px rgba(20, 38, 53, 0.24);
+  }
+
+  .sheet-handle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    flex: none;
+    min-height: 36px;
+    padding: 7px 12px 8px;
+    border: 0;
+    background: transparent;
+  }
+
+  .sheet-handle i { display: block; width: 40px; height: 5px; border-radius: 3px; background: #aab6c1; }
+  .sheet-handle span { color: var(--muted); font: 600 12px/1.2 var(--font-ui); }
+  .atlas-head { padding-top: 4px; }
+  .atlas-detail { padding-top: 4px; }
+  .sidebar-footer { display: none; }
+}

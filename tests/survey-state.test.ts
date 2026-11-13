@@ -31,3 +31,25 @@ it('uses fresh coordinates and labels when the published dataset changes', () =>
   state.progress = null;
   expect(state.points[0]).toBe(next.points[0]);
 });
+
+it('starts from what this phone remembered and drops a status filter the progress view cannot show', () => {
+  const state = createSurveyState(dataset(), { listMode: 'sebaran', lastReport: null });
+  state.openRegion('Kota Jambi', 'duplikat');
+  state.listMode = 'progres';
+  expect(state.statusFilter).toBeNull();
+});
+
+it('keeps the report a crew just sent as this phone\'s last report', () => {
+  const state = createSurveyState(dataset());
+  state.markReported('KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-002', 3);
+  expect(state.lastReport).toMatchObject({ nomor: 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-002', stage: 3 });
+});
+
+it('opens the waiting group first only for the kabupaten the waiting-reports line opened', () => {
+  const state = createSurveyState(dataset(), { listMode: 'progres', lastReport: null });
+  state.openRegion('Kota Jambi');
+  state.showWaitingFirst();
+  expect(state.waitingFirst).toBe(true);
+  state.openRegion(null);
+  expect(state.waitingFirst).toBe(false);
+});

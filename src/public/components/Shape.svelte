@@ -1,9 +1,12 @@
 <script lang="ts">
   import type { RegionFeature, SurveyPoint } from '../../shared/survey/types';
   import { thumbnail, thumbnailDotPaths } from '../map/shapes';
-  let { region, points, width = 160, height = 54, selected = null, inset = false }: { region?: RegionFeature; points: readonly SurveyPoint[]; width?: number; height?: number; selected?: string | null; inset?: boolean } = $props();
+  // kindOf: recolours the dots by Nomor (the progress view colours them by build stage); the order keeps
+  // one path per colour, with the furthest stage drawn last so it sits on top.
+  let { region, points, width = 160, height = 54, selected = null, inset = false, kindOf = null }: { region?: RegionFeature; points: readonly SurveyPoint[]; width?: number; height?: number; selected?: string | null; inset?: boolean; kindOf?: ((nomor: string) => string) | null } = $props();
   const shape = $derived(thumbnail(region, points, width, height));
-  const dotPaths = $derived(thumbnailDotPaths(shape.dots, width < 100 ? 1.3 : 2));
+  const dots = $derived(kindOf ? shape.dots.map(dot => ({ ...dot, kind: kindOf(dot.id) })).sort((a, b) => a.kind.localeCompare(b.kind)) : shape.dots);
+  const dotPaths = $derived(thumbnailDotPaths(dots, width < 100 ? 1.3 : 2));
 </script>
 <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMinYMid meet" aria-hidden="true" focusable="false">
   <path class={inset ? "popup-inset__shape" : "atlas-shape"} fill-rule="evenodd" d={shape.path}/>
