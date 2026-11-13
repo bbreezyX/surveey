@@ -32,8 +32,9 @@ it('uses fresh coordinates and labels when the published dataset changes', () =>
   expect(state.points[0]).toBe(next.points[0]);
 });
 
-it('starts from what this phone remembered and drops a status filter the progress view cannot show', () => {
-  const state = createSurveyState(dataset(), { listMode: 'sebaran', lastReport: null });
+it('starts on Sebaran and drops a status filter the progress view cannot show', () => {
+  const state = createSurveyState(dataset(), { lastReport: null });
+  expect(state.listMode).toBe('sebaran');
   state.openRegion('Kota Jambi', 'duplikat');
   state.listMode = 'progres';
   expect(state.statusFilter).toBeNull();
@@ -57,7 +58,8 @@ it('marks the progress feed as failed only until stages are shown', () => {
 });
 
 it('opens the waiting group first only for the kabupaten the waiting-reports line opened', () => {
-  const state = createSurveyState(dataset(), { listMode: 'progres', lastReport: null });
+  const state = createSurveyState(dataset());
+  state.listMode = 'progres';
   state.openRegion('Kota Jambi');
   state.showWaitingFirst();
   expect(state.waitingFirst).toBe(true);

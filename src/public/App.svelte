@@ -16,7 +16,7 @@
   import ConnectionStatus from './components/ConnectionStatus.svelte';
   import { linkedNomor, linkedReport } from '../shared/survey/report';
   import { recallOpenDetail, rememberOpenDetail } from './state/detail-memory';
-  import { recallWorkMemory, rememberLastReport, rememberListMode } from './state/work-memory';
+  import { recallWorkMemory, rememberLastReport } from './state/work-memory';
   let model = $state.raw<SurveyState | null>(null), adapter = $state.raw<SurveyMapAdapter | null>(null), error = $state('');
   let controller: AbortController | null = null, disposed = false;
   const locator = createLocator(), connection = createConnection();
@@ -115,8 +115,6 @@
     if (!untrack(() => state.selectedNomor)) { if (reason === 'search') fitTimer = setTimeout(schedule, 250); else schedule(); }
   });
   $effect(() => { const progress = model?.progress; if (progress && adapter) adapter.setProgress(progress); });
-  // The sidebar view is kept on this phone for the next visit.
-  $effect(() => { if (model) rememberListMode(model.listMode); });
   $effect(() => { if (model?.selectedNomor) { cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); } });
   function fitAll() { if (model) { clearTimeout(fitTimer); cancelAnimationFrame(fitFrame); model.select(null); adapter?.fitToPoints(model.visibleIds); } }
   async function expandSidebar() { if (model) { model.sidebarCollapsed = false; await tick(); adapter?.updateSize(); document.getElementById('list-search')?.focus({ preventScroll: true }); } }

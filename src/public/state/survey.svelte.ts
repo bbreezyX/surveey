@@ -21,8 +21,9 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
   let reported = $state.raw<{ nomor: string; stage: number } | null>(null);
   const receipt = $derived(reported && progress ? reportReceipt(reported.stage, progress.get(reported.nomor) ?? 0, pending?.get(reported.nomor)) : null);
   // The sidebar's two views: "sebaran" is the atlas and list, "progres" counts build stages and turns a
-  // kabupaten into a work list. lastReport: the last report this phone sent, kept past the card that confirmed it.
-  let listMode = $state<ListMode>(memory.listMode ?? 'sebaran');
+  // kabupaten into a work list; every visit starts on "sebaran". lastReport: the last report this phone sent, kept
+  // past the card that confirmed it.
+  let listMode = $state<ListMode>('sebaran');
   let lastReport = $state.raw<LastReport | null>(memory.lastReport ?? null);
   // Set when the "menunggu diperiksa" line opened the kabupaten, so its waiting group opens first.
   let waitingFirst = $state(false);

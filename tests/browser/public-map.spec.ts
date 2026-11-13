@@ -99,9 +99,9 @@ test('counts build stages in the progress view and lists a kabupaten by the repo
   const tiang = page.locator('details.work-group', { hasText: 'Lapor Tiang' });
   await tiang.locator('summary').click();
   await expect(tiang.getByRole('link', { name: /^Lapor progres titik/ })).toHaveAttribute('href', `https://www.esdm.cloud/lapangan?nomor=${encodeURIComponent(nomor)}`);
-  // The view is this phone's: a reload comes back to it.
+  // Every visit opens on Sebaran, whatever view was used last.
   await page.reload();
-  await expect(page.getByRole('button', { name: /^Progres/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: /^Sebaran/ })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('keeps the chosen marker visible while its ordinary point layer is hidden', async ({ page }) => {
