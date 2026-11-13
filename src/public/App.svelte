@@ -40,6 +40,9 @@
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
   }
   function applyProgress(state: SurveyState, feed: ProgressFeed) { state.progress = feed.stages; state.pending = feed.pending; }
+  // A miss before any answer turns the progress view's skeleton into a short message; the state ignores
+  // it once stages are shown, so a later miss keeps them.
+  function settleProgress(state: SurveyState, feed: ProgressFeed | null) { if (feed) applyProgress(state, feed); else state.progressFailed = true; }
   // The feed can answer a moment before the report a crew just sent is in it: ask a few more times, then
   // leave the card without its tick rather than claim a report esdm.cloud does not show.
   async function confirmReport(state: SurveyState, attempt: AbortController) {
@@ -56,7 +59,7 @@
     // Build progress comes from esdm.cloud and never holds up the map; it lands on the pins when it arrives.
     const progress = loadProgress(attempt.signal, linkedReport(location.search) !== null);
     connection.loading(true);
-    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset, recallWorkMemory()); openLinkedPoint(state); model = state; void progress.then(value => { if (disposed || attempt.signal.aborted) return; if (value) applyProgress(state, value); void confirmReport(state, attempt); }); } }
+    try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset, recallWorkMemory()); openLinkedPoint(state); model = state; void progress.then(value => { if (disposed || attempt.signal.aborted) return; settleProgress(state, value); void confirmReport(state, attempt); }); } }
     catch (problem) { if (!disposed && !attempt.signal.aborted) { error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; connection.suspect(); } }
     finally { if (controller === attempt) connection.loading(false); }
   }
@@ -69,7 +72,7 @@
       const [dataset, progress] = await Promise.all([loadSurveyDataset(attempt.signal).catch(() => null), loadProgress(attempt.signal)]);
       if (disposed || attempt.signal.aborted || model !== state) return;
       if (dataset) { if (!dataset.storedAt) freshAt = Date.now(); state.replaceDataset(dataset); }
-      if (progress) applyProgress(state, progress);
+      settleProgress(state, progress);
     } finally { refreshing = false; }
   }
   // Build stages move while the points do not: a crew reports on esdm.cloud/lapangan in another tab and
@@ -77,7 +80,7 @@
   async function refreshProgress() {
     const state = model, attempt = controller; if (!state || !attempt || refreshing) return;
     const progress = await loadProgress(attempt.signal);
-    if (progress && !disposed && !attempt.signal.aborted && model === state) applyProgress(state, progress);
+    if (!disposed && !attempt.signal.aborted && model === state) settleProgress(state, progress);
   }
   // Data stays current without the reader doing anything: a failed first load retries, a stored copy is
   // swapped for fresh data, and a map left open in a pocket all morning refreshes when it is looked at again.

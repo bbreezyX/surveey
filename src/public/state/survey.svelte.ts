@@ -14,6 +14,9 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
   // Null until esdm.cloud answers; the map, list and popup show no build status before then.
   let progress = $state.raw<SurveyProgress | null>(null);
   let pending = $state.raw<SurveyPending | null>(null);
+  // esdm.cloud did not answer and nothing has been shown yet: the progress view says so rather than leave a
+  // still skeleton. Any answer clears it; once progress is shown a later miss keeps the last stages instead.
+  let progressFailed = $state(false);
   // The stage a crew says it just reported on esdm.cloud/lapangan (?lapor=), for the point it came back to.
   let reported = $state.raw<{ nomor: string; stage: number } | null>(null);
   const receipt = $derived(reported && progress ? reportReceipt(reported.stage, progress.get(reported.nomor) ?? 0, pending?.get(reported.nomor)) : null);
@@ -68,7 +71,8 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     get fitRevision() { return fitRevision; }, get fitReason() { return fitReason; },
     get activeRegion() { return activeRegion; }, get statusFilter() { return statusFilter; },
     get selectionOrigin() { return selectionOrigin; },
-    get progress() { return progress; }, set progress(value: SurveyProgress | null) { progress = value; },
+    get progress() { return progress; }, set progress(value: SurveyProgress | null) { progress = value; if (value) progressFailed = false; },
+    get progressFailed() { return progressFailed; }, set progressFailed(value: boolean) { progressFailed = value && !progress; },
     get pending() { return pending; }, set pending(value: SurveyPending | null) { pending = value; },
     // The report the open point's card confirms with a tick, once the feed holds it; gone when the card closes.
     get reportedReceipt() { return reported && receipt && reported.nomor === selectedNomor ? { stage: reported.stage, receipt } : null; },

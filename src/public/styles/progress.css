@@ -562,3 +562,145 @@
         display: none;
     }
 }
+
+/* ---------- Waiting for esdm.cloud ---------- */
+
+/* Grey blocks where the feed's numbers will land, each crossed by a soft light. The light runs three
+   times (4.5 s) and then rests, so a slow or failed feed leaves a still placeholder instead of motion
+   that never ends; with reduced motion asked for it never runs. Only translate animates. */
+.skel {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--divider);
+}
+
+.skel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    translate: -100% 0;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .skel::after {
+        animation: skel-sweep 1.5s linear 3;
+    }
+}
+
+@keyframes skel-sweep {
+    to {
+        translate: 100% 0;
+    }
+}
+
+/* The province total: the number's place, beside the words that do not wait. */
+.skel--total {
+    flex: none;
+    width: 72px;
+    height: 30px;
+    border-radius: 8px;
+}
+
+.skel--share {
+    flex: none;
+    width: 76px;
+    height: 13px;
+}
+
+.skel--bar {
+    height: 8px;
+}
+
+.progress-loading .stage-legend li {
+    min-height: 19px;
+}
+
+.skel--dot {
+    flex: none;
+    width: 14px;
+    height: 14px;
+}
+
+.skel--label {
+    width: 74px;
+    height: 10px;
+}
+
+.stage-legend li:nth-child(2) .skel--label { width: 86px; }
+.stage-legend li:nth-child(3) .skel--label { width: 96px; }
+.stage-legend li:nth-child(4) .skel--label { width: 80px; }
+
+.skel--count {
+    width: 24px;
+    height: 10px;
+    margin-left: auto;
+}
+
+/* esdm.cloud did not answer: the total's place shows an unknown, never a zero, and the list says why
+   in the shared empty-state pattern. */
+.atlas-total--progress .atlas-total__num.is-none {
+    color: var(--disabled-ink);
+}
+
+.progress-failed .panel-empty__title {
+    margin-bottom: 6px;
+}
+
+/* Kabupaten cells: outline and name now, the count, bar and badges once the feed lands. */
+.progress-cell.is-loading {
+    cursor: default;
+}
+
+.progress-cell.is-loading:hover {
+    background: #fff;
+}
+
+.skel--meta {
+    width: 62%;
+    height: 10px;
+    margin: 4px 0 3px;
+}
+
+.skel--thin {
+    height: 5px;
+    margin: 2px 0 1px;
+}
+
+.skel--left {
+    width: 38%;
+    height: 10px;
+    margin-top: 3px;
+}
+
+/* A kabupaten's work groups, shut, as the list opens them. */
+.work-group-skel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px 12px 18px;
+    border-bottom: 1px solid var(--divider);
+}
+
+.work-group-skel__text {
+    display: grid;
+    gap: 7px;
+}
+
+.skel--title {
+    width: 46%;
+    height: 12px;
+}
+
+.skel--note {
+    width: 68%;
+    height: 9px;
+}
+
+.skel--pill {
+    width: 30px;
+    height: 22px;
+}

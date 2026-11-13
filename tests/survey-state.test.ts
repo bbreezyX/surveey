@@ -45,6 +45,17 @@ it('keeps the report a crew just sent as this phone\'s last report', () => {
   expect(state.lastReport).toMatchObject({ nomor: 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-002', stage: 3 });
 });
 
+it('marks the progress feed as failed only until stages are shown', () => {
+  const state = createSurveyState(dataset());
+  state.progressFailed = true;
+  expect(state.progressFailed).toBe(true);
+  state.progress = new Map([['KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-002', 2]]);
+  expect(state.progressFailed).toBe(false);
+  // A later miss keeps the stages already shown instead of the message.
+  state.progressFailed = true;
+  expect(state.progressFailed).toBe(false);
+});
+
 it('opens the waiting group first only for the kabupaten the waiting-reports line opened', () => {
   const state = createSurveyState(dataset(), { listMode: 'progres', lastReport: null });
   state.openRegion('Kota Jambi');

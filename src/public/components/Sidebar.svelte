@@ -14,6 +14,7 @@
   import ProgressSummary from './ProgressSummary.svelte';
   import ProgressGrid from './ProgressGrid.svelte';
   import WorkList from './WorkList.svelte';
+  import ProgressSkeleton from './ProgressSkeleton.svelte';
   import { doneShare, tallyStages, WORK_DONE } from '../../shared/survey/progress';
   import type { Locator as GpsLocator } from '../state/locate.svelte';
   let { state, onfit, onrefresh, refreshing = false, locator }: { state: SurveyState; onfit: () => void; onrefresh: () => void; refreshing?: boolean; locator: GpsLocator } = $props();
@@ -41,6 +42,8 @@
     else [...sidebar.querySelectorAll<HTMLButtonElement>('[data-region]')].find(button => button.dataset.region === previous)?.focus({ preventScroll: true });
   }
   async function collapse() { state.sidebarCollapsed = true; await tick(); document.getElementById('panel-toggle')?.focus({ preventScroll: true }); }
+  // The skeleton comes back while the map asks esdm.cloud again; a second miss brings the message back.
+  function retryProgress() { state.progressFailed = false; onrefresh(); }
   // The closed phone sheet peeks down to the nearest-unit card while it shows, else to the point count under
   // the search (all units, or the search's matches), so the total is on screen without opening the list. A
   // kabupaten keeps its count in the header above the search, so its peek still ends at the search. The count
@@ -88,7 +91,7 @@
       <button type="button" aria-pressed={state.listMode === 'progres'} onclick={() => { state.listMode = 'progres'; }}>Progres{#if provinceTally}<span class="list-mode__share">{doneShare(provinceTally)}%</span>{/if}</button>
     </div>{/if}
     {#if progressView}
-      {#if !state.activeRegion}<div class="atlas-summary atlas-summary--total"><p class="atlas-total atlas-total--progress" role="status">{#if provinceTally}<b class="atlas-total__num">{provinceTally.stages[WORK_DONE]}</b><span class="atlas-total__label"><span>Titik Terpasang</span><span>dari <b>{provinceTally.total}</b> titik PUTS</span></span>{:else}<span class="atlas-total__label"><span>Memuat progres…</span><span>dari esdm.cloud</span></span>{/if}</p>{#if provinceTally}<span class="progress-share"><b>{doneShare(provinceTally)}%</b> selesai</span>{/if}</div>{/if}
+      {#if !state.activeRegion}<div class="atlas-summary atlas-summary--total"><p class="atlas-total atlas-total--progress" role="status">{#if provinceTally}<b class="atlas-total__num">{provinceTally.stages[WORK_DONE]}</b><span class="atlas-total__label"><span>Titik Terpasang</span><span>dari <b>{provinceTally.total}</b> titik PUTS</span></span>{:else if state.progressFailed}<b class="atlas-total__num is-none" aria-hidden="true">–</b><span class="atlas-total__label" aria-hidden="true"><span>Titik Terpasang</span><span>dari <b>{countOfficialPoints(state.points)}</b> titik PUTS</span></span>{:else}<span class="visually-hidden">Memuat progres dari esdm.cloud…</span><span class="skel skel--total" aria-hidden="true"></span><span class="atlas-total__label" aria-hidden="true"><span>Titik Terpasang</span><span>dari <b>{countOfficialPoints(state.points)}</b> titik PUTS</span></span>{/if}</p>{#if provinceTally}<span class="progress-share"><b>{doneShare(provinceTally)}%</b> selesai</span>{:else if !state.progressFailed}<span class="skel skel--share" aria-hidden="true"></span>{/if}</div>{/if}
     {:else if state.activeRegion}
       {#if filterFlags.length}<div class="atlas-pills" role="group" aria-label="Saring menurut status">
         <button class="atlas-pill" aria-pressed={state.statusFilter === null} onclick={() => state.setFilter(null)}>Semua <b>{countOfficialPoints(regionPoints)}</b></button>
@@ -101,6 +104,6 @@
     {:else if state.query}<p class="atlas-summary" role="status">{state.count} titik cocok di {new Set(state.visiblePoints.map(point => point.kabupaten)).size} kabupaten</p>
     {:else}<div class="atlas-summary atlas-summary--total"><p class="atlas-total" role="status"><b class="atlas-total__num">{state.count}</b><span class="atlas-total__label"><span>Titik PUTS</span><span>di <b>{state.regionNames.length}</b> kabupaten/kota</span></span></p><button id="fit-map" type="button" class="atlas-fit" aria-label="Lihat semua" title="Tampilkan semua titik di peta" onclick={onfit}><Icon name="fit" size={16}/><span>Lihat Semua</span></button></div>{/if}
   </div>
-  <div class="sidebar-scroll" bind:this={scroller} onscroll={syncScroll}><div id="list-data" aria-live="polite">{#if !state.points.length}<p class="list-empty">Belum ada titik untuk ditampilkan.</p>{:else if progressView}{#if !state.progress}<p class="list-empty">Memuat progres dari esdm.cloud…</p>{:else if state.activeRegion}<WorkList {state} progress={state.progress} openWaiting={state.waitingFirst}/>{:else}<ProgressSummary {state} progress={state.progress} onopen={(name, waiting) => openRegion(name, null, waiting)}/><ProgressGrid {state} progress={state.progress} onopen={name => openRegion(name)}/>{/if}{:else if !state.activeRegion && !state.query}<RegionGrid {state} onopen={openRegion}/>{:else}<PointList {state}/>{/if}</div></div>
+  <div class="sidebar-scroll" bind:this={scroller} onscroll={syncScroll}><div id="list-data" aria-live="polite">{#if !state.points.length}<p class="list-empty">Belum ada titik untuk ditampilkan.</p>{:else if progressView}{#if !state.progress}{#if state.progressFailed}<div class="panel-empty progress-failed" role="status"><p class="panel-empty__title">Gagal memuat progres</p><p>esdm.cloud tidak merespons. Peta tetap berjalan dan mencoba lagi otomatis.</p><div class="panel-empty__actions"><button type="button" onclick={retryProgress}>Coba lagi</button></div></div>{:else}<ProgressSkeleton {state}/>{/if}{:else if state.activeRegion}<WorkList {state} progress={state.progress} openWaiting={state.waitingFirst}/>{:else}<ProgressSummary {state} progress={state.progress} onopen={(name, waiting) => openRegion(name, null, waiting)}/><ProgressGrid {state} progress={state.progress} onopen={name => openRegion(name)}/>{/if}{:else if !state.activeRegion && !state.query}<RegionGrid {state} onopen={openRegion}/>{:else}<PointList {state}/>{/if}</div></div>
   <p class="sidebar-footer"><span class="sidebar-footer__title">Survey Lapangan &amp; Pelaksanaan</span><span class="sidebar-footer__meta">s.d. {dateLabel} · Dinas ESDM Jambi</span>{#if storedLabel}<span class="sidebar-footer__stored" role="status">Data tersimpan {storedLabel} — koneksi lemah atau terputus. <button type="button" onclick={onrefresh} disabled={refreshing}>{refreshing ? 'Memperbarui…' : 'Perbarui'}</button></span>{/if}</p>
 </aside>
