@@ -16,11 +16,13 @@ test.beforeEach(async ({ page }) => {
   }));
 });
 // Google is stubbed so browser runs never spend the tile quota or depend on the key's referrers.
-async function stubGoogle(page: Page, session: number) {
+// chosen: the reader picked Google on an earlier visit; without it the map opens on Esri.
+async function stubGoogle(page: Page, session: number, chosen = true) {
   const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' };
   const tile = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
   // Loopback starts on Esri to save quota; every Google request below is stubbed, so opt back in.
   await page.addInitScript(() => { localStorage.setItem('pjuts.google-tiles.local', '1'); });
+  if (chosen) await page.addInitScript(() => { localStorage.setItem('puts.basemap', 'google'); });
   await page.route('https://tile.googleapis.com/**', route => {
     const url = route.request().url();
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
@@ -47,7 +49,7 @@ test('retains the original layer switches, symbols, grouping and basemap capsule
   await expect(page.locator('.map-legend__item').filter({ hasText: 'Perlu konfirmasi' })).toHaveCount(0);
   await expect(page.locator('.atlas-total__num')).toHaveText('500');
   await page.getByRole('checkbox', { name: 'Titik PUTS', exact: true }).check();
-  await page.locator('label[for="layer-esri"]').click(); await expect(page.getByLabel('Esri Satelit', { exact: true })).toBeChecked();
+  await expect(page.getByLabel('Esri Satelit', { exact: true })).toBeChecked();
   await page.getByRole('button', { name: 'Tutup pilihan layer' }).click();
   await page.getByRole('button', { name: /Kota Jambi, 72 titik/ }).click();
   await expect(page.locator('.atlas-pills')).toHaveCount(0);
@@ -339,9 +341,26 @@ test('falls back to Esri and says so in the layer panel when Google refuses the 
   expect(tiles.filter(url => url.includes('tile.googleapis.com'))).toHaveLength(0);
   await page.getByRole('button', { name: 'Tampilkan pilihan layer' }).click();
   await expect(page.getByLabel('Esri Satelit', { exact: true })).toBeChecked();
+  // The automatic switch keeps the reader's pick, so Google is tried again on the next visit.
+  expect(await page.evaluate(() => localStorage.getItem('puts.basemap'))).toBe('google');
 });
 
-test('starts on Google, preserves original mobile controls and drags the sheet without a second toggle', async ({ page }) => {
+test('opens on Esri and keeps the basemap picked in the layer panel for the next visit', async ({ page }) => {
+  await stubGoogle(page, 200, false);
+  const tiles: string[] = []; page.on('request', request => { if (/tile.googleapis.com|arcgisonline.com/.test(request.url())) tiles.push(request.url()); });
+  await page.goto('/'); await expect(page.locator('.atlas-total__num')).toHaveText('500');
+  await expect.poll(() => tiles.filter(url => url.includes('arcgisonline.com')).length).toBeGreaterThan(0);
+  // A reader on Esri costs Google nothing, not even a session.
+  expect(tiles.filter(url => url.includes('tile.googleapis.com'))).toHaveLength(0);
+  await page.getByRole('button', { name: 'Tampilkan pilihan layer' }).click();
+  await expect(page.getByLabel('Esri Satelit', { exact: true })).toBeChecked();
+  await page.locator('label[for="layer-google"]').click(); await expect(page.getByLabel('Google Satelit', { exact: true })).toBeChecked();
+  await page.reload(); await expect(page.locator('.atlas-total__num')).toHaveText('500');
+  await page.getByRole('button', { name: 'Tampilkan pilihan layer' }).click();
+  await expect(page.getByLabel('Google Satelit', { exact: true })).toBeChecked();
+});
+
+test('starts on a chosen Google basemap, preserves original mobile controls and drags the sheet without a second toggle', async ({ page }) => {
   test.skip(!googleKey, 'Build with VITE_GOOGLE_MAPS_KEY to exercise the Google basemap.');
   await stubGoogle(page, 200);
   await page.emulateMedia({ reducedMotion: 'reduce' });

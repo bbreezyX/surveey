@@ -75,7 +75,9 @@ export function satelliteLayers(onFallback?: () => void): SatelliteLayers {
   // October 2026); its z21 tiles are z20 upscaled, so OpenLayers stretches z20 itself instead of
   // paying for a whole extra zoom level that adds no detail.
   const source = new XYZ({ maxZoom: 20, attributions: googleCredit(undefined), tileLoadFunction: (tile, src) => { const image = (tile as ImageTile).getImage() as HTMLImageElement; image.referrerPolicy = REFERRER; image.src = src; } });
-  const google = new TileLayer({ source });
+  // Hidden until the stored basemap (Esri unless Google was picked) turns it on, so a reader on Esri never
+  // creates a session or asks Google for anything.
+  const google = new TileLayer({ visible: false, source });
   const esri = new TileLayer({ visible: false, source: new XYZ({ url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 18, attributions: ESRI_CREDIT }) });
   let token: string | null = null, refreshed = false, misses = 0, starting = false, disposed = false;
   let asked: { zoom: number; extent: Extent } | null = null, creditRequest = 0, credit = () => {};

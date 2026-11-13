@@ -1,8 +1,9 @@
 # Basemaps
 
 The map carries two satellite basemaps, radio-switched under **Peta Dasar** in
-the layer panel (`layers/layers.js`). Google is on at load; Esri is the
-fallback.
+the layer panel (`src/public/components/LayerPanel.svelte`). Since November
+2026 Esri is on at load and Google only for a reader who picked it; see the
+Map Tiles API notes below.
 
 | | Google Satelit (default) | Esri Satelit |
 |---|---|---|
@@ -69,6 +70,12 @@ mt1 endpoint and the table above describe the earlier setup.
 - Loopback (`localhost`, `127.x`, `[::1]`, `*.localhost`) starts on Esri so
   development does not spend the quota. `localStorage['pjuts.google-tiles.local']
   = '1'` opts back in; the browser tests set it while stubbing Google.
+- Default (November 2026): Esri opens unless the reader picked Google in the
+  layer panel, a pick kept in `localStorage['puts.basemap']`. The Google layer
+  starts hidden, so a reader on Esri creates no session and requests no tile.
+  The automatic fallback above leaves the pick alone, so Google is tried again
+  on the next visit. Google's extra zoom (z20 against Esri's z18) stays one
+  click away for whoever needs it.
 
 ## Attribution
 

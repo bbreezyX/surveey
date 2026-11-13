@@ -4,7 +4,11 @@
   import LayerSwitch from './LayerSwitch.svelte';
   import { layerIcons } from '../map/layer-icons';
   import logoEsdm from '../assets/logo-esdm.webp';
+  import { rememberBasemap, type Basemap } from '../state/work-memory';
   let { state: model }: { state: SurveyState } = $props();
+  // Only a pick made here is kept. The automatic switch to Esri when Google is refused, spent or skipped on
+  // localhost changes the layers alone, so a reader who chose Google gets Google again once it works.
+  function chooseBasemap(basemap: Basemap) { model.layers.google = basemap === 'google'; model.layers.esri = basemap === 'esri'; rememberBasemap(basemap); }
   let open = $state(false);
   const rows: { key: LayerKey; label: string }[] = [{ key: 'boundaries', label: 'Batas Kabupaten/Kota' }, { key: 'area', label: 'Area Cakupan' }, { key: 'mask', label: 'Fokus Provinsi' }];
   const points: { key: 'sk' | 'belum' | 'cadangan'; label: string }[] = [{ key: 'sk', label: 'Titik PUTS' }, { key: 'belum', label: 'Lokasi Belum Ditetapkan' }, { key: 'cadangan', label: 'Titik Cadangan' }];
@@ -20,8 +24,8 @@
       </ul></li>
       {#each rows as row (row.key)}<li class="layer"><LayerSwitch id={`layer-${row.key}`} bind:checked={model.layers[row.key]}/><label for={`layer-${row.key}`}>{row.label}</label></li>{/each}
       <li class="group layer-switcher-base-group layer-switcher-fold layer-switcher-open"><span class="layer-group-title">Peta Dasar</span><ul>
-        <li class="layer"><input type="radio" id="layer-google" name="basemap" checked={model.layers.google} onchange={() => { model.layers.google = true; model.layers.esri = false; }}/><label for="layer-google">Google Satelit</label></li>
-        <li class="layer"><input type="radio" id="layer-esri" name="basemap" checked={model.layers.esri} onchange={() => { model.layers.google = false; model.layers.esri = true; }}/><label for="layer-esri">Esri Satelit</label></li>
+        <li class="layer"><input type="radio" id="layer-google" name="basemap" checked={model.layers.google} onchange={() => chooseBasemap('google')}/><label for="layer-google">Google Satelit</label></li>
+        <li class="layer"><input type="radio" id="layer-esri" name="basemap" checked={model.layers.esri} onchange={() => chooseBasemap('esri')}/><label for="layer-esri">Esri Satelit</label></li>
       </ul></li>
     </ul></div>
     <img class="layer-switcher__watermark" src={logoEsdm} alt="Logo ESDM" width="64" height="64" loading="lazy" decoding="async" draggable="false"/>

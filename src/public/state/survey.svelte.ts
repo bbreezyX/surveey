@@ -4,7 +4,8 @@ import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
 import { reportReceipt, type SurveyPending, type SurveyProgress } from '../../shared/survey/progress';
 import type { LastReport, ListMode, WorkMemory } from './work-memory';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
-// memory: what this phone kept from earlier visits (work-memory.ts); App reads and writes the storage.
+// memory: what this phone kept from earlier visits (work-memory.ts); App reads and writes the storage, except the
+// basemap, which the layer panel writes when it is picked.
 export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {}) {
   // Replaced in place when a reconnect brings newer data, so the open region, search, filter, selected
   // point and layer switches all survive; only the points under them change.
@@ -31,7 +32,8 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
   let panelOpen = $state(false), sidebarCollapsed = $state(false);
   // The card of the detail just closed is marked briefly so the eye lands on it, then lets go.
   let recentNomor = $state<string | null>(null), recentTimer: ReturnType<typeof setTimeout> | undefined;
-  const layers = $state({ google: true, esri: false, boundaries: true, mask: true, area: false, sk: true, cadangan: false, belum: true });
+  const google = memory.basemap === 'google';
+  const layers = $state({ google, esri: !google, boundaries: true, mask: true, area: false, sk: true, cadangan: false, belum: true });
   // Once esdm.cloud has accepted any build stage for a shared-coordinate unit, the crew has found and dug
   // its spot, so asking readers to confirm it with the RT/desa no longer helps; the list, filter, counts and
   // popup then treat it as an ordinary SK point. Only those few points are copied, the rest keep their objects.

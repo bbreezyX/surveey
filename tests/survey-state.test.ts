@@ -40,6 +40,11 @@ it('starts on Sebaran and drops a status filter the progress view cannot show', 
   expect(state.statusFilter).toBeNull();
 });
 
+it('opens on the basemap this phone chose, Esri by default', () => {
+  expect(createSurveyState(dataset()).layers).toMatchObject({ google: false, esri: true });
+  expect(createSurveyState(dataset(), { basemap: 'google' }).layers).toMatchObject({ google: true, esri: false });
+});
+
 it('keeps the report a crew just sent as this phone\'s last report', () => {
   const state = createSurveyState(dataset());
   state.markReported('KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-002', 3);
