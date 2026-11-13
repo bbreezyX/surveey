@@ -52,28 +52,50 @@
     user-select: none;
 }
 
+/* Google Maps' satellite credit strip rather than a card: just the imagery and
+   boundary sources, one thin line flush with the map's bottom-right corner,
+   light text on a see-through dark wash, no colour. Black at 55% keeps the text
+   above 4.5:1 even over cloud or bare ground. Phones hide it (mobile block). */
 .map-meta__info {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    border-radius: var(--radius-xs);
-    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.1);
+    align-items: center;
+    max-width: 100%;
+    padding: 1px 8px;
+    background: rgba(0, 0, 0, 0.55);
+    color: rgba(255, 255, 255, 0.92);
+    font: 500 10.5px/14px var(--font-ui);
+}
+
+/* Same colour as the credit around it, so the underline is what marks it as
+   a link. */
+.map-meta__info a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 255, 0.45);
+    text-underline-offset: 2px;
+}
+
+@media (hover: hover) {
+    .map-meta__info a:hover {
+        text-decoration-color: currentColor;
+    }
 }
 
 /* ---------- Legend ---------- */
 
 /* Metadata tier, like the scale strip: flat, no lift, small type. Centred in
-   the free band along the foot of the map: `left` is the panel's outer edge,
-   `right` is the width of the scale/attribution block (custom.js measures it
-   into --map-meta-inset, since the attribution text is whatever the tile
-   source says), and the auto margins split what is left. When the panel
-   collapses both bounds open to the map edges and it re-centres on the map,
-   on the same clock as the panel. */
+   the free band along the foot of the map: `left` is 12px past the panel's
+   outer edge, `right` stops 16px short of the zoom rail and the foot is level
+   with the rail's, which stands on the credit strip (controls.ts measures
+   both, since the strip is as tall as the tile source's credit wraps), and
+   the auto margins split what is left. When the panel collapses both bounds
+   open to the map edges and it re-centres on the map, on the same clock as
+   the panel. */
 .map-legend {
     position: fixed;
-    left: calc(var(--panel-left) + var(--panel-width));
-    right: var(--map-meta-inset, 200px);
-    bottom: 16px;
+    left: calc(var(--panel-left) + var(--panel-width) + 12px);
+    right: var(--map-meta-inset, 134px);
+    bottom: var(--map-zoom-bottom, 16px);
     z-index: 21;
     display: flex;
     justify-content: center;
@@ -233,67 +255,40 @@ body.is-sidebar-collapsed .map-legend {
     transition-duration: var(--dur-press);
 }
 
-.ol-scale-line {
-    position: static;
-    float: none;
-    margin: 0;
-    padding: 3px 8px 2px;
-    /* qgis2web.css forces background:none !important here */
-    background: rgba(255, 255, 255, 0.9) !important;
-    border: 1px solid var(--ctl-border);
-    border-bottom: none;
-    border-radius: var(--radius-xs) var(--radius-xs) 0 0;
-    box-shadow: none;
-}
-
-.ol-scale-line-inner {
-    box-sizing: border-box;
-    width: 100%;
-    margin: 0;
-    background: none;
-    border: 1px solid var(--ink-soft);
-    border-top: none;
-    color: var(--ink-soft);
-    font-size: 12px;
-    font-family: var(--font-ui);
-}
-
 /* qgis2web replaces the stock attribution with className 'bottom-attribution'
    (resources/qgis2web.js:569) — style that, not .ol-attribution */
 .bottom-attribution {
     position: static;
+    flex: 0 1 auto;
+    min-width: 0;
     float: none;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid var(--ctl-border);
-    border-radius: 0 0 var(--radius-xs) var(--radius-xs);
-    padding: 1px 6px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
     max-width: none;
     box-shadow: none;
 }
 
+/* The providers run on as one line joined by middle dots, as Google strings
+   its credits together. A map area too narrow for Esri's full sentence wraps
+   it into two balanced lines rather than one long line and a stub. */
 .bottom-attribution ul {
-    flex-direction: column;
+    display: block;
     margin: 0;
-    padding: 2px 0;
-    font-size: 12px;
-    color: var(--muted);
+    padding: 0;
+    font: inherit;
+    color: inherit;
     text-shadow: none;
-    /* Google's credit is three words; Esri's is a full sentence naming four
-       parties (layers/layers.js). Cap the width and let the long one wrap:
-       custom.js measures this block into --map-meta-inset, which is the right
-       edge of the legend band, so an unwrapped Esri line would shove the
-       legend halfway across the map the moment someone switches basemap.
-       Everything shorter than the cap still sits on one line. */
-    max-width: 240px;
-    white-space: normal;
+    text-wrap: balance;
 }
 
 .bottom-attribution li {
-    display: block;
+    display: inline;
 }
 
-.bottom-attribution li + li {
-    margin-top: 1px;
+.bottom-attribution li + li::before {
+    content: " · ";
 }
 
 .layer-switcher .layer-count {
@@ -1517,33 +1512,45 @@ body.is-sidebar-collapsed .map-legend {
     border-left: 1px solid var(--atlas-edge);
 }
 
+/* Google Maps' corner: the credit strip flush along the foot, the zoom rail
+   standing on it at the controls' 16px inset. Bounded to the map area, so a
+   wrapped credit never runs under the panel. */
 @media (min-width: 960px) {
     .map-meta {
-        flex-direction: row;
-        align-items: flex-end;
-        gap: 10px;
+        right: 0;
+        bottom: 0;
+        gap: 8px;
+        max-width: calc(100% - var(--panel-left) - var(--panel-width) - 12px);
+    }
+
+    body.is-sidebar-collapsed .map-meta {
+        max-width: 100%;
+    }
+
+    .ol-zoom {
+        margin-right: 16px;
     }
 
     .ol-zoom button {
         width: 50px;
     }
+}
 
-    .map-meta__info {
-        border-radius: 14px;
-        overflow: hidden;
-        box-shadow: 0 4px 12px rgba(20, 38, 53, 0.18);
+/* Below about 1060px the band between the panel and the zoom rail is
+   narrower than the key (about 500px), so the pill wrapped and then slid
+   under the panel. Here it stacks right-aligned on one row just above the
+   rail instead, in the same spot whether the panel is open or not
+   (controls.ts measures the rail's top into --map-zoom-top). */
+@media (min-width: 960px) and (max-width: 1059px) {
+    .map-legend {
+        right: 16px;
+        bottom: calc(var(--map-zoom-top, 70px) + 10px);
+        justify-content: flex-end;
     }
 
-    .ol-scale-line,
-    .bottom-attribution {
-        border-color: var(--atlas-edge);
-        border-radius: 0;
-        background: rgba(238, 243, 247, 0.96) !important;
-    }
-
-    .ol-scale-line-inner {
-        border-color: var(--ink);
-        color: var(--ink);
+    body.is-sidebar-collapsed .map-legend {
+        left: 16px;
+        right: 16px;
     }
 }
 

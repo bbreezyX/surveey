@@ -119,10 +119,7 @@ test('keeps the chosen marker visible while its ordinary point layer is hidden',
     for (let index = 0; index < data.length; index += 4) if (data[index] > 230 && data[index + 1] > 190 && data[index + 2] < 70 && data[index + 3] > 190) pixels++;
     return pixels;
   }).toBeGreaterThan(10);
-  const scale = await page.locator('.ol-scale-line-inner').textContent();
   await page.getByRole('button', { name: 'Tutup info titik' }).click();
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await expect(page.locator('.ol-scale-line-inner')).toHaveText(scale!);
 });
 
 test('selects one reserve without turning on the whole reserve layer', async ({ page }) => {

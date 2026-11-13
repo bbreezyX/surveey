@@ -14,7 +14,6 @@ import VectorLayer from 'ol/layer/Vector';
 import Overlay from 'ol/Overlay';
 import { defaults as defaultInteractions } from 'ol/interaction/defaults';
 import { defaults as defaultControls } from 'ol/control/defaults';
-import { FullWidthScaleLine } from './scale';
 import { inAndOut } from 'ol/easing';
 import { fromLonLat } from 'ol/proj';
 import { createEmpty, extend, extendCoordinate } from 'ol/extent';
@@ -89,11 +88,10 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const userDot = document.createElement('div'); userDot.className = 'user-dot'; userDot.setAttribute('aria-hidden', 'true');
   const userOverlay = new Overlay({ element: userDot, positioning: 'center-center', stopEvent: false });
   const overlay = new Overlay({ element: options.popup, positioning: 'bottom-center', offset: [0, 0], stopEvent: true });
-  const scaleControl = new FullWidthScaleLine();
   // A 390×844 phone at DPR 3 allocated a 1170×2532 canvas. Capping only the
   // map backing store at 2× removes 56% of those pixels while retaining HiDPI
   // pins and leaving the surrounding DOM text/photos at native resolution.
-  const map = new OlMap({ target: options.target, pixelRatio: Math.min(window.devicePixelRatio || 1, 2), layers: [esri, google, mask, area, regionLayer, userLayer, pointLayer], overlays: [userOverlay, overlay], view: new View({ maxZoom: 28, minZoom: 1 }), interactions: defaultInteractions({ doubleClickZoom: false }), controls: defaultControls({ attributionOptions: { collapsible: false, className: 'bottom-attribution' }, zoomOptions: { zoomInTipLabel: 'Perbesar', zoomOutTipLabel: 'Perkecil' } }).extend([scaleControl]) });
+  const map = new OlMap({ target: options.target, pixelRatio: Math.min(window.devicePixelRatio || 1, 2), layers: [esri, google, mask, area, regionLayer, userLayer, pointLayer], overlays: [userOverlay, overlay], view: new View({ maxZoom: 28, minZoom: 1 }), interactions: defaultInteractions({ doubleClickZoom: false }), controls: defaultControls({ attributionOptions: { collapsible: false, className: 'bottom-attribution' }, zoomOptions: { zoomInTipLabel: 'Perbesar', zoomOutTipLabel: 'Perkecil' } }) });
   const controlCleanup = attachControlLayout(map);
   const satelliteCleanup = satellite.attach(map);
   const tiles = watchTiles(map, [google, esri], { suspect: () => options.onTileTrouble?.(), slow: value => options.onTilesSlow?.(value) });
