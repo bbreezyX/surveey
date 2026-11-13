@@ -66,6 +66,9 @@ mt1 endpoint and the table above describe the earlier setup.
 - Fallback: no key, a refused session, or a run of failed tiles that a probe
   of the world tile confirms is not just missing imagery all switch the map to
   Esri, and the layer panel follows.
+- Loopback (`localhost`, `127.x`, `[::1]`, `*.localhost`) starts on Esri so
+  development does not spend the quota. `localStorage['pjuts.google-tiles.local']
+  = '1'` opts back in; the browser tests set it while stubbing Google.
 
 ## Attribution
 

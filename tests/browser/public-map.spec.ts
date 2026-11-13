@@ -19,6 +19,8 @@ test.beforeEach(async ({ page }) => {
 async function stubGoogle(page: Page, session: number) {
   const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' };
   const tile = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  // Loopback starts on Esri to save quota; every Google request below is stubbed, so opt back in.
+  await page.addInitScript(() => { localStorage.setItem('pjuts.google-tiles.local', '1'); });
   await page.route('https://tile.googleapis.com/**', route => {
     const url = route.request().url();
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });

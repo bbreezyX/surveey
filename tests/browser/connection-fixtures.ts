@@ -8,6 +8,8 @@ export const test = base.extend<{ imagery: Imagery }>({
     const tile = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' };
     // No Google quota, third-party availability or live progress data is involved in these tests.
+    // Loopback starts on Esri to save quota; Google is stubbed here, so opt back in.
+    await page.addInitScript(() => { localStorage.setItem('pjuts.google-tiles.local', '1'); });
     await page.route(/^https:\/\/(tile\.googleapis\.com|services\.arcgisonline\.com)\//, async route => {
       const request = route.request(), url = new URL(request.url());
       if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });

@@ -21,6 +21,20 @@ const MARGIN = 3_600_000;
 // policy). Every Google request therefore carries just the origin, never the admin path behind it.
 const REFERRER: ReferrerPolicy = 'strict-origin';
 const ESRI_CREDIT = 'Citra &copy; Esri, Vantor, Earthstar Geographics, and the GIS User Community';
+// The key's referrer list admits the local dev origins, so every pan during development (Vite, the
+// preview build, the local admin) was billed like a field visit. Loopback therefore starts on the free
+// Esri layer. Setting this storage entry to '1' opts back in when the Google layer itself is the work;
+// the browser tests do that while stubbing every Google request.
+const LOCAL_OPT_IN = 'pjuts.google-tiles.local';
+
+export function loopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname.endsWith('.localhost') || /^127(\.\d{1,3}){3}$/.test(hostname) || hostname === '[::1]' || hostname === '::1';
+}
+
+function googleSkippedHere(): boolean {
+  if (typeof location === 'undefined' || !loopbackHost(location.hostname)) return false;
+  try { return localStorage.getItem(LOCAL_OPT_IN) !== '1'; } catch { return true; }
+}
 
 export function storedSession(raw: string | null, key: string, now: number): string | null {
   if (!raw) return null;
@@ -70,7 +84,7 @@ export function satelliteLayers(onFallback?: () => void): SatelliteLayers {
   function fallback() { if (disposed) return; google.setVisible(false); esri.setVisible(true); onFallback?.(); }
   async function start() {
     if (token || starting || disposed) return;
-    if (!KEY) { fallback(); return; }
+    if (!KEY || googleSkippedHere()) { fallback(); return; }
     starting = true;
     // A TypeError is fetch failing to reach Google at all (no internet), not Google refusing the key:
     // stay on Google and try again when the connection returns instead of switching to Esri for good.

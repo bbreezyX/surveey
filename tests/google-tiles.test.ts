@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { googleCredit, storedSession } from '../src/public/map/google-tiles';
+import { googleCredit, loopbackHost, storedSession } from '../src/public/map/google-tiles';
+
+describe('Google tiles on loopback', () => {
+  it('treats the local dev, preview and admin hosts as loopback', () => {
+    for (const host of ['localhost', '127.0.0.1', '127.0.1.1', '[::1]', '::1', 'surveey.localhost']) expect(loopbackHost(host)).toBe(true);
+  });
+  it('keeps Google for every real host', () => {
+    for (const host of ['survey.esdm.cloud', 'www.esdm.cloud', '192.168.1.5', 'localhost.example.com', '127.0.0.1.nip.io']) expect(loopbackHost(host)).toBe(false);
+  });
+});
 
 describe('Google tile session reuse', () => {
   const now = Date.UTC(2026, 9, 15);
