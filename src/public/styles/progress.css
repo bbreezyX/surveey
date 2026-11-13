@@ -197,8 +197,11 @@
 
 /* The progress grid reuses the atlas cells, whose rows snap to their top edge (sidebar.css). Here the
    summary and the sticky "Semua Wilayah" head sit above the grid, so proximity snapping jumped the list
-   to the first row on load and left that row's outline under the head. This list scrolls freely. */
+   to the first row on load and left that row's outline under the head. This list scrolls freely.
+   The atlas list's top hairline goes too: here the stage bar opens the list, and a line just above it
+   read as a second bar. */
 .sidebar-scroll:has(.progress-grid-head) {
+    border-top: 0;
     scroll-snap-type: none;
 }
 
@@ -207,22 +210,32 @@
     gap: 4px;
 }
 
-/* A finished kabupaten says so with the pin's check and a green ground, not with the bar's colour alone;
-   the tint drops out in forced colours, the check and the words stay. Hover keeps the usual row tint. */
-.progress-cell.is-done:not(:hover) {
-    background: var(--green-tint);
+/* A finished kabupaten says so with the pin's check, large in the card's top-right corner, and in words
+   set firm, in capitals across the card; a full bar would only repeat it, so it is left out. The card
+   keeps the plain white ground of the others. */
+.progress-cell.is-done {
+    position: relative;
+}
+
+.progress-cell__check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+}
+
+.progress-cell__check svg {
+    width: 24px;
+    height: 24px;
 }
 
 .progress-cell .atlas-cell__meta.is-done {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
+    margin-top: 4px;
     color: var(--green);
-    font-weight: 700;
-}
-
-.progress-cell .atlas-cell__meta.is-done svg {
-    flex: none;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-transform: uppercase;
 }
 
 .progress-cell .stage-bar {

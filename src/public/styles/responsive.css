@@ -728,7 +728,8 @@ body.is-sidebar-collapsed .map-legend {
         max-height: calc(100dvh - 72px);
         height: calc(100dvh - 72px);
         padding-bottom: env(safe-area-inset-bottom);
-        border-radius: 20px 20px 0 0;
+        /* The desktop panel's 28px on the top corners only: the sheet's bottom edge is the screen's. */
+        border-radius: 28px 28px 0 0;
         box-shadow: 0 -2px 6px rgba(20, 38, 53, 0.12), 0 -14px 36px rgba(20, 38, 53, 0.24);
         opacity: 1;
         transform: translate3d(0, calc(100% - var(--sheet-peek)), 0);
@@ -820,11 +821,15 @@ body.is-sidebar-collapsed .map-legend {
     }
 
     /* Until the reader touches the sheet (or 12s pass) the handle calls out:
-       the grabber darkens, stretches and lifts in a steady beat, and a light
-       sweeps across the caption. Neutral slate, not a brand colour: blue
-       belongs to the buttons and yellow to the pins. */
+       the grabber turns ink, stretches and lifts in a steady beat, the caption
+       rises and swells with it, and a light sweeps across the caption. Neutral
+       ink, not a brand colour: blue belongs to the buttons and yellow to the
+       pins. The first version (slate, 4px, faint sweep) was easy to miss on a
+       bright phone; this one runs only in those first seconds, so it can be
+       plain. The grabber stretches with scale, not width, so the beat never
+       lays out the handle. */
     body.is-sheet-hinting:not(.is-panel-open) .sheet-handle__grabber {
-        background: var(--muted);
+        background: var(--ink);
         animation: sheet-grabber-call 1.4s var(--ease-out) infinite;
     }
 
@@ -832,7 +837,7 @@ body.is-sidebar-collapsed .map-legend {
         background: linear-gradient(
                 100deg,
                 var(--ink) 0 38%,
-                #b3bfca 50%,
+                #e3e9ee 50%,
                 var(--ink) 62% 100%
             )
             0 0 / 260% 100%;
@@ -847,12 +852,13 @@ body.is-sidebar-collapsed .map-legend {
         0%,
         100% {
             translate: 0 0;
-            width: 40px;
+            scale: 1 1;
         }
 
         40% {
-            translate: 0 -4px;
-            width: 54px;
+            /* The handle's 7px top padding is the ceiling: the sheet clips above it. */
+            translate: 0 -6px;
+            scale: 1.5 1;
         }
     }
 
@@ -860,10 +866,12 @@ body.is-sidebar-collapsed .map-legend {
         0%,
         100% {
             translate: 0 0;
+            scale: 1;
         }
 
         40% {
-            translate: 0 -3px;
+            translate: 0 -5px;
+            scale: 1.06;
         }
     }
 

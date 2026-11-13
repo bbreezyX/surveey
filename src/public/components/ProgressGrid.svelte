@@ -17,10 +17,11 @@
     {@const left = [2, 1, 0].filter(stage => tally.stages[stage])}
     {@const done = tally.total > 0 && tally.stages[WORK_DONE] === tally.total}
     <button class="atlas-cell progress-cell" class:is-done={done} type="button" data-region={name} aria-label={[name, done ? `semua ${tally.total} titik terpasang` : `${tally.stages[WORK_DONE]} dari ${tally.total} terpasang`, ...left.map(stage => `${tally.stages[stage]} ${STAGE_COUNT_LABEL[stage].toLowerCase()}`), 'buka daftar kerja'].join(', ')} onclick={() => onopen(name)}>
+      {#if done}<span class="progress-cell__check" aria-hidden="true">{@html workBadgeSvg(WORK_DONE)}</span>{/if}
       <span class="atlas-cell__shape"><Shape region={state.dataset.boundaries.find(region => regionKey(String(region.properties.KABUPATEN_)) === regionKey(name))} {points} kindOf={dotKind}/></span>
       <span class="atlas-cell__name">{name.replace(/^Kab\.\s+/i, '')}</span>
-      <span class="atlas-cell__meta" class:is-done={done}>{#if done}{@html workBadgeSvg(WORK_DONE)}Semua terpasang · {tally.total}{:else}<b>{tally.stages[WORK_DONE]}</b>/{tally.total} terpasang{/if}</span>
-      <StageBar {tally} thin/>
+      <span class="atlas-cell__meta" class:is-done={done}>{#if done}Semua terpasang · {tally.total}{:else}<b>{tally.stages[WORK_DONE]}</b>/{tally.total} terpasang{/if}</span>
+      {#if !done}<StageBar {tally} thin/>{/if}
       {#if !done}<span class="progress-cell__left" aria-hidden="true">
         {#if tally.stages[0] === tally.total}<span class="is-none">{@html NOT_STARTED_BADGE}Belum dimulai</span>
         {:else}{#each left as stage (stage)}<span title={STAGE_COUNT_LABEL[stage]}>{@html workBadgeSvg(stage)}{tally.stages[stage]}</span>{/each}{/if}
