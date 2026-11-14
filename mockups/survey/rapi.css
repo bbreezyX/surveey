@@ -1,0 +1,93 @@
+/* Mockup H: Sebaran and Progres with their doubles taken out. Builds on hari-ini.css (the live progress
+   view) and adds the Sebaran view, clickable tabs and the numbered marks that point at each proposal. */
+
+/* ---------- Mockup chrome ---------- */
+.mock-bar button {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mock-bar button:hover { background: rgba(255, 255, 255, 0.08); }
+.mock-bar button[aria-pressed="true"] { background: var(--yellow); color: var(--ink); }
+.mock-bar__sep { width: 1px; height: 14px; margin: 0 8px; background: #33424f; }
+
+/* A proposal's number, where the change sits. Not part of the design. */
+.mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-left: 6px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--yellow);
+  color: var(--ink);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+body.no-marks .mark { display: none; }
+
+/* ---------- Tabs, clickable here ---------- */
+.mode button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.mode button.is-on { border-color: var(--hairline-strong); background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(20, 38, 53, 0.08); }
+.mode .mode__pct { display: inline-block; height: auto; border: 0; line-height: 1.4; }
+
+/* ---------- Sebaran view, as the live app draws it ---------- */
+.total__count { color: var(--ink); }
+.see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.see-all svg { width: 15px; height: 15px; }
+.atlas-grid--sebaran { border-top: 1px solid var(--divider); }
+.sebaran-dot { fill: var(--yellow); stroke: var(--ink); stroke-width: 0.8; vector-effect: non-scaling-stroke; }
+.sebaran-dot.is-duplikat { stroke: var(--orange); stroke-width: 1.6; }
+.sebaran-dot.is-belum { fill: #fff; stroke-dasharray: 1.6 1.2; }
+
+.flag { display: inline-flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 12px; font-weight: 600; line-height: 1.3; }
+.flag::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; }
+.flag--duplikat { color: var(--orange-deep); }
+.flag--duplikat::before { border: 2px solid var(--orange); background: var(--yellow); }
+.flag--belum { color: var(--muted); }
+.flag--belum::before { border: 1.5px dashed var(--muted-2); background: #fff; }
+
+/* ---------- Proposal 2: the Terpasang legend row keys the colour only ---------- */
+.legend li.is-key .delta { margin-left: auto; }
+
+/* ---------- Proposal 3: a cell without its bar ---------- */
+.atlas-cell.no-bar .atlas-cell__rest { margin-top: 2px; }

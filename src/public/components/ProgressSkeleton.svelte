@@ -24,7 +24,6 @@
           <span class="atlas-cell__shape"><Shape region={state.dataset.boundaries.find(region => regionKey(String(region.properties.KABUPATEN_)) === regionKey(name))} points={[]}/></span>
           <span class="atlas-cell__name">{name.replace(/^Kab\.\s+/i, '')}</span>
           <span class="skel skel--meta"></span>
-          <span class="skel skel--thin"></span>
           <span class="skel skel--left"></span>
         </div>
       {/each}

@@ -89,10 +89,12 @@
   <div class="sheet-near" bind:this={near}><NearbyList {state} {locator}/></div>
   <div class="panel-meta" id="panel-meta">
     <!-- Two pressed-state buttons, as the status pills are: Sebaran is today's atlas and list, Progres the build
-         stages and each kabupaten's work list. Hidden while a search answers, and on a closed phone sheet. -->
+         stages and each kabupaten's work list. Hidden while a search answers, and on a closed phone sheet.
+         The share on Progres invites a reader still on Sebaran; once Progres is open the same number sits
+         right under the tabs as "% selesai", and showing it twice read as noise. -->
     {#if !state.query}<div class="list-mode" role="group" aria-label="Tampilan daftar">
       <button type="button" aria-pressed={state.listMode === 'sebaran'} onclick={() => { state.listMode = 'sebaran'; }}>Sebaran</button>
-      <button type="button" aria-pressed={state.listMode === 'progres'} onclick={() => { state.listMode = 'progres'; }}>Progres{#if provinceTally}<span class="list-mode__share">{doneShare(provinceTally)}%</span>{/if}</button>
+      <button type="button" aria-pressed={state.listMode === 'progres'} onclick={() => { state.listMode = 'progres'; }}>Progres{#if provinceTally && state.listMode === 'sebaran'}<span class="list-mode__share">{doneShare(provinceTally)}%</span>{/if}</button>
     </div>{/if}
     {#if progressView}
       {#if !state.activeRegion}<div class="atlas-summary atlas-summary--total"><p class="atlas-total atlas-total--progress" role="status">{#if provinceTally}<b class="atlas-total__num">{provinceTally.stages[WORK_DONE]}</b><span class="atlas-total__label"><span>Titik Terpasang</span><span>dari <b>{provinceTally.total}</b> titik PUTS</span></span>{:else if state.progressFailed}<b class="atlas-total__num is-none" aria-hidden="true">–</b><span class="atlas-total__label" aria-hidden="true"><span>Titik Terpasang</span><span>dari <b>{countOfficialPoints(state.points)}</b> titik PUTS</span></span>{:else}<span class="visually-hidden">Memuat progres dari esdm.cloud…</span><span class="skel skel--total" aria-hidden="true"></span><span class="atlas-total__label" aria-hidden="true"><span>Titik Terpasang</span><span>dari <b>{countOfficialPoints(state.points)}</b> titik PUTS</span></span>{/if}</p>{#if provinceTally}<span class="progress-side"><span class="progress-share"><b>{doneShare(provinceTally)}%</b> selesai</span>{#if today?.list.length}<TodayChip {state} list={today.list}/>{/if}</span>{:else if !state.progressFailed}<span class="skel skel--share" aria-hidden="true"></span>{/if}</div>{/if}

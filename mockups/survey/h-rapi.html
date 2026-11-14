@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup H: Sebaran dan Progres dirapikan</title>
+<link rel="stylesheet" href="../../src/public/styles/fonts.css">
+<link rel="stylesheet" href="../../src/public/styles/tokens.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="hari-ini.css">
+<link rel="stylesheet" href="rapi.css">
+</head>
+<body>
+<!-- H: the same two views with the doubles taken out. The strip on top flips between the live layout and
+     two proposals, and between tab names; the tabs in the panel switch Sebaran and Progres as they do live. -->
+<svg class="map" id="map" role="img" aria-label="Latar peta (disederhanakan untuk mockup)"></svg>
+<div class="masthead" aria-hidden="true"><img src="../../src/public/assets/lambang-jambi-60.webp" alt=""><span><small>Dinas ESDM Provinsi Jambi</small><b id="masthead-title">Sebaran PUTS 2026</b></span></div>
+<div class="map-chip map-chip--layers" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5Zm-9 9 9 5 9-5m-18 5 9 5 9-5"/></svg></div>
+<div class="map-legend" id="legend" aria-hidden="true"></div>
+<div class="map-zoom" aria-hidden="true"><span>−</span><span>+</span></div>
+
+<aside class="sidebar" id="sidebar" aria-label="Daftar titik PUTS">
+  <button class="sheet-handle" type="button" aria-label="Tutup daftar titik"><i></i><span>Tutup Daftar Titik</span></button>
+  <div id="top"></div>
+  <div class="panel-scroll" id="scroll"><div class="panel-screen" id="screen"></div></div>
+  <p class="sidebar-footer"><span class="sidebar-footer__title">Survey Lapangan &amp; Pelaksanaan</span><span class="sidebar-footer__meta" id="foot"></span></p>
+</aside>
+
+<script src="data.js"></script>
+<script src="mock.js"></script>
+<script src="rapi.js"></script>
+</body>
+</html>

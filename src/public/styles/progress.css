@@ -101,11 +101,6 @@
 .stage-bar__s1 { background: #7fb4e0; }
 .stage-bar__s0 { background: var(--divider); }
 
-.stage-bar--thin {
-    gap: 1px;
-    height: 5px;
-}
-
 .stage-legend {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -207,20 +202,24 @@
 
 /* Progress cells: RegionGrid's cell plus a stage bar and what is left. */
 .progress-cell {
+    position: relative;
     gap: 4px;
 }
 
 /* A finished kabupaten says so with the pin's check, large in the card's top-right corner, and in words
    set firm, in capitals across the card; a full bar would only repeat it, so it is left out. The card
-   keeps the plain white ground of the others. */
-.progress-cell.is-done {
-    position: relative;
-}
-
-.progress-cell__check {
+   keeps the plain white ground of the others. Today's chip shares that corner, left of the check, so the
+   name line keeps the cell's full width and a long name never wraps under it. */
+.progress-cell__corner {
     position: absolute;
     top: 10px;
     right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.progress-cell__check {
     display: flex;
 }
 
@@ -241,11 +240,10 @@
     text-transform: uppercase;
 }
 
-.progress-cell .stage-bar {
-    margin: 2px 0 1px;
-}
-
+/* Straight under "x/y terpasang" now the bar is gone; 2px more than the cell's gap keeps the badges
+   from reading as part of that line. */
 .progress-cell__left {
+    margin-top: 2px;
     display: flex;
     flex-wrap: wrap;
     gap: 2px 8px;
@@ -667,11 +665,6 @@
     margin: 4px 0 3px;
 }
 
-.skel--thin {
-    height: 5px;
-    margin: 2px 0 1px;
-}
-
 .skel--left {
     width: 38%;
     height: 10px;
@@ -759,14 +752,6 @@ button.today-chip {
     font-style: normal;
     font-weight: 750;
     font-variant-numeric: tabular-nums;
-}
-
-.progress-cell .atlas-cell__name {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2px 6px;
 }
 
 /* The list: a popover under the chip (TodayChip places it), or the same panel toggled by hand on phones
