@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup I: Daftar kabupaten tanpa yang dobel</title>
+<!-- The live stylesheets, in main.ts order, so the panel is drawn exactly as the app draws it. -->
+<link rel="stylesheet" href="../../src/public/styles/fonts.css">
+<link rel="stylesheet" href="../../src/public/styles/tokens.css">
+<link rel="stylesheet" href="../../src/public/styles/layout.css">
+<link rel="stylesheet" href="../../src/public/styles/sidebar.css">
+<link rel="stylesheet" href="../../src/public/styles/progress.css">
+<link rel="stylesheet" href="../../src/public/styles/controls.css">
+<link rel="stylesheet" href="../../src/public/styles/responsive.css">
+<link rel="stylesheet" href="../../src/public/styles/modern.css">
+<link rel="stylesheet" href="kabupaten.css">
+</head>
+<body class="is-panel-open">
+<!-- I: one kabupaten in both views. The strip on top picks how the Sebaran list shows a unit's stage
+     (the live pill, a small badge on the number box as the map pin carries it, or nothing) and whether the
+     Progres list keeps its legend under the bar. The tabs in the panel switch views as they do live. -->
+<div id="app"><div class="app-shell">
+  <div class="map-frame"><svg id="map" class="mock-map" role="img" aria-label="Latar peta (disederhanakan untuk mockup)"></svg></div>
+  <aside id="sidebar" aria-label="Daftar titik PUTS" data-screen="items"></aside>
+</div></div>
+<script src="data.js"></script>
+<script src="mock.js"></script>
+<script src="kabupaten.js"></script>
+</body>
+</html>

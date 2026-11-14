@@ -76,10 +76,12 @@ test('shows a stage reported on esdm.cloud/lapangan when the reader returns, wit
   nomor = (await point.getAttribute('data-item-id'))!;
   // The first answer came before the Nomor was known; ask again the way a returning reader does.
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  await expect(point.locator('.atlas-pt__stage')).toHaveText('Galian Selesai');
+  // The card shows the stage as the pin's badge; its label carries the words.
+  await expect(point).toHaveAttribute('aria-label', /Galian Selesai/);
+  await expect(point.locator('.atlas-unit__badge')).toHaveCount(1);
   stage = 4;
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  await expect(point.locator('.atlas-pt__stage')).toHaveText('Terpasang');
+  await expect(point).toHaveAttribute('aria-label', /Terpasang/);
   const modes = await page.evaluate(() => (window as Window & { progressCache?: string[] }).progressCache);
   expect(modes?.length).toBeGreaterThanOrEqual(3);
   for (const mode of modes!) expect(mode).toBe('no-cache');

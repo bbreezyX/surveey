@@ -1,0 +1,75 @@
+/* Mockup I: the live stylesheets draw the panel; this file only adds the mockup strip, the plain map
+   backdrop, the toast and the one new piece, a stage badge on the number box. */
+
+/* ---------- Mockup chrome (not part of the design) ---------- */
+body { --mock-top: 30px; }
+.app-shell { position: absolute; top: var(--mock-top); height: calc(100dvh - var(--mock-top)); }
+
+.mock-bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 100;
+  height: var(--mock-top);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  background: #0e151b;
+  color: #c9d4de;
+  font: 600 12px/1 var(--font-ui);
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mock-bar__label { margin: 0 4px 0 2px; color: #8a99a9; }
+.mock-bar__sep { flex: none; width: 1px; height: 14px; margin: 0 8px; background: #33424f; }
+.mock-bar__note { margin-left: auto; padding-left: 12px; color: #8a99a9; font-weight: 500; }
+
+.mock-bar button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mock-bar button:hover { background: rgba(255, 255, 255, 0.08); }
+.mock-bar button[aria-pressed="true"] { background: var(--yellow); color: var(--ink); }
+
+.mock-map { display: block; }
+.mock-map path { fill: #2f4630; stroke: rgba(255, 255, 255, 0.8); stroke-width: 1.2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.mock-map path.is-on { fill: #44603a; stroke: #fff; stroke-width: 2.2; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 120;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: #fff;
+  font: 600 13px/1.4 var(--font-ui);
+  opacity: 0;
+  translate: -50% 0;
+  pointer-events: none;
+  transition: opacity 180ms var(--ease-out), translate 180ms var(--ease-out);
+}
+
+.toast.is-on { opacity: 1; translate: -50% -6px; }
+
+/* ---------- Proposal: the stage rides on the number box, as the badge rides on the map pin ---------- */
+.atlas-unit.has-badge { position: relative; }
+
+.unit-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: flex;
+}
+
+.unit-badge svg { width: 15px; height: 15px; }
