@@ -483,6 +483,13 @@ body.is-sidebar-collapsed #sidebar {
     scrollbar-color: #c3cfda transparent;
 }
 
+/* While "Progres hari ini" is open, its bar is the one in use; the list's bar a few pixels to its right read as a
+   second rail. Made transparent, not removed, so the gutter and the layout stay put. :popover-open where the
+   Popover API is, otherwise the panel TodayChip toggles by hand (no popover attribute, hidden when shut). */
+#sidebar:has(.today-pop:is(:popover-open, :not([popover], [hidden]))) .sidebar-scroll {
+    scrollbar-color: transparent transparent;
+}
+
 /* The overview grid, scrolled: a soft shadow at the top edge of the list,
    under the header (lists with sticky kecamatan heads have their own edge).
    A partly hidden row (most visible at the end of the grid, where the list

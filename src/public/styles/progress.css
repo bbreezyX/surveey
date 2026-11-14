@@ -810,6 +810,58 @@ button.today-chip {
     background: #fff;
     color: var(--ink);
     box-shadow: var(--shadow-lg);
+    /* The scrollbar thumb: 3:1 on white (WCAG 1.4.11), since the track is clear and white is what it stands on. */
+    --today-pop-thumb: #8696a5;
+}
+
+@media (prefers-contrast: more) {
+    .today-pop {
+        --today-pop-thumb: var(--ink);
+    }
+}
+
+/* Chrome, Edge and Safari: a 6px pill in its own lane, 4px off the border and clear of the rounded corners, with
+   no arrow buttons. The standard scrollbar-width/-color can't drop the arrows Chrome draws on Windows (a full-height
+   rail with a triangle at each end, which looked untidy here), and setting them makes Chrome ignore these
+   pseudo-elements (popup.css does the same for the point card), so the standard pair is left to Firefox. */
+.today-pop::-webkit-scrollbar {
+    width: 14px;
+}
+
+.today-pop::-webkit-scrollbar-track {
+    margin-block: 14px;
+    background: transparent;
+}
+
+.today-pop::-webkit-scrollbar-thumb {
+    border: 4px solid transparent;
+    border-radius: 7px;
+    background: var(--today-pop-thumb) padding-box;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .today-pop::-webkit-scrollbar-thumb:hover {
+        background-color: var(--muted-2);
+    }
+}
+
+/* With a mouse the lane is always there (scrollbar-gutter), and the right padding gives way to it: rows end 20px
+   from the border whether the list scrolls or not, instead of 16px for a short list and 30px for a long one.
+   Touch screens keep overlay bars, which take no room, and the full padding. */
+@supports selector(::-webkit-scrollbar) {
+    @media (hover: hover) and (pointer: fine) {
+        .today-pop {
+            padding-right: 6px;
+            scrollbar-gutter: stable;
+        }
+    }
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    .today-pop {
+        scrollbar-width: thin;
+        scrollbar-color: var(--today-pop-thumb) transparent;
+    }
 }
 
 .today-pop[hidden] {
