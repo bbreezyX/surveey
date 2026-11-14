@@ -1,7 +1,7 @@
 import type { SurveyDataset, SurveyPoint, StatusFilter } from '../../shared/survey/types';
 import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
-import { reportReceipt, type SurveyPending, type SurveyProgress } from '../../shared/survey/progress';
+import { reportReceipt, type SurveyPending, type SurveyProgress, type SurveyToday } from '../../shared/survey/progress';
 import type { LastReport, ListMode, WorkMemory } from './work-memory';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
 // memory: what this phone kept from earlier visits (work-memory.ts); App reads and writes the storage, except the
@@ -15,6 +15,8 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
   // Null until esdm.cloud answers; the map, list and popup show no build status before then.
   let progress = $state.raw<SurveyProgress | null>(null);
   let pending = $state.raw<SurveyPending | null>(null);
+  // Units esdm.cloud recorded a stage for today (WIB), for the progress view's "hari ini" marks.
+  let today = $state.raw<SurveyToday | null>(null);
   // esdm.cloud did not answer and nothing has been shown yet: the progress view says so rather than leave a
   // still skeleton. Any answer clears it; once progress is shown a later miss keeps the last stages instead.
   let progressFailed = $state(false);
@@ -77,6 +79,7 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     get progress() { return progress; }, set progress(value: SurveyProgress | null) { progress = value; if (value) progressFailed = false; },
     get progressFailed() { return progressFailed; }, set progressFailed(value: boolean) { progressFailed = value && !progress; },
     get pending() { return pending; }, set pending(value: SurveyPending | null) { pending = value; },
+    get today() { return today; }, set today(value: SurveyToday | null) { today = value; },
     // The report the open point's card confirms with a tick, once the feed holds it; gone when the card closes.
     get reportedReceipt() { return reported && receipt && reported.nomor === selectedNomor ? { stage: reported.stage, receipt } : null; },
     // Still unconfirmed: the feed read before the report landed, so it is worth asking again.

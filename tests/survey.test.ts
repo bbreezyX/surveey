@@ -4,7 +4,7 @@ import { parseCoordinateQuery, formatCoordPair } from '../src/shared/survey/coor
 import { legacyPhotoUrl } from '../src/shared/survey/media';
 import { latestDocumentationDate } from '../src/shared/survey/dates';
 import { linkedNomor, linkedReport, progressReportUrl } from '../src/shared/survey/report';
-import { parsePending, parseProgress, reportReceipt, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary, tallyStages, doneShare, workGroups, workBadgeSvg, NEXT_REPORT, NOT_STARTED_BADGE, WORK_DONE } from '../src/shared/survey/progress';
+import { parsePending, parseProgress, parseToday, todayTally, reportReceipt, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary, tallyStages, doneShare, workGroups, workBadgeSvg, NEXT_REPORT, NOT_STARTED_BADGE, WORK_DONE } from '../src/shared/survey/progress';
 describe('survey evidence and counting', () => {
   it('ignores malformed and impossible optional dates without normalizing them', () => {
     expect(latestDocumentationDate(['32/13/2026', '31/02/9999', '29/02/2025', ''])).toBeNull();
@@ -102,5 +102,27 @@ describe('progress summary and work list', () => {
     expect(NOT_STARTED_BADGE).not.toContain('#0072bc');
     expect(workBadgeSvg(0)).toBe(NOT_STARTED_BADGE);
     expect(workBadgeSvg(WORK_DONE)).toBe(stageBadgeSvg(4));
+  });
+  it('reads today\'s stages from the feed and drops anything malformed', () => {
+    const today = parseToday({ today: {
+      'A-001': { stage: 4, at: '2026-11-14T02:10:00.000Z' },
+      'A-002': { stage: 7, at: '2026-11-14T02:10:00.000Z' },
+      'A-003': { stage: 2, at: 'kemarin' },
+      'A-004': null,
+    } });
+    expect([...today]).toEqual([['A-001', { stage: 4, at: Date.parse('2026-11-14T02:10:00.000Z') }]]);
+    expect(parseToday({ stages: {} }).size).toBe(0);
+  });
+  it('counts today\'s official units per step and kabupaten, newest first', () => {
+    const units = [
+      { nomor: 'A-001', cadangan: false, kabupaten: 'Bungo' }, { nomor: 'A-002', cadangan: false, kabupaten: 'Bungo' },
+      { nomor: 'A-003', cadangan: false, kabupaten: 'Kerinci' }, { nomor: 'A-004', cadangan: true, kabupaten: 'Kerinci' },
+    ];
+    const today = new Map([['A-001', { stage: 1, at: 100 }], ['A-002', { stage: 3, at: 300 }], ['A-003', { stage: 4, at: 200 }], ['A-004', { stage: 2, at: 400 }]]);
+    const tally = todayTally(units, today);
+    expect(tally.list.map(item => [item.unit.nomor, item.step])).toEqual([['A-002', WORK_DONE], ['A-003', WORK_DONE], ['A-001', 1]]);
+    expect(tally.steps).toEqual([0, 1, 0, 2]);
+    expect([...tally.byRegion]).toEqual([['Bungo', 2], ['Kerinci', 1]]);
+    expect(todayTally(units, null).list).toEqual([]);
   });
 });

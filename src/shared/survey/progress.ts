@@ -24,6 +24,21 @@ export function parsePending(value: unknown): SurveyPending {
   }
   return pending;
 }
+// Units esdm.cloud recorded a stage for since midnight WIB: the furthest stage reached today and when (ms since
+// epoch). The day is cut on esdm.cloud, so every reader shares one calendar; a feed without `today` reads empty.
+export interface SurveyTodayEntry { stage: number; at: number }
+export type SurveyToday = ReadonlyMap<string, SurveyTodayEntry>;
+export function parseToday(value: unknown): SurveyToday {
+  const today = new Map<string, SurveyTodayEntry>();
+  const raw = value && typeof value === 'object' ? (value as { today?: unknown }).today : null;
+  if (!raw || typeof raw !== 'object') return today;
+  for (const [nomor, entry] of Object.entries(raw)) {
+    const { stage, at } = (entry && typeof entry === 'object' ? entry : {}) as { stage?: unknown; at?: unknown };
+    const time = typeof at === 'string' ? Date.parse(at) : NaN;
+    if (Number.isInteger(stage) && (stage as number) >= 1 && (stage as number) <= 4 && Number.isFinite(time)) today.set(nomor, { stage: stage as number, at: time });
+  }
+  return today;
+}
 // The same words /lapangan shows a crew for its own open report, so both sides name it alike. Read aloud
 // and in the tooltip; the pill itself is pendingLabel.
 export function pendingSummary(stages: readonly number[]): string {
@@ -104,3 +119,21 @@ export function workGroups<T extends ProgressUnit>(units: readonly T[], progress
   }
   return { due, waiting, done };
 }
+// "Hari ini" in the progress view: official units that reached a step today, newest first, with counts per step
+// (Tiang folds into terpasang, as everywhere in this view) and per kabupaten.
+export interface TodayUnit<T> { unit: T; step: number; at: number }
+export function todayTally<T extends ProgressUnit & { kabupaten: string }>(units: readonly T[], today: SurveyToday | null) {
+  const list: TodayUnit<T>[] = [], steps = [0, 0, 0, 0], byRegion = new Map<string, number>();
+  if (!today?.size) return { list, steps, byRegion };
+  for (const unit of units) {
+    const entry = unit.cadangan ? undefined : today.get(unit.nomor);
+    if (!entry) continue;
+    const step = workStep(entry.stage);
+    list.push({ unit, step, at: entry.at }); steps[step]++;
+    byRegion.set(unit.kabupaten, (byRegion.get(unit.kabupaten) ?? 0) + 1);
+  }
+  list.sort((a, b) => b.at - a.at);
+  return { list, steps, byRegion };
+}
+// "Moved today", whatever the stage: ink-blue with an up arrow, since green on this map means terpasang.
+export const TODAY_ARROW = '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M6 10V2.5M2.6 5.6 6 2.2l3.4 3.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';

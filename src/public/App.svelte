@@ -39,7 +39,7 @@
     const params = new URLSearchParams(location.search); params.delete('nomor'); params.delete('lapor');
     history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
   }
-  function applyProgress(state: SurveyState, feed: ProgressFeed) { state.progress = feed.stages; state.pending = feed.pending; }
+  function applyProgress(state: SurveyState, feed: ProgressFeed) { state.progress = feed.stages; state.pending = feed.pending; state.today = feed.today; }
   // A miss before any answer turns the progress view's skeleton into a short message; the state ignores
   // it once stages are shown, so a later miss keeps them.
   function settleProgress(state: SurveyState, feed: ProgressFeed | null) { if (feed) applyProgress(state, feed); else state.progressFailed = true; }
