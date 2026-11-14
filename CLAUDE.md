@@ -2,7 +2,7 @@
 
 ## Current application and deployment
 
-This repository now uses Svelte 5, TypeScript, Vite and OpenLayers for the public map and separate admin build. The approved public-map UI is preserved. Admin uses Django, PostgreSQL and private object storage, with password-only approved accounts. Production map is https://survey.esdm.cloud/ and administration is https://survey.esdm.cloud/admin/.
+This repository uses Svelte 5, TypeScript, Vite and OpenLayers for the public map and separate admin build. The approved public-map UI is preserved. Admin uses Django, PostgreSQL and private object storage, with password-only approved accounts. Production map is https://survey.esdm.cloud/ and administration is https://survey.esdm.cloud/admin/.
 
 - `npm ci`, `npm run build`, `npm test`: public build and unit checks.
 - `npm run build:admin`: admin type check and build.
@@ -11,7 +11,7 @@ This repository now uses Svelte 5, TypeScript, Vite and OpenLayers for the publi
 - `npm run admin:local`: local admin on 127.0.0.1:8130/admin/; it opens a private SSH tunnel to the VPS and shares production PostgreSQL, photos (read-only; upload stays in production admin), accounts, drafts and publications. No automatic migration/import or SQLite fallback.
 - `node scripts/admin-local.mjs test survey delivery --noinput`: backend checks after installing the local virtual environment.
 
-Production runs on the VPS: a push to `master` deploys only through the `Deploy Surveey VPS` GitHub Actions workflow (`.github/workflows/deploy-vps.yml`, docs/autodeploy-vps.md). The three Railway services are a dormant fallback holding the pre-migration snapshot; their GitHub autodeploy triggers were removed on 23 October 2026 and their database roles cannot log in, so Railway no longer builds on push (re-enabling is in docs/return-to-railway.md). For the Railway topology, keep the service-specific Dockerfile settings: `server/deploy/Dockerfile.railway-public-map`, `server/deploy/Dockerfile.admin`, and `server/deploy/Dockerfile.public-data`. The public-map service reverse-proxies admin and published data to private services. Never substitute the legacy static image for this production topology. See README.md, docs/railway-deployment.md and docs/admin-operations.md for current commands and boundaries.
+Production runs on the VPS: a push to `master` deploys only through the `Deploy Surveey VPS` GitHub Actions workflow (`.github/workflows/deploy-vps.yml`, docs/autodeploy-vps.md). The three Railway services are a dormant fallback holding the pre-migration snapshot; their GitHub autodeploy triggers are off and their database roles cannot log in, so Railway does not build on push (re-enabling is in docs/return-to-railway.md). For the Railway topology, keep the service-specific Dockerfile settings: `server/deploy/Dockerfile.railway-public-map`, `server/deploy/Dockerfile.admin`, and `server/deploy/Dockerfile.public-data`. The public-map service reverse-proxies admin and published data to private services. Never substitute the legacy static image for this production topology. See README.md, docs/railway-deployment.md and docs/admin-operations.md for current commands and boundaries.
 
 Private `.local/`, SSH keys, environment files, credentials, generated builds and OCR crops are ignored. Do not commit them. Backend tests use the explicit isolated `config.test_settings` module and never load the production connection. Public Vite development proxies published GeoJSON/media to production; preview/legacy fixtures keep their local snapshots. Preserve the original public controls and other approved UI. Text remains Indonesian; comments explain reasoning, and commit subjects are plain imperative sentences.
 
@@ -25,31 +25,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A static, single-page web map ("Peta Sebaran PUTS 2026") of solar street-light survey points (Penerangan Umum Tenaga Surya) for Dinas ESDM Provinsi Jambi. It started as a QGIS **qgis2web** export (OpenLayers) and has since been heavily hand-customised. UI copy is Indonesian; code comments are English and explain *why* at length. Match that comment style: they record measured decisions, so don't strip or shorten them.
 
-There is no build step, bundler, linter, or test suite. Files are served as-is.
+The legacy files are not bundled; `legacy.html` loads them as-is.
 
 ## Commands
 
 ```bash
-npm run dev        # = npm start; runs scripts/dev-server.py via scripts/run-python.js (finds Python 3)
+npm run dev:legacy # = npm run start:legacy; runs scripts/dev-server.py via scripts/run-python.js (finds Python 3)
 ```
 
-- Dev server: `http://127.0.0.1:8123/`. `.claude/launch.json` defines it as `pjuts-static` for `preview_start`.
+- Dev server: `http://127.0.0.1:8123/`, the same port the Vite dev server uses, so only one runs at a time. `pjuts-static` in `.claude/launch.json` starts the Vite app (`npm start`), not this server.
 - It sends `Cache-Control: no-store` for everything, so edits show on reload without touching `?v=` tokens.
 - It also exposes `POST /api/flag` (localhost only), which writes the `cadangan` / `duplikat` flags straight into `data/points.geojson`. In the UI, the flag buttons only render when `isLocalEditor()` (hostname localhost/127.0.0.1) is true. Production has no such endpoint.
 - Python helpers in `scripts/` are run directly (`python scripts/<name>.py`). Their dependencies are not pinned: `openpyxl` (xlsx imports/exports), `Pillow` (icons, embedded photos), `shapely>=2.1` + `pyproj` (`import_big_boundaries.py`).
 
 ## Deploy
 
-Push to `master` → Railway builds the `Dockerfile` (Caddy 2.8, static `file_server`). There's no separate release step.
+The root `Dockerfile` builds the Vite app (`npm run build`) and serves `dist/public/` with Caddy 2.8; deployment is in the current section above. What still holds for `legacy.html` and the `Caddyfile`:
 
-- **Cache-busting is automatic.** The Dockerfile rewrites every `?v=…` token in `index.html` and `manifest.json` to the commit SHA. The `Caddyfile` serves `custom.*`, `layers/`, `resources/`, `styles/`, `assets/` and `webfonts/` as `immutable` for a year. Any new asset reference in `index.html` therefore **must** carry a `?v=` token, or browsers will hold onto the old copy forever. `scripts/bump-version.sh` still exists for manual bumps but isn't required.
-- `/data/*` is `no-cache`, and data URLs deliberately carry **no** `?v=` token. `index.html` preloads `./data/points.geojson` and `./data/dissolved.geojson`, so those `href`s must stay byte-identical to the URLs in `layers/layers.js`; if they drift, the file gets fetched twice.
+- `/data/*` is `no-cache`, and data URLs deliberately carry **no** `?v=` token. `legacy.html` preloads `./data/points.geojson` and `./data/dissolved.geojson`, so those `href`s must stay byte-identical to the URLs in `layers/layers.js`; if they drift, the file gets fetched twice.
 - The CSP in the `Caddyfile` is strict (`script-src 'self'`, no inline scripts; images/tiles only from Google and Esri hosts). A new external host or an inline `<script>` will break in production while still working locally.
-- `.dockerignore` keeps `scripts/`, `*.py` and tooling dirs out of the image.
 
 ## Architecture
 
-Script load order in `index.html` is the dependency graph. Everything shares globals; there are no modules.
+Script load order in `legacy.html` is the dependency graph. Everything shares globals; there are no modules.
 
 1. `resources/*`: vendored libraries (OpenLayers `ol.js`, layerswitcher, Autolinker, qgis2web helpers). Treat them as third-party, except `qgis2web.js`, which creates `map`, the initial view fit, the popup overlay and the click/hover handlers, and has been patched.
 2. `layers/BatasKabupaten_1.js`: kabupaten boundaries inlined as a JS global (`json_BatasKabupaten_1`). Generated by `scripts/import_big_boundaries.py` from BIG's June 2026 service; provenance lives in `data/boundaries-source.json` and `docs/boundary-data.md`.
@@ -60,7 +58,7 @@ Script load order in `index.html` is the dependency graph. Everything shares glo
    - **One** vector source, `data/points.geojson`, shared by three layers: `lyr_260331_4` (SK points), `lyr_Cadangan_5` (hidden by default) and `lyr_BelumDitetapkan_6`. The latter two have `style: null` until `custom.js` installs style functions that draw only their own subset.
    - `declutter` stays **off** on purpose: this is a coverage map, and decluttering silently hid about 22% of the pins.
    - `layers/Dissolved_2.js` and `layers/Lines_3.js` are not loaded anywhere.
-5. `custom.js` (~4.2k lines, one IIFE) is the actual application:
+5. `custom.js` (one large IIFE) is the actual application:
    - Sidebar/bottom-sheet list grouped by kabupaten, then kecamatan sections. Kabupaten comes from a point-in-polygon join against the boundary layer at runtime (`resolveKabupaten`), not from attributes.
    - Search, including coordinate-pair search with tolerance.
    - Status filters, popup HTML, the Google Maps directions link, map-focus animation, mobile sheet gestures/hints, and the local-only flag editor.
