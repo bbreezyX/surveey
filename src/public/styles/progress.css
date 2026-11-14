@@ -240,33 +240,73 @@
     text-transform: uppercase;
 }
 
-/* Straight under "x/y terpasang" now the bar is gone; 2px more than the cell's gap keeps the badges
-   from reading as part of that line. */
-.progress-cell__left {
-    margin-top: 2px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px 8px;
+/* The cell's progress as one list: terpasang, then one row per stage still needed. Badge, words, count
+   flush right, so every number lines up down the cell. */
+.progress-next {
+    display: grid;
+    gap: 3px;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.progress-next li {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink-soft);
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.progress-next li > span:not(.progress-next__badge) {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.progress-next b {
+    color: var(--ink);
+    font-weight: 750;
     font-variant-numeric: tabular-nums;
 }
 
-.progress-cell__left > span {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
+.progress-next__badge {
+    display: flex;
 }
 
-.progress-cell__left svg {
-    flex: none;
-    width: 12px;
-    height: 12px;
+.progress-next__badge svg {
+    width: 13px;
+    height: 13px;
 }
 
-.progress-cell__left .is-none {
+.progress-next .is-wait {
     color: var(--muted);
+}
+
+/* Terpasang leads in green, its total after the count; at zero it steps back to the muted ink. */
+.progress-next .is-done,
+.progress-next .is-done b {
+    color: var(--green);
+    font-weight: 750;
+}
+
+.progress-next .is-done b {
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.progress-next .is-done small {
+    color: var(--muted);
+    font-size: 11.5px;
     font-weight: 600;
+}
+
+.progress-next .is-done.is-zero,
+.progress-next .is-done.is-zero b {
+    color: var(--muted);
 }
 
 /* Thumbnail dots by stage (Shape kindOf): not started, under way, terpasang. */
