@@ -35,12 +35,12 @@
   });
 </script>
 {#if native}
-  <button class="today-chip" type="button" bind:this={button} popovertarget="today-pop" aria-label={`${list.length} titik naik tahap hari ini, lihat daftar`}>{@html TODAY_ARROW}{list.length} hari ini</button>
+  <button class="today-chip" type="button" bind:this={button} popovertarget="today-pop" aria-label={`${list.length} progres hari ini, lihat daftar`}>{@html TODAY_ARROW}{list.length} hari ini</button>
 {:else}
-  <button class="today-chip" type="button" bind:this={button} aria-expanded={open} aria-controls="today-pop" aria-label={`${list.length} titik naik tahap hari ini, lihat daftar`} onclick={toggleByHand}>{@html TODAY_ARROW}{list.length} hari ini</button>
+  <button class="today-chip" type="button" bind:this={button} aria-expanded={open} aria-controls="today-pop" aria-label={`${list.length} progres hari ini, lihat daftar`} onclick={toggleByHand}>{@html TODAY_ARROW}{list.length} hari ini</button>
 {/if}
 <div class="today-pop" id="today-pop" bind:this={panel} {...(native ? { popover: 'auto' } : { hidden: !open })} onbeforetoggle={(event: ToggleEvent) => { if (event.newState === 'open') place(); }}>
-  <p class="today-pop__title">Naik tahap hari ini</p>
+  <p class="today-pop__title">Progres hari ini</p>
   <p class="today-pop__day">{day} · WIB</p>
   <ul class="today-pop__list">
     {#each list as item (item.unit.nomor)}

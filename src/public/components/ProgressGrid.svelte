@@ -18,7 +18,7 @@
     {@const left = [2, 1, 0].filter(stage => tally.stages[stage])}
     {@const done = tally.total > 0 && tally.stages[WORK_DONE] === tally.total}
     {@const moved = todayIn?.get(name) ?? 0}
-    <button class="atlas-cell progress-cell" class:is-done={done} type="button" data-region={name} aria-label={[name, done ? `semua ${tally.total} titik terpasang` : `${tally.stages[WORK_DONE]} dari ${tally.total} terpasang`, ...left.map(stage => `${tally.stages[stage]} ${STAGE_COUNT_LABEL[stage].toLowerCase()}`), moved ? `${moved} naik tahap hari ini` : '', 'buka daftar kerja'].filter(Boolean).join(', ')} onclick={() => onopen(name)}>
+    <button class="atlas-cell progress-cell" class:is-done={done} type="button" data-region={name} aria-label={[name, done ? `semua ${tally.total} titik terpasang` : `${tally.stages[WORK_DONE]} dari ${tally.total} terpasang`, ...left.map(stage => `${tally.stages[stage]} ${STAGE_COUNT_LABEL[stage].toLowerCase()}`), moved ? `${moved} progres hari ini` : '', 'buka daftar kerja'].filter(Boolean).join(', ')} onclick={() => onopen(name)}>
       {#if done}<span class="progress-cell__check" aria-hidden="true">{@html workBadgeSvg(WORK_DONE)}</span>{/if}
       <span class="atlas-cell__shape"><Shape region={state.dataset.boundaries.find(region => regionKey(String(region.properties.KABUPATEN_)) === regionKey(name))} {points} kindOf={dotKind}/></span>
       <span class="atlas-cell__name">{name.replace(/^Kab\.\s+/i, '')}{#if moved}<span class="today-chip" aria-hidden="true">{@html TODAY_ARROW}{moved} hari ini</span>{/if}</span>
