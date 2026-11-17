@@ -72,24 +72,41 @@ it('opens the waiting group first only for the kabupaten the waiting-reports lin
   expect(state.waitingFirst).toBe(false);
 });
 
-it('reopens the list at half-height on close only when the detail came from an open sheet', () => {
-  const state = createSurveyState(dataset()), nomor = state.points[0].nomor;
+it('reopens the list at half-height on close and reveals the closed point regardless of how detail opened', () => {
+  const data = dataset();
+  data.points[0] = { ...data.points[0], kabupaten: 'Kota Jambi' };
+  data.points[1] = { ...data.points[1], kabupaten: 'Kab. Batanghari' };
+  const state = createSurveyState(data), nomor = state.points[0].nomor;
   state.sheetSnap = 'full';
   state.select(nomor);
   expect(state.sheetSnap).toBe('closed');
   state.closeDetail();
   expect(state.sheetSnap).toBe('half');
+  expect(state.activeRegion).toBe('Kota Jambi');
   expect(state.recentNomor).toBe(nomor);
 
-  // Closing a detail opened from the map or a link keeps the sheet collapsed.
+  // Opening directly from the map while in another region or on province view returns to half-height at that point's kabupaten.
+  state.openRegion('Kab. Batanghari');
   state.sheetSnap = 'closed';
   state.select(nomor);
   state.closeDetail();
-  expect(state.sheetSnap).toBe('closed');
+  expect(state.sheetSnap).toBe('half');
+  expect(state.activeRegion).toBe('Kota Jambi');
+  expect(state.recentNomor).toBe(nomor);
+
+  state.openRegion(null);
+  state.sheetSnap = 'closed';
+  state.select(nomor);
+  state.closeDetail();
+  expect(state.sheetSnap).toBe('half');
+  expect(state.activeRegion).toBe('Kota Jambi');
+  expect(state.recentNomor).toBe(nomor);
 
   state.openLinked(nomor);
   state.closeDetail();
-  expect(state.sheetSnap).toBe('closed');
+  expect(state.sheetSnap).toBe('half');
+  expect(state.activeRegion).toBe('Kota Jambi');
+  expect(state.recentNomor).toBe(nomor);
 });
 
 it('dismisses detail directly into the requested sheet height while marking recent', () => {
@@ -103,7 +120,7 @@ it('dismisses detail directly into the requested sheet height while marking rece
     expect(state.recentNomor).toBe(nomor);
 
     // Recent highlight clears automatically after its cue fades.
-    vi.advanceTimersByTime(2100);
+    vi.advanceTimersByTime(2250);
     expect(state.recentNomor).toBeNull();
 
     // Selecting another unit also clears an active recent mark immediately.

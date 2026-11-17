@@ -157,7 +157,12 @@ test('keeps the point total in the collapsed mobile sheet peek', async ({ page }
   await page.emulateMedia({ reducedMotion: 'reduce' }); await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/'); await expect(page.locator('.atlas-total__num')).toHaveText('500');
   await expect(page.getByRole('button', { name: 'Lihat daftar titik', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Sebaran/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Progres/ })).toBeVisible();
   await expect.poll(() => page.locator('.atlas-total').evaluate(element => element.getBoundingClientRect().bottom)).toBeLessThanOrEqual(844);
+  await page.getByRole('button', { name: /^Progres/ }).click();
+  await expect(page.locator('#sheet-handle')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('body')).not.toHaveClass(/is-panel-half/);
 });
 
 test('restores keyboard focus across region and sidebar navigation', async ({ page }) => {
@@ -211,17 +216,24 @@ test('fits a plain detail on a short phone and keeps the pole clear once progres
     return Number(match?.[2]) - element.getBoundingClientRect().bottom;
   })).toBeGreaterThan(30);
 });
-test('closing a phone detail leaves the list down and centres its pin in the open map', async ({ page }) => {
+test('closing a phone detail opens the list at half-height on the closed point and centres its pin in the open map', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); await page.setViewportSize({ width: 360, height: 645 });
-  // A link opens the point's kabupaten, which used to pull the list sheet up over the map on close.
-  await page.goto('/?nomor=' + encodeURIComponent('KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-007'));
+  const nomor = 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-007';
+  await page.goto('/?nomor=' + encodeURIComponent(nomor));
   await expect(page.locator('#popup')).toBeVisible();
   await page.getByRole('button', { name: 'Tutup info titik' }).click();
   await expect(page.locator('#popup')).toBeHidden();
-  await expect(page.locator('#sheet-handle')).toHaveAttribute('aria-expanded', 'false');
-  // The yellow pin body fills the middle of the map between the masthead (72px) and the peek plus its 24px margin.
-  const peek = await page.evaluate(() => parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sheet-peek'), 10) || 240);
-  const middle = (72 + 645 - peek - 24) / 2;
+  await expect(page.locator('#sheet-handle')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('body')).toHaveClass(/is-panel-half/);
+  const recentItem = page.locator(`.atlas-pt[data-item-id="${nomor}"]`);
+  await expect(recentItem).toHaveClass(/is-recent/);
+  const sheetTop = await page.locator('#sidebar').evaluate(el => el.getBoundingClientRect().top);
+  const itemBox = (await recentItem.boundingBox())!;
+  expect(itemBox.y).toBeGreaterThanOrEqual(sheetTop);
+  expect(itemBox.y + itemBox.height).toBeLessThanOrEqual(645);
+  // The yellow pin body fills the middle of the map between the masthead (72px) and the half-sheet plus its 24px margin.
+  const half = await page.evaluate(() => parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sheet-half'), 10) || 310);
+  const middle = (72 + 645 - half - 24) / 2;
   await expect.poll(async () => {
     const { data } = PNG.sync.read(await page.screenshot({ clip: { x: 180 - 12, y: Math.round(middle - 14), width: 24, height: 28 } })); let pixels = 0;
     for (let index = 0; index < data.length; index += 4) if (data[index] > 230 && data[index + 1] > 190 && data[index + 2] < 70 && data[index + 3] > 190) pixels++;
@@ -434,6 +446,7 @@ test('starts on a chosen Google basemap, preserves original mobile controls and 
   await page.mouse.move(box!.x + box!.width / 2, box!.y + 12); await page.mouse.down();
   await page.mouse.move(box!.x + box!.width / 2, Math.max(20, box!.y - 300), { steps: 10 }); await page.mouse.up();
   await expect(handle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('body')).not.toHaveClass(/is-panel-half/);
 });
 
 test.describe('high-density phone rendering', () => {

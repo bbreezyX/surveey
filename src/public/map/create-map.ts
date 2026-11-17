@@ -151,8 +151,8 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { view.setZoom(zoom); view.setCenter(center); return; }
     const currentZoom = view.getZoom() ?? 0, delta = Math.abs(zoom - currentZoom), current = view.getCenter();
     const panPixels = current ? Math.hypot(coordinate[0] - current[0], coordinate[1] - current[1]) / (view.getResolution() ?? resolution) : 0;
-    const base = innerWidth < 960 ? 560 : 760;
-    const duration = Math.round(Math.max(base, Math.min(base + Math.min(delta * 42, 360) + Math.min(panPixels * .22, 260), 1180)));
+    const base = innerWidth < 960 ? 780 : 880;
+    const duration = Math.round(Math.max(base, Math.min(base + Math.min(delta * 46, 380) + Math.min(panPixels * .25, 280), 1350)));
     if (delta <= 2.5) view.animate({ center, zoom, duration, easing: inAndOut });
     else { const bridge = zoom > currentZoom ? Math.min(currentZoom + delta * .58, zoom - .4) : Math.max(currentZoom - delta * .58, zoom + .4), phaseOne = Math.round(duration * .44); view.animate({ center, zoom: bridge, duration: phaseOne, easing: inAndOut }, { center, zoom, duration: duration - phaseOne, easing: inAndOut }); }
   }
@@ -181,7 +181,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       // The pixel is the pin's tip; its 40px body sits above, so the tip goes 20px below the middle.
       const [top, right, bottom, left] = padding(), x = (left + innerWidth - right) / 2, y = (top + innerHeight - bottom) / 2 + 20;
       if (Math.hypot(pixel[0] - x, pixel[1] - y) < 2) return;
-      view.cancelAnimations(); view.animate({ center: [center[0] + (pixel[0] - x) * resolution, center[1] - (pixel[1] - y) * resolution], duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 360, easing: inAndOut });
+      view.cancelAnimations(); view.animate({ center: [center[0] + (pixel[0] - x) * resolution, center[1] - (pixel[1] - y) * resolution], duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 760, easing: inAndOut });
     },
     setProgress(next) { progress = next; feedback.refresh(); pointLayer.changed(); },
     setVisiblePoints(ids) { visibleIds = ids; feedback.refresh(); pointLayer.changed(); },

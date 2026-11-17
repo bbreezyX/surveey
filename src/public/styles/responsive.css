@@ -599,10 +599,10 @@ body.is-sidebar-collapsed .map-legend {
            masthead carries the identity. Sidebar.svelte (measurePeek) sets
            the real value from the rendered sheet on every screen; this is
            only the first paint's guess. */
-        --sheet-peek: 152px;
-        --sheet-half: 46dvh;
+        --sheet-peek: 192px;
+        --sheet-half: 48dvh;
         --sheet-bar: 52px;
-        --sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);
+        --sheet-ease: cubic-bezier(0.22, 1, 0.36, 1);
         --popup-ease: cubic-bezier(0.22, 1, 0.36, 1);
         /* 48px touch target. Drives the layer button AND its icon overlay —
            they must stay on the same token or the icon goes off-centre. */
@@ -730,7 +730,7 @@ body.is-sidebar-collapsed .map-legend {
         box-shadow: 0 -2px 6px rgba(20, 38, 53, 0.12), 0 -14px 36px rgba(20, 38, 53, 0.24);
         opacity: 1;
         transform: translate3d(0, calc(100% - var(--sheet-peek)), 0);
-        transition: transform 0.32s var(--sheet-ease);
+        transition: transform 0.48s var(--sheet-ease);
         will-change: transform;
         contain: layout style;
         backface-visibility: hidden;
@@ -742,6 +742,7 @@ body.is-sidebar-collapsed .map-legend {
 
     body.is-panel-open.is-panel-half #sidebar {
         transform: translate3d(0, calc(100% - var(--sheet-half)), 0);
+        transition-duration: 0.54s;
     }
 
     /* While a finger owns the sheet it has to sit exactly under it — a 0.32s
@@ -757,7 +758,7 @@ body.is-sidebar-collapsed .map-legend {
         transform: translate3d(0, calc(100% - var(--sheet-bar)), 0);
         pointer-events: auto;
         box-shadow: 0 -2px 6px rgba(20, 38, 53, 0.1), 0 -8px 24px rgba(20, 38, 53, 0.18);
-        transition-duration: 0.28s;
+        transition-duration: 0.42s;
     }
 
     /* Panel open always beats a stale popup state. */
@@ -777,7 +778,7 @@ body.is-sidebar-collapsed .map-legend {
     }
 
     #sidebar > :not(#sheet-handle) {
-        transition: opacity 0.2s var(--popup-ease) 0.04s;
+        transition: opacity 0.28s var(--popup-ease) 0.08s;
     }
 
     /* Keep off-screen content out of keyboard Tab order while collapsed or in bar mode. */
@@ -849,6 +850,15 @@ body.is-sidebar-collapsed .map-legend {
 
     body.is-panel-half .panel-search-row {
         margin-bottom: 8px;
+    }
+
+    body:not(.is-panel-open) .panel-search-row {
+        margin-bottom: 8px;
+    }
+
+    body:not(.is-panel-open) .atlas-summary--total {
+        padding-top: 2px;
+        padding-bottom: 12px;
     }
 
     body.is-panel-half .atlas-pills {
@@ -1081,8 +1091,8 @@ body.is-sidebar-collapsed .map-legend {
         pointer-events: none;
         will-change: transform, opacity;
         transition:
-            transform 0.3s var(--popup-ease),
-            opacity 0.24s var(--popup-ease);
+            transform 0.38s var(--popup-ease),
+            opacity 0.32s var(--popup-ease);
     }
 
     body.is-popup-open .ol-popup {
@@ -2125,6 +2135,28 @@ body.is-sidebar-collapsed .map-legend {
         gap: 10px;
         min-height: 24px;
         padding: 4px 12px;
+    }
+
+    body.is-popup-open:not(.is-panel-open) #sheet-handle {
+        min-height: 32px;
+        padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+
+    body:not(.is-panel-open) .atlas-summary--total {
+        display: none;
+    }
+
+    .panel-search,
+    .locate-btn {
+        height: 38px;
+    }
+
+    .list-mode button {
+        height: 28px;
+    }
+
+    .ol-popup {
+        max-height: calc(100dvh - 166px);
     }
 
     .atlas-detail__main {

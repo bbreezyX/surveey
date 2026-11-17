@@ -599,13 +599,10 @@
     font-weight: 700;
 }
 
-/* A closed phone sheet peeks to the count under the search; the switch only
-   appears once the sheet is open, so that peek keeps its height. */
+/* Keep the Sebaran/Progres switcher directly visible in the mobile bottom bar
+   with compact margins so the peek stays trim alongside the search and total. */
 @media (max-width: 959px) {
-    body:not(.is-panel-open) .list-mode {
-        display: none;
-    }
-
+    body:not(.is-panel-open) .list-mode,
     body.is-panel-half .list-mode {
         margin: 0 16px 8px;
     }

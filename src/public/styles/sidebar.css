@@ -815,21 +815,21 @@ body.is-sidebar-collapsed #sidebar {
 
 @media (prefers-reduced-motion: no-preference) {
     .atlas-pt.is-recent {
-        animation: atlas-recent-card 1.8s ease-out 0.2s both;
+        animation: atlas-recent-card 1.8s ease-out 0.35s both;
     }
 
     .work-row__main.is-recent {
-        animation: atlas-recent-row 1.8s ease-out 0.2s both;
+        animation: atlas-recent-row 1.8s ease-out 0.35s both;
     }
 
     .atlas-pt.is-recent .atlas-unit:not(.is-active),
     .work-row__main.is-recent .atlas-unit:not(.is-active) {
-        animation: atlas-recent-pop 0.42s var(--ease-out) 0.2s both;
+        animation: atlas-recent-pop 0.48s var(--ease-out) 0.35s both;
     }
 
     .atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active),
     .work-row__main.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
-        animation: atlas-recent-pop 0.42s var(--ease-out) 0.2s both, atlas-recent-tile 1.8s ease-out 0.2s both;
+        animation: atlas-recent-pop 0.48s var(--ease-out) 0.35s both, atlas-recent-tile 1.8s ease-out 0.35s both;
     }
 }
 

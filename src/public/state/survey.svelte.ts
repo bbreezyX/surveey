@@ -33,15 +33,12 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
   let waitingFirst = $state(false);
   let fitRevision = $state(0), fitReason = $state<'initial' | 'region' | 'search' | 'filter'>('initial');
   let sheetSnap = $state<SheetSnap>('closed'), sidebarCollapsed = $state(false);
-  // True when the current detail came from the list sheet, so closing it restores the list at half-height
-  // without covering the map or forcing the reporter to swipe the sheet open again.
-  let reopenHalfOnClose = false;
-  // The card of the detail just closed pulses clearly in the list, then clears automatically after ~2.1 s.
+  // The card of the detail just closed pulses clearly in the list, then clears automatically after ~2.25 s.
   let recentNomor = $state<string | null>(null), recentTimer: ReturnType<typeof setTimeout> | undefined;
   function markRecent(nomor: string | null) {
     recentNomor = nomor;
     clearTimeout(recentTimer);
-    if (nomor) recentTimer = setTimeout(() => { recentNomor = null; }, 2100);
+    if (nomor) recentTimer = setTimeout(() => { recentNomor = null; }, 2250);
   }
   const google = memory.basemap === 'google';
   const layers = $state({ google, esri: !google, boundaries: true, mask: true, area: false, sk: true, cadangan: false, belum: true });
@@ -67,6 +64,16 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     if (next.length === previousPoints.length && next.every((point, index) => point === previousPoints[index])) return previousPoints;
     return previousPoints = next;
   });
+  function revealPointInList(point: SurveyPoint) {
+    if (point.cadangan && listMode === 'progres') listMode = 'sebaran';
+    if (!visibleIds.has(point.nomor)) {
+      if (activeRegion !== point.kabupaten) activeRegion = point.kabupaten;
+      if (statusFilter && !point[statusFilter]) statusFilter = null;
+      if (query && !matchesQuery(point, query)) query = '';
+    } else if (!activeRegion && !query) {
+      activeRegion = point.kabupaten;
+    }
+  }
   const regionNames = $derived([...new Set(points.map(point => point.kabupaten))].sort((a, b) => Number(/^Kota\s/i.test(b)) - Number(/^Kota\s/i.test(a)) || collator.compare(a, b)));
   const visiblePoints = $derived(points.filter(point => (!activeRegion || point.kabupaten === activeRegion) && (!statusFilter || point[statusFilter]) && matchesQuery(point, query)));
   const visibleIds = $derived(new Set(visiblePoints.map(point => point.nomor)));
@@ -110,20 +117,17 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     openLinked(nomor: string) {
       const point = points.find(item => item.nomor === nomor);
       if (!point) return false;
-      markRecent(null); activeRegion = point.kabupaten; statusFilter = null; query = ''; sheetSnap = 'closed'; reopenHalfOnClose = false;
+      markRecent(null); activeRegion = point.kabupaten; statusFilter = null; query = ''; sheetSnap = 'closed';
       selectedNomor = point.nomor; return true;
     },
     get sidebarCollapsed() { return sidebarCollapsed; }, set sidebarCollapsed(value: boolean) { sidebarCollapsed = value; },
-    openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { markRecent(null); waitingFirst = false; activeRegion = name; statusFilter = filter; selectedNomor = null; reopenHalfOnClose = false; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
-    setFilter(filter: StatusFilter) { markRecent(null); statusFilter = filter; selectedNomor = null; reopenHalfOnClose = false; fitReason = 'filter'; fitRevision++; },
+    openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { markRecent(null); waitingFirst = false; activeRegion = name; statusFilter = filter; selectedNomor = null; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
+    setFilter(filter: StatusFilter) { markRecent(null); statusFilter = filter; selectedNomor = null; fitReason = 'filter'; fitRevision++; },
     select(nomor: string | null, origin: HTMLElement | null = null) {
       if (nomor) {
         markRecent(null);
         selectionOrigin = origin;
-        reopenHalfOnClose = sheetSnap !== 'closed' || !!(origin && origin.closest('.sidebar-scroll'));
         sheetSnap = 'closed';
-      } else {
-        reopenHalfOnClose = false;
       }
       if (nomor !== selectedNomor) reported = null;
       selectedNomor = nomor;
@@ -132,18 +136,20 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     // without leaving a stale card behind the sheet.
     dismissDetailToSheet(snap: 'half' | 'full') {
       const point = selected;
-      selectedNomor = null; reported = null; reopenHalfOnClose = false;
+      selectedNomor = null; reported = null;
+      if (point) revealPointInList(point);
       sheetSnap = snap;
       markRecent(point?.nomor ?? null);
     },
-    // Closing a detail opened from the list returns the sheet to half-height so the reporter can pick the
-    // next unit without pulling the bar up again, while leaving the map open above. Details opened directly
-    // from the map or a ?nomor= link stay collapsed so the map remains clear.
+    // Closing any point detail on mobile opens the sheet to half-height directly at that point's row
+    // while keeping the map and centered pin visible above.
     closeDetail() {
       const point = selected;
-      const reopen = !!point && reopenHalfOnClose && (typeof window === 'undefined' || window.innerWidth < 960);
-      selectedNomor = null; reported = null; reopenHalfOnClose = false;
-      if (reopen) sheetSnap = 'half';
+      selectedNomor = null; reported = null;
+      if (point && (typeof window === 'undefined' || window.innerWidth < 960)) {
+        revealPointInList(point);
+        sheetSnap = 'half';
+      }
       markRecent(point?.nomor ?? null);
     },
   };

@@ -17,6 +17,7 @@
   import ProgressSkeleton from './ProgressSkeleton.svelte';
   import TodayChip from './TodayChip.svelte';
   import { doneShare, tallyStages, todayTally, WORK_DONE } from '../../shared/survey/progress';
+  import type { ListMode } from '../state/work-memory';
   import type { Locator as GpsLocator } from '../state/locate.svelte';
   let { state, onfit, onrefresh, refreshing = false, locator }: { state: SurveyState; onfit: () => void; onrefresh: () => void; refreshing?: boolean; locator: GpsLocator } = $props();
   let sidebar: HTMLElement, scroller: HTMLDivElement, search: HTMLInputElement, near: HTMLDivElement;
@@ -65,6 +66,10 @@
   // the search (all units, or the search's matches), so the total is on screen without opening the list. A
   // kabupaten keeps its count in the header above the search, so its peek still ends at the search. The count
   // block carries its own bottom padding, so it needs none of the 14px the other two get.
+  function pickMode(mode: ListMode) {
+    state.listMode = mode;
+    if (innerWidth < 960 && state.sheetSnap === 'closed') state.sheetSnap = 'full';
+  }
   function measurePeek() {
     if (!sidebar || window.innerWidth >= 960) return;
     const root = document.documentElement.style;
@@ -72,11 +77,16 @@
     const bar = handle ? Math.max(handle.offsetHeight, window.innerHeight <= 500 ? 36 : 48) : 48;
     root.setProperty('--sheet-bar', `${Math.round(bar)}px`);
     const cap = Math.max(180, window.innerHeight - 150);
-    const half = Math.round(Math.min(Math.max(window.innerHeight * 0.46, 276), Math.min(390, cap)));
+    const half = Math.round(Math.min(Math.max(window.innerHeight * 0.48, 290), Math.min(400, cap)));
     root.setProperty('--sheet-half', `${half}px`);
     if (state.panelOpen || state.selected) return;
-    const search = sidebar.querySelector<HTMLElement>('.panel-search'), card = near?.firstElementChild, summary = sidebar.querySelector<HTMLElement>('#panel-meta > .atlas-summary');
-    const end = card instanceof HTMLElement && card.offsetHeight ? card.offsetTop + card.offsetHeight + 14 : summary?.offsetHeight ? summary.offsetTop + summary.offsetHeight : search ? search.offsetTop + search.offsetHeight + 14 : 0;
+    const search = sidebar.querySelector<HTMLElement>('.panel-search'), card = near?.firstElementChild, mode = sidebar.querySelector<HTMLElement>('#panel-meta > .list-mode'), summary = sidebar.querySelector<HTMLElement>('#panel-meta > .atlas-summary');
+    const end = Math.max(
+      card instanceof HTMLElement && card.offsetHeight ? card.offsetTop + card.offsetHeight + 14 : 0,
+      summary?.offsetHeight ? summary.offsetTop + summary.offsetHeight : 0,
+      mode?.offsetHeight ? mode.offsetTop + mode.offsetHeight + 12 : 0,
+      search?.offsetHeight ? search.offsetTop + search.offsetHeight + 14 : 0,
+    );
     if (end) root.setProperty('--sheet-peek', `${Math.round(end)}px`);
   }
   onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#sheet-handle')!); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(sidebar.querySelector('#panel-meta')!); observer.observe(near); window.addEventListener('resize', measurePeek); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); document.documentElement.style.removeProperty('--sheet-half'); document.documentElement.style.removeProperty('--sheet-bar'); }; });
@@ -97,12 +107,15 @@
       if (state.sheetSnap !== 'half' || state.recentNomor !== recent || !scroller) return;
       const card = scroller.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(recent)}"]`);
       if (!card) return;
-      const half = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-half')) || Math.round(window.innerHeight * 0.46);
+      const group = card.closest<HTMLDetailsElement>('details.work-group');
+      if (group && !group.open) group.open = true;
+      const half = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-half')) || Math.round(window.innerHeight * 0.48);
       const visibleHeight = Math.max(80, half - (scroller.getBoundingClientRect().top - sidebar.getBoundingClientRect().top));
       const offset = card.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
       const stickyTop = scroller.querySelector<HTMLElement>('.atlas-section, .work-group[open] > summary')?.offsetHeight ?? 0;
       if (offset < stickyTop + 4 || offset + card.offsetHeight > visibleHeight - 8) {
-        scroller.scrollTop += offset - Math.max(stickyTop + 8, (visibleHeight - card.offsetHeight) / 3);
+        const top = scroller.scrollTop + offset - Math.max(stickyTop + 8, (visibleHeight - card.offsetHeight) / 3);
+        scroller.scrollTo({ top: Math.max(0, top), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
       }
     });
   });
@@ -132,8 +145,8 @@
          The share on Progres invites a reader still on Sebaran; once Progres is open the same number sits
          right under the tabs as "% selesai", and showing it twice read as noise. -->
     {#if !state.query}<div class="list-mode" role="group" aria-label="Tampilan daftar">
-      <button type="button" aria-pressed={state.listMode === 'sebaran'} onclick={() => { state.listMode = 'sebaran'; }}>Sebaran</button>
-      <button type="button" aria-pressed={state.listMode === 'progres'} onclick={() => { state.listMode = 'progres'; }}>Progres{#if provinceTally && state.listMode === 'sebaran'}<span class="list-mode__share">{doneShare(provinceTally)}%</span>{/if}</button>
+      <button type="button" aria-pressed={state.listMode === 'sebaran'} onclick={() => pickMode('sebaran')}>Sebaran</button>
+      <button type="button" aria-pressed={state.listMode === 'progres'} onclick={() => pickMode('progres')}>Progres{#if provinceTally && state.listMode === 'sebaran'}<span class="list-mode__share">{doneShare(provinceTally)}%</span>{/if}</button>
     </div>{/if}
     {#if progressView}
       {#if !state.activeRegion}<div class="atlas-summary atlas-summary--total"><p class="atlas-total atlas-total--progress" role="status">{#if provinceTally}<b class="atlas-total__num">{provinceTally.stages[WORK_DONE]}</b><span class="atlas-total__label"><span>Titik Terpasang</span><span>dari <b>{provinceTally.total}</b> titik PUTS</span></span>{:else if state.progressFailed}<b class="atlas-total__num is-none" aria-hidden="true">–</b><span class="atlas-total__label" aria-hidden="true"><span>Titik Terpasang</span><span>dari <b>{countOfficialPoints(state.points)}</b> titik PUTS</span></span>{:else}<span class="visually-hidden">Memuat progres dari esdm.cloud…</span><span class="skel skel--total" aria-hidden="true"></span><span class="atlas-total__label" aria-hidden="true"><span>Titik Terpasang</span><span>dari <b>{countOfficialPoints(state.points)}</b> titik PUTS</span></span>{/if}</p>{#if provinceTally}<span class="progress-side"><span class="progress-share"><b>{doneShare(provinceTally)}%</b> selesai</span>{#if today?.list.length}<TodayChip {state} list={today.list}/>{/if}</span>{:else if !state.progressFailed}<span class="skel skel--share" aria-hidden="true"></span>{/if}</div>{/if}

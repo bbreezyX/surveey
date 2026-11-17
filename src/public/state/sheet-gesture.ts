@@ -16,16 +16,13 @@ export function createSheetGesture(
     let next: SheetSnap = drag.wasSnap;
     if (commit) {
       const { velocity, y, from, halfY, restY, wasSnap } = drag, dy = y - from;
-      if (velocity < -0.4) {
-        next = y < halfY * 0.65 || wasSnap === 'half' ? 'full' : 'half';
-      } else if (velocity > 0.4) {
-        next = wasSnap === 'full' && y < (halfY + restY) * 0.55 ? 'half' : 'closed';
-      } else if (dy < 0) {
-        if (wasSnap === 'closed') next = y < halfY * 0.55 ? 'full' : -dy > (restY - halfY) * 0.25 ? 'half' : 'closed';
-        else if (wasSnap === 'half') next = -dy > halfY * 0.25 ? 'full' : 'half';
-      } else if (dy > 0) {
-        if (wasSnap === 'full') next = y > (halfY + restY) * 0.55 ? 'closed' : dy > halfY * 0.25 ? 'half' : 'full';
-        else if (wasSnap === 'half') next = dy > (restY - halfY) * 0.25 ? 'closed' : 'half';
+      if (wasSnap === 'closed') {
+        if (velocity < -0.4 || -dy > restY * 0.2) next = 'full';
+      } else if (wasSnap === 'half') {
+        if (velocity < -0.4 || -dy > halfY * 0.25) next = 'full';
+        else if (velocity > 0.4 || dy > (restY - halfY) * 0.25) next = 'closed';
+      } else {
+        if (velocity > 0.4 || dy > restY * 0.25) next = 'closed';
       }
     }
     drag = null; document.body.classList.remove('is-sheet-dragging'); sheet().style.transform = ''; setSnap(next);
@@ -35,7 +32,7 @@ export function createSheetGesture(
       if (!event.isPrimary) return;
       stopHints();
       const styles = getComputedStyle(document.documentElement), isPopup = popupOpen();
-      const rest = parseFloat(styles.getPropertyValue(isPopup ? '--sheet-bar' : '--sheet-peek')) || (isPopup ? 52 : 152);
+      const rest = parseFloat(styles.getPropertyValue(isPopup ? '--sheet-bar' : '--sheet-peek')) || (isPopup ? 52 : 192);
       const half = parseFloat(styles.getPropertyValue('--sheet-half')) || Math.round(window.innerHeight * 0.46);
       const h = sheet().offsetHeight, restY = Math.max(h - rest, 1), halfY = Math.max(0, Math.min(h - half, restY - 40));
       const wasSnap = snap(), from = wasSnap === 'full' ? 0 : wasSnap === 'half' ? halfY : restY;
