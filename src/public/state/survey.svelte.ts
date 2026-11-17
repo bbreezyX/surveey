@@ -142,15 +142,17 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
       markRecent(point?.nomor ?? null);
     },
     // Closing any point detail on mobile opens the sheet to half-height directly at that point's row
-    // while keeping the map and centered pin visible above.
+    // while keeping the map and centered pin visible above; desktop keeps the sidebar untouched.
     closeDetail() {
       const point = selected;
       selectedNomor = null; reported = null;
       if (point && (typeof window === 'undefined' || window.innerWidth < 960)) {
         revealPointInList(point);
         sheetSnap = 'half';
+        markRecent(point.nomor);
+      } else {
+        markRecent(null);
       }
-      markRecent(point?.nomor ?? null);
     },
   };
 }

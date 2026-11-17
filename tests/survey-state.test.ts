@@ -133,3 +133,18 @@ it('dismisses detail directly into the requested sheet height while marking rece
     vi.useRealTimers();
   }
 });
+
+it('keeps desktop closeDetail quiet without marking recent or opening the mobile sheet', () => {
+  const original = globalThis.window;
+  Object.defineProperty(globalThis, 'window', { value: { innerWidth: 1280 }, configurable: true });
+  try {
+    const state = createSurveyState(dataset()), nomor = state.points[0].nomor;
+    state.select(nomor);
+    state.closeDetail();
+    expect(state.sheetSnap).toBe('closed');
+    expect(state.recentNomor).toBeNull();
+  } finally {
+    if (original === undefined) delete (globalThis as { window?: Window }).window;
+    else Object.defineProperty(globalThis, 'window', { value: original, configurable: true });
+  }
+});

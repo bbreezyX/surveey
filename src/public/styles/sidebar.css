@@ -785,51 +785,53 @@ body.is-sidebar-collapsed #sidebar {
     background: var(--row-hover);
 }
 
-/* The point whose detail was just closed, so the reader finds where they left
-   off. A clean row wash plus a solid blue number tile with a gentle settle
-   keeps the grid tidy without overlapping rings, then fades out smoothly before
-   the state drops .is-recent (2.1 s); yellow-on-ink stays reserved for active selection. */
-.atlas-pt.is-recent {
-    background-color: #e6f2fc;
-}
-
-.atlas-pt.is-recent:hover {
-    background-color: #dcecfb;
-}
-
-.work-row__main.is-recent {
-    background-color: #e6f2fc;
-    box-shadow: inset 3px 0 0 var(--blue);
-}
-
-.work-row__main.is-recent:hover {
-    background-color: #dcecfb;
-}
-
-.atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active),
-.work-row__main.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
-    border-color: var(--blue);
-    background-color: var(--blue);
-    color: #fff;
-}
-
-@media (prefers-reduced-motion: no-preference) {
+/* The point whose detail was just closed on mobile, so the reader finds where
+   they left off. A clean row wash plus a solid blue number tile with a gentle
+   settle keeps the grid tidy, then fades out smoothly before the state drops
+   .is-recent (2.25 s); desktop keeps the sidebar quiet. */
+@media (max-width: 959px) {
     .atlas-pt.is-recent {
-        animation: atlas-recent-card 1.8s ease-out 0.35s both;
+        background-color: #e6f2fc;
+    }
+
+    .atlas-pt.is-recent:hover {
+        background-color: #dcecfb;
     }
 
     .work-row__main.is-recent {
-        animation: atlas-recent-row 1.8s ease-out 0.35s both;
+        background-color: #e6f2fc;
+        box-shadow: inset 3px 0 0 var(--blue);
     }
 
-    .atlas-pt.is-recent .atlas-unit:not(.is-active),
-    .work-row__main.is-recent .atlas-unit:not(.is-active) {
-        animation: atlas-recent-pop 0.48s var(--ease-out) 0.35s both;
+    .work-row__main.is-recent:hover {
+        background-color: #dcecfb;
     }
 
     .atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active),
     .work-row__main.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
-        animation: atlas-recent-pop 0.48s var(--ease-out) 0.35s both, atlas-recent-tile 1.8s ease-out 0.35s both;
+        border-color: var(--blue);
+        background-color: var(--blue);
+        color: #fff;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .atlas-pt.is-recent {
+            animation: atlas-recent-card 1.8s ease-out 0.35s both;
+        }
+
+        .work-row__main.is-recent {
+            animation: atlas-recent-row 1.8s ease-out 0.35s both;
+        }
+
+        .atlas-pt.is-recent .atlas-unit:not(.is-active),
+        .work-row__main.is-recent .atlas-unit:not(.is-active) {
+            animation: atlas-recent-pop 0.48s var(--ease-out) 0.35s both;
+        }
+
+        .atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active),
+        .work-row__main.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
+            animation: atlas-recent-pop 0.48s var(--ease-out) 0.35s both, atlas-recent-tile 1.8s ease-out 0.35s both;
+        }
     }
 }
 
