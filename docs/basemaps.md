@@ -71,11 +71,12 @@ mt1 endpoint and the table above describe the earlier setup.
   development does not spend the quota. `localStorage['pjuts.google-tiles.local']
   = '1'` opts back in; the browser tests set it while stubbing Google.
 - Default (November 2026): Esri opens unless the reader picked Google in the
-  layer panel, a pick kept in `localStorage['puts.basemap']`. The Google layer
-  starts hidden, so a reader on Esri creates no session and requests no tile.
-  The automatic fallback above leaves the pick alone, so Google is tried again
-  on the next visit. Google's extra zoom (z20 against Esri's z18) stays one
-  click away for whoever needs it.
+  layer panel, a pick kept in `sessionStorage['puts.basemap']` for the active
+  tab so a new visit always starts back on Esri. The Google layer starts hidden,
+  so a reader on Esri creates no session and requests no tile. The automatic
+  fallback above leaves the pick alone, so Google is tried again on reload.
+  Google's extra zoom (z20 against Esri's z18) stays one click away for whoever
+  needs it.
 
 ## Attribution
 

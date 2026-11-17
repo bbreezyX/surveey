@@ -10,7 +10,7 @@ export const test = base.extend<{ imagery: Imagery }>({
     // No Google quota, third-party availability or live progress data is involved in these tests.
     // Loopback starts on Esri to save quota; Google is stubbed here, so opt back in. The basemap test switches
     // from Google to Esri, so these runs open on Google as a reader who picked it would.
-    await page.addInitScript(() => { localStorage.setItem('pjuts.google-tiles.local', '1'); localStorage.setItem('puts.basemap', 'google'); });
+    await page.addInitScript(() => { localStorage.setItem('pjuts.google-tiles.local', '1'); sessionStorage.setItem('puts.basemap', 'google'); });
     await page.route(/^https:\/\/(tile\.googleapis\.com|services\.arcgisonline\.com)\//, async route => {
       const request = route.request(), url = new URL(request.url());
       if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });

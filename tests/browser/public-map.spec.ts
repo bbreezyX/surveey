@@ -22,7 +22,7 @@ async function stubGoogle(page: Page, session: number, chosen = true) {
   const tile = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
   // Loopback starts on Esri to save quota; every Google request below is stubbed, so opt back in.
   await page.addInitScript(() => { localStorage.setItem('pjuts.google-tiles.local', '1'); });
-  if (chosen) await page.addInitScript(() => { localStorage.setItem('puts.basemap', 'google'); });
+  if (chosen) await page.addInitScript(() => { sessionStorage.setItem('puts.basemap', 'google'); });
   await page.route('https://tile.googleapis.com/**', route => {
     const url = route.request().url();
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
@@ -443,8 +443,8 @@ test('falls back to Esri and says so in the layer panel when Google refuses the 
   expect(tiles.filter(url => url.includes('tile.googleapis.com'))).toHaveLength(0);
   await page.getByRole('button', { name: 'Tampilkan pilihan layer' }).click();
   await expect(page.getByLabel('Esri Satelit', { exact: true })).toBeChecked();
-  // The automatic switch keeps the reader's pick, so Google is tried again on the next visit.
-  expect(await page.evaluate(() => localStorage.getItem('puts.basemap'))).toBe('google');
+  // The automatic switch keeps the reader's pick in this tab, so Google is tried again on reload.
+  expect(await page.evaluate(() => sessionStorage.getItem('puts.basemap'))).toBe('google');
 });
 
 test('opens on Esri and keeps the basemap picked in the layer panel for the next visit', async ({ page }) => {
