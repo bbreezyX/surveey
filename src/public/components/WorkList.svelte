@@ -35,7 +35,7 @@
     {#each head.items as point (point.nomor)}
       {@const waiting = state.pending?.get(point.nomor)}
       {@const flags = [point.duplikat ? STATUS_LABEL.duplikat.tag : '', point.belum ? STATUS_LABEL.belum.tag : ''].filter(Boolean)}
-      <div class="work-row">
+      <div class="work-row" class:is-recent={state.recentNomor === point.nomor}>
         <button class="work-row__main" class:is-recent={state.recentNomor === point.nomor} type="button" data-item-id={point.nomor} aria-pressed={state.selectedNomor === point.nomor} aria-label={[`Titik ${point.display.code}`, ...flags, point.display.primary, waiting?.length ? pendingSummary(waiting) : '', state.recentNomor === point.nomor ? 'Terakhir dilihat' : '', 'lihat di peta'].filter(Boolean).join('. ')} onclick={event => state.select(point.nomor, event.currentTarget)}>
           <span class="atlas-unit" class:is-active={state.selectedNomor === point.nomor} class:is-duplikat={point.duplikat} class:is-belum={point.belum}>{point.display.code}</span>
           <span class="work-row__text">

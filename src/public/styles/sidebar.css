@@ -788,22 +788,16 @@ body.is-sidebar-collapsed #sidebar {
 /* The point whose detail was just closed on mobile, so the reader finds where
    they left off. A clean row wash plus a solid blue number tile with a gentle
    settle keeps the grid tidy, then fades out smoothly before the state drops
-   .is-recent (2.25 s); desktop keeps the sidebar quiet. */
+   .is-recent (2.25 s); desktop keeps the sidebar quiet. In Progres the wash
+   covers the whole row, Lapor included; no left stripe, since the full-width
+   wash already marks it. */
 @media (max-width: 959px) {
-    .atlas-pt.is-recent {
+    .atlas-pt.is-recent,
+    .work-row.is-recent {
         background-color: #e6f2fc;
     }
 
     .atlas-pt.is-recent:hover {
-        background-color: #dcecfb;
-    }
-
-    .work-row__main.is-recent {
-        background-color: #e6f2fc;
-        box-shadow: inset 3px 0 0 var(--blue);
-    }
-
-    .work-row__main.is-recent:hover {
         background-color: #dcecfb;
     }
 
@@ -815,12 +809,9 @@ body.is-sidebar-collapsed #sidebar {
     }
 
     @media (prefers-reduced-motion: no-preference) {
-        .atlas-pt.is-recent {
+        .atlas-pt.is-recent,
+        .work-row.is-recent {
             animation: atlas-recent-card 1.8s ease-out 0.35s both;
-        }
-
-        .work-row__main.is-recent {
-            animation: atlas-recent-row 1.8s ease-out 0.35s both;
         }
 
         .atlas-pt.is-recent .atlas-unit:not(.is-active),
@@ -842,18 +833,6 @@ body.is-sidebar-collapsed #sidebar {
     }
     100% {
         background-color: transparent;
-    }
-}
-
-@keyframes atlas-recent-row {
-    0%,
-    58% {
-        background-color: #e6f2fc;
-        box-shadow: inset 3px 0 0 var(--blue);
-    }
-    100% {
-        background-color: transparent;
-        box-shadow: inset 3px 0 0 rgba(0, 114, 188, 0);
     }
 }
 
