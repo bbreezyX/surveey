@@ -52,10 +52,10 @@
     }
   });
 </script>
-<div class="coordinate-map" bind:this={target} aria-label="Peta penyuntingan koordinat"></div>
+<div class="coordinate-map" bind:this={target} aria-label="Peta Penyuntingan Koordinat"></div>
 <!-- The legend replaces the paragraph that explained the two pins in words. -->
 <div class="map-bar">
   <p class="map-legend"><span class="map-dot map-dot--new" aria-hidden="true"></span>Baru{#if original}<span class="map-dot map-dot--old" aria-hidden="true"></span>Lama{#if moved}<span class="map-legend__distance" title="Jarak pin baru dari lokasi lama">· {formatDistance(moved)}</span>{/if}{/if}</p>
-  <button type="button" class="btn-ghost" disabled={!Number.isFinite(lat) || !Number.isFinite(lon)} onclick={() => map?.getView().setCenter(fromLonLat([lon, lat]))}>Lihat lokasi baru</button>
+  <button type="button" class="btn-ghost" disabled={!Number.isFinite(lat) || !Number.isFinite(lon)} onclick={() => map?.getView().setCenter(fromLonLat([lon, lat]))}>Lihat Lokasi Baru</button>
 </div>
 <p class="hint">Klik peta atau geser pin; verifikasi tidak berubah.</p>

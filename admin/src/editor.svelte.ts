@@ -121,7 +121,7 @@ export type BadgeKind = 'sk' | 'cadangan' | 'belum' | 'duplikat' | 'arsip';
 export function badgeOf(state: PointState): { kind: BadgeKind; label: string } {
   if (state.archived) return { kind: 'arsip', label: 'Arsip' };
   if (state.status === 'Cadangan') return { kind: 'cadangan', label: 'Cadangan' };
-  if (state.status === 'Belum Ditetapkan') return { kind: 'belum', label: 'Belum ditetapkan' };
-  if (state.duplikat) return { kind: 'duplikat', label: 'Perlu verifikasi' };
-  return { kind: 'sk', label: 'Alokasi utama' };
+  if (state.status === 'Belum Ditetapkan') return { kind: 'belum', label: 'Belum Ditetapkan' };
+  if (state.duplikat) return { kind: 'duplikat', label: 'Perlu Verifikasi' };
+  return { kind: 'sk', label: 'Alokasi Utama' };
 }

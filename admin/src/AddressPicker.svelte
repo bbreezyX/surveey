@@ -51,13 +51,13 @@
   <!-- The field label already says "Kabupaten/kota"; the prefix only pushed "Batang Hari" past the
        half-width cell. The value keeps the full official name the address is built from. -->
   <div class="pair">
-    <label class="field">Kabupaten/kota<Select label="Kabupaten/kota" bind:value={kab} onchange={() => { kec = ''; desa = ''; }}
-      options={[{ value: '', label: 'Pilih kabupaten/kota' }, ...tree.map(item => ({ value: item.nama, label: item.nama.replace(/^Kabupaten /, '') }))]}/></label>
+    <label class="field">Kabupaten/Kota<Select label="Kabupaten/Kota" bind:value={kab} onchange={() => { kec = ''; desa = ''; }}
+      options={[{ value: '', label: 'Pilih Kabupaten/Kota' }, ...tree.map(item => ({ value: item.nama, label: item.nama.replace(/^Kabupaten /, '') }))]}/></label>
     <label class="field">Kecamatan<Select label="Kecamatan" bind:value={kec} onchange={() => desa = ''}
-      options={[{ value: '', label: 'Pilih kecamatan' }, ...kecamatan.map(item => ({ value: item.nama, label: item.nama }))]}/></label>
+      options={[{ value: '', label: 'Pilih Kecamatan' }, ...kecamatan.map(item => ({ value: item.nama, label: item.nama }))]}/></label>
   </div>
-  <label class="field">Desa/kelurahan<Select label="Desa/kelurahan" bind:value={desa} onchange={chooseDesa}
-    options={[{ value: '', label: 'Pilih desa/kelurahan' }, ...villages.map(item => ({ value: item, label: item }))]}/></label>
+  <label class="field">Desa/Kelurahan<Select label="Desa/Kelurahan" bind:value={desa} onchange={chooseDesa}
+    options={[{ value: '', label: 'Pilih Desa/Kelurahan' }, ...villages.map(item => ({ value: item, label: item }))]}/></label>
 {/if}
 <style>
   /* Long names ("Kabupaten Tanjung Jabung Timur") would otherwise widen the

@@ -17,31 +17,31 @@
   } catch(e) { error = e instanceof Error ? e.message : 'Akses tidak dapat diperbarui.'; } finally { busy = false; } }
 </script>
 <header class="page-head">
-  <div><h2>Akses akun</h2><p>Editor menyimpan draf. Penerbit meninjau dan menerbitkan. Pemilik juga mengatur akun. Tidak ada pendaftaran publik.</p></div>
+  <div><h2>Akses Akun</h2><p>Editor menyimpan draf. Penerbit meninjau dan menerbitkan. Pemilik juga mengatur akun. Tidak ada pendaftaran publik.</p></div>
 </header>
 {#if error}<p class="notice-error page-notice" role="alert">{error}</p>{/if}
-<div class="atlas-section" role="heading" aria-level="3">Akun baru</div>
+<div class="atlas-section" role="heading" aria-level="3">Akun Baru</div>
 <form class="page-row" onsubmit={create}><fieldset disabled={busy}>
   <div class="form-grid">
-    <label class="field">Nama akun<input bind:value={username} maxlength="150" autocomplete="off" required></label>
-    <label class="field">Nama lengkap<input bind:value={name} maxlength="150"></label>
+    <label class="field">Nama Akun<input bind:value={username} maxlength="150" autocomplete="off" required></label>
+    <label class="field">Nama Lengkap<input bind:value={name} maxlength="150"></label>
     <label class="field">Peran<Select label="Peran" bind:value={role} options={ROLES}/></label>
-    <label class="field">Kata sandi awal<input type="password" bind:value={password} minlength="15" maxlength="1024" autocomplete="new-password" required></label>
+    <label class="field">Kata Sandi Awal<input type="password" bind:value={password} minlength="15" maxlength="1024" autocomplete="new-password" required></label>
   </div>
-  <div class="page-row__actions"><button class="btn-primary">Buat akun</button></div>
+  <div class="page-row__actions"><button class="btn-primary">Buat Akun</button></div>
 </fieldset></form>
-<div class="atlas-section" role="heading" aria-level="3">Akun terdaftar<span>{accounts.length} akun</span></div>
+<div class="atlas-section" role="heading" aria-level="3">Akun Terdaftar<span>{accounts.length} Akun</span></div>
 {#each accounts as account}
   <form class="page-row" onsubmit={event => update(event, account)}><fieldset disabled={busy}>
     <div class="page-row__head">
-      <div><h3>{account.username}</h3><p class="page-row__meta">{account.name || 'Tanpa nama lengkap'}</p></div>
-      <label class="switch-row"><span class="ctl-switch"><input type="checkbox" bind:checked={account.enabled}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Akses aktif</label>
+      <div><h3>{account.username}</h3><p class="page-row__meta">{account.name || 'Tanpa Nama Lengkap'}</p></div>
+      <label class="switch-row"><span class="ctl-switch"><input type="checkbox" bind:checked={account.enabled}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Akses Aktif</label>
     </div>
     <div class="form-grid">
       <label class="field">Peran<Select label="Peran" bind:value={account.role} options={ROLES}/></label>
-      <label class="field">Kata sandi baru (opsional)<input type="password" bind:value={passwords[account.id]} minlength="15" maxlength="1024" autocomplete="new-password"></label>
-      <label class="field wide">Alasan perubahan<input bind:value={reasons[account.id]} maxlength="3000" required></label>
+      <label class="field">Kata Sandi Baru (Opsional)<input type="password" bind:value={passwords[account.id]} minlength="15" maxlength="1024" autocomplete="new-password"></label>
+      <label class="field wide">Alasan Perubahan<input bind:value={reasons[account.id]} maxlength="3000" required></label>
     </div>
-    <div class="page-row__actions"><p class="hint">Perubahan akses mencabut semua sesi akun ini. Pemilik aktif terakhir harus tetap tersedia.</p><button class="btn-ghost">Simpan perubahan</button></div>
+    <div class="page-row__actions"><p class="hint">Perubahan akses mencabut semua sesi akun ini. Pemilik aktif terakhir harus tetap tersedia.</p><button class="btn-ghost">Simpan Perubahan</button></div>
   </fieldset></form>
 {/each}
