@@ -25,6 +25,8 @@ export function createBackdrop(target: HTMLElement, options: { onSelect?: (id: s
   const regions = new VectorLayer({ source: new VectorSource({ attributions: 'Batas &copy; BIG' }), style: boundaryStyle });
   const pins = new VectorSource();
   const satellite = satelliteLayers();
+  // Esri renders the province-wide backdrop without creating a billed Google session.
+  satellite.esri.setVisible(true);
   let selected: string | null = null;
   const pinLayer = new VectorLayer({ source: pins, style: (feature, resolution) => {
     // pointStyle only reads the three status flags.
