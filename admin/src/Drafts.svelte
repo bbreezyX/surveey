@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api, photoUrl, formatDistance, type Draft, type PointState } from './api';
+  import { formatPointFieldValue, pointFieldLabel } from './labels';
   let { canPublish, onMessage }: { canPublish: boolean; onMessage: (text: string) => void } = $props();
   let items = $state<Draft[]>([]); let selected = $state<string[]>([]); let reason = $state(''); let busy = $state(false); let error = $state('');
   async function load() { try { items = (await api<{items: Draft[]}>('drafts')).items; selected = []; } catch(e) { error = e instanceof Error ? e.message : 'Gagal memuat draf.'; } }
@@ -32,7 +33,7 @@
       <div><dt>Cadangan</dt><dd>{draft.counts_before.cadangan} → {draft.counts_after.cadangan}</dd></div>
     </dl>
     <details class="disclosure"><summary>Bandingkan Perubahan & Foto</summary>
-      <div class="table-wrap"><table><thead><tr><th>Kolom</th><th>Lama</th><th>Baru</th></tr></thead><tbody>{#each Object.keys(draft.after) as key}{#if draft.before[key as keyof PointState] !== draft.after[key as keyof PointState]}<tr><th>{key}</th><td>{String(draft.before[key as keyof PointState] ?? '—')}</td><td>{String(draft.after[key as keyof PointState] ?? '—')}</td></tr>{/if}{/each}</tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Kolom</th><th>Lama</th><th>Baru</th></tr></thead><tbody>{#each Object.keys(draft.after) as key}{#if draft.before[key as keyof PointState] !== draft.after[key as keyof PointState]}<tr><th>{pointFieldLabel(key)}</th><td>{formatPointFieldValue(key, draft.before[key as keyof PointState])}</td><td>{formatPointFieldValue(key, draft.after[key as keyof PointState])}</td></tr>{/if}{/each}</tbody></table></div>
       <div class="photo-compare"><figure><figcaption>Foto Lama</figcaption>{#if draft.before.photo_id}<a class="photo-link" href={photoUrl(draft.before.photo_id)} target="_blank" rel="noopener" title="Buka Foto di Tab Baru"><img src={photoUrl(draft.before.photo_id)} alt="Foto Lama" loading="lazy"></a>{:else}<p class="photo-empty">Belum Ada Foto</p>{/if}</figure><figure><figcaption>Foto Baru</figcaption>{#if draft.after.photo_id && draft.after.photo_id !== draft.before.photo_id}<a class="photo-link" href={photoUrl(draft.after.photo_id)} target="_blank" rel="noopener" title="Buka Foto di Tab Baru"><img src={photoUrl(draft.after.photo_id)} alt="Foto Baru" loading="lazy"></a>{:else}<p class="photo-empty">Belum Ada Foto Baru</p>{/if}</figure></div>
       {#if draft.new_observation}<p class="page-row__text">Survei baru {draft.new_observation.date}, sumber: {draft.new_observation.source}</p><p class="page-row__text">{draft.new_observation.notes}</p>{/if}
     </details>

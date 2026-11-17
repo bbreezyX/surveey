@@ -1,12 +1,11 @@
 <script lang="ts">
   import { distance, formatDistance, pasteCoordinates, type PointState } from './api';
   import { badgeOf, type PointEditor } from './editor.svelte';
+  import { formatPointFieldValue, pointFieldLabel } from './labels';
   import { stageBadgeSvg, stageDone, stageSummary } from '../../src/shared/survey/progress';
   import Select from './Select.svelte';
   import AddressPicker from './AddressPicker.svelte';
   let { editor, canPublish = false, stage = 0, onReload }: { editor: PointEditor; canPublish?: boolean; stage?: number; onReload: () => void } = $props();
-  const labels: Record<string, string> = { nomor: 'Nomor', nama: 'Pengusul', jalur: 'Jalur', alamat: 'Alamat Lengkap', keterangan: 'Keterangan',
-    lokasi_rekapan: 'Lokasi Rekapan', catatan: 'Catatan', status: 'Status Alokasi', duplikat: 'Perlu Verifikasi', archived: 'Diarsipkan', lat: 'Latitude', lon: 'Longitude', photo_id: 'Foto', date: 'Tanggal' };
   let detail = $derived(editor.detail);
   let edit = $derived(editor.edit);
   let badge = $derived(badgeOf(detail.state));
@@ -14,8 +13,6 @@
   $effect(() => editor.remember());
   // The address text opens on request; it stays open when the wilayah list failed, since typing is then the only way.
   let addressOpen = $state(false), pickerFailed = $state(false);
-  // The review table showed raw "true"/"false" and a blank cell for an emptied field.
-  const shown = (value: unknown) => value === true ? 'Ya' : value === false ? 'Tidak' : value == null || value === '' ? '—' : String(value);
   const counted = (state: PointState) => state.archived || state.status === 'Cadangan' ? 0 : 1;
   let hasChanges = $derived(!!editor.changed.length || editor.mode === 'visit');
   // The footer says why the button is off, or what saving will do.
@@ -74,7 +71,7 @@
       </div>
     </fieldset>
     <fieldset disabled={editor.busy}><legend>Tinjau Perubahan</legend>
-      {#if editor.changed.length}<div class="table-wrap"><table><thead><tr><th>Data</th><th>Lama</th><th>Baru</th></tr></thead><tbody>{#each editor.changed as key}<tr><th>{labels[key] || key}</th><td>{shown(detail.state[key as keyof PointState])}</td><td>{shown(edit[key as keyof PointState])}</td></tr>{/each}</tbody></table></div>{/if}
+      {#if editor.changed.length}<div class="table-wrap"><table><thead><tr><th>Data</th><th>Lama</th><th>Baru</th></tr></thead><tbody>{#each editor.changed as key}<tr><th>{pointFieldLabel(key)}</th><td>{formatPointFieldValue(key, detail.state[key as keyof PointState])}</td><td>{formatPointFieldValue(key, edit[key as keyof PointState])}</td></tr>{/each}</tbody></table></div>{/if}
       <p class="hint">Jumlah Resmi: <strong>{counted(detail.state)} → {counted(edit)}</strong>{#if edit.status === 'Belum Ditetapkan'} (belum ditetapkan tetap dihitung){/if}</p>
       <label class="field">Alasan Perubahan<textarea bind:value={editor.reason} rows="2" maxlength="3000" placeholder="Opsional — terisi otomatis bila dikosongkan"></textarea></label>
     </fieldset>

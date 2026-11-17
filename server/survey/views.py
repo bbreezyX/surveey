@@ -97,7 +97,7 @@ def login(request):
     user = authenticate(request, username=username, password=password) if len(password) <= 1024 else None
     if user is None or not user.is_active:
         services.audit(None, 'login.failed', 'authentication')
-        return login_page(request, 'Nama akun atau kata sandi tidak sesuai.', 401)
+        return login_page(request, 'Nama akun atau kata sandi salah.', 401)
     django_login(request, user)
     establish(request)
     services.audit(user, 'login.succeeded', user.pk)

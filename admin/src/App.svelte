@@ -12,6 +12,7 @@
   import Select from './Select.svelte';
   import AddressPicker from './AddressPicker.svelte';
   import { listSections, type ListPoint } from './list-points';
+  import { auditActionLabel } from './labels';
   import { PROGRESS_URL, parseProgress, stageBadgeSvg, stageDone, stageSummary, type SurveyProgress } from '../../src/shared/survey/progress';
   let account = $state<Account>(); let csrf = $state(''); let error = $state(''); let message = $state(''); let busy = $state(false);
   let page = $state<'points' | 'drafts' | 'publications' | 'accounts' | 'audit' | 'password' | 'evidence'>('points');
@@ -232,7 +233,7 @@
         {@const day = new Date(row.at).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         {#if i === 0 || day !== new Date(auditRows[i - 1].at).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}<div class="atlas-section" role="heading" aria-level="3">{day}</div>{/if}
         <details class="page-row page-row--compact disclosure-row">
-          <summary><span class="page-row__time">{new Date(row.at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span><span class="page-row__title">{row.action}</span><span class="page-row__meta">{row.actor || 'Sistem'}</span></summary>
+          <summary><span class="page-row__time">{new Date(row.at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span><span class="page-row__title">{auditActionLabel(row.action)}</span><span class="page-row__meta">{row.actor || 'Sistem'}</span></summary>
           {#if row.target || row.reason}<p class="page-row__text">{[row.target, row.reason].filter(Boolean).join('. ')}</p>{/if}
           <pre>{JSON.stringify({before: row.before, after: row.after}, null, 2)}</pre>
         </details>
