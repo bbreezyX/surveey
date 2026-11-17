@@ -366,6 +366,27 @@ test('cycles through overlapping mapped units without deleting or hiding them', 
   await expect(page.locator('.atlas-pt')).toHaveCount(3);
 });
 
+test('drops the verification mark when the unit sharing its pin has been moved elsewhere', async ({ page }) => {
+  const original = JSON.parse(readFileSync('data/points.geojson', 'utf8'));
+  const sample = original.features.find((feature: { properties: { Nomor: string } }) => feature.properties.Nomor === 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-007');
+  const [lon, lat] = sample.geometry.coordinates as [number, number];
+  const unit = (code: string, coordinates: [number, number], duplikat: boolean) => ({ ...sample, geometry: { type: 'Point', coordinates }, properties: { ...sample.properties, Nomor: `KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-${code}`, Longitude: coordinates[0], Latitude: coordinates[1], Duplikat: duplikat } });
+  const flagged = (partner: [number, number]) => ({ type: 'FeatureCollection', features: [unit('001', [lon, lat], true), unit('002', partner, false)] });
+  let collection = flagged([lon, lat]);
+  await page.route('**/data/points.geojson', route => route.fulfill({ json: collection }));
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const search = page.getByRole('searchbox', { name: 'Cari titik PUTS', exact: true });
+  await search.fill('TANJUNG RADEN');
+  await expect(page.locator('.atlas-pt')).toHaveCount(2);
+  await expect(page.locator('.atlas-unit.is-duplikat')).toHaveCount(1);
+  // 002 republished about 55 m away: 001 is alone on its pin.
+  collection = flagged([lon + 0.0005, lat]);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await search.fill('TANJUNG RADEN');
+  await expect(page.locator('.atlas-pt')).toHaveCount(2);
+  await expect(page.locator('.atlas-unit.is-duplikat')).toHaveCount(0);
+});
+
 test('serves only public artifacts with production cache and security headers', async ({ page, request }) => {
   test.skip(!process.env.PUBLIC_TEST_URL, 'Run against Caddy with PUBLIC_TEST_URL to verify serving headers.');
   const response = await request.get('/'); await expect(response).toBeOK();

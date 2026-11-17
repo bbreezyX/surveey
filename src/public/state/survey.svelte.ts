@@ -3,8 +3,22 @@ import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
 import { reportReceipt, type SurveyPending, type SurveyProgress, type SurveyToday } from '../../shared/survey/progress';
 import type { LastReport, ListMode, WorkMemory } from './work-memory';
+import { distanceMeters } from './nearby';
 export type SheetSnap = 'closed' | 'half' | 'full';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
+// How close another unit must be for a flagged pin to still count as shared. The stacks in the data are
+// either one coordinate repeated or 3.6-4.8 m apart (two photos within a phone's GPS accuracy), while
+// separate units on one road sit 9 m apart at the closest, so 8 m tells the two apart. A partner moved by
+// less than that is still on the same spot as far as the GPS can say.
+const STACK_METERS = 8;
+// Flagged units that still share their pin with another counted unit. Reserves are left out: they are
+// outside the allocation and only installed if another unit is cancelled, so they compete for no pin.
+// Only the dozen flagged units are measured, against every other unit, which stays cheap.
+function stillStacked(points: readonly SurveyPoint[]): ReadonlySet<string> {
+  const counted = points.filter(point => !point.cadangan && Number.isFinite(point.latNum) && Number.isFinite(point.lonNum));
+  return new Set(counted.filter(point => point.duplikat && counted.some(other => other !== point &&
+    distanceMeters(point.latNum, point.lonNum, other.latNum, other.lonNum) <= STACK_METERS)).map(point => point.nomor));
+}
 // memory: what this phone kept from earlier visits (work-memory.ts); App reads and writes the storage, except the
 // basemap, which the layer panel writes when it is picked.
 export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {}) {
@@ -45,12 +59,16 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
   // Once esdm.cloud has accepted any build stage for a shared-coordinate unit, the crew has found and dug
   // its spot, so asking readers to confirm it with the RT/desa no longer helps; the list, filter, counts and
   // popup then treat it as an ordinary SK point. Only those few points are copied, the rest keep their objects.
+  // The same holds once no other unit is left on its pin: a partner reported and republished elsewhere frees
+  // the pin, so it is this unit's alone. A partner reported on the very same pin keeps the mark, since this
+  // unit must then stand somewhere else.
   const sortedPoints = $derived([...dataset.points].sort((a, b) => collator.compare(a.nomor, b.nomor)));
+  const stackedPoints = $derived(stillStacked(sortedPoints));
   const verifiedPoints = new WeakMap<SurveyPoint, SurveyPoint>();
   let previousPoints: SurveyPoint[] = [];
   const points = $derived.by(() => {
     const next = sortedPoints.map(point => {
-      if (!point.duplikat || !progress?.get(point.nomor)) return point;
+      if (!point.duplikat || (stackedPoints.has(point.nomor) && !progress?.get(point.nomor))) return point;
       let verified = verifiedPoints.get(point);
       if (!verified) {
         verified = { ...point, duplikat: false, searchText: point.searchText.replace(STATUS_LABEL.duplikat.search, '') };

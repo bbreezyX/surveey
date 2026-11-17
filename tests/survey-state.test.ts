@@ -1,10 +1,18 @@
 import { expect, it, vi } from 'vitest';
 import { createSurveyState } from '../src/public/state/survey.svelte';
 import { parseSurveyCollection } from '../src/public/data/parse';
+// 001 is flagged because 003 sits on the same pin; 002 stands apart.
 const dataset = () => ({ points: parseSurveyCollection({ type: 'FeatureCollection', features: [
   { type: 'Feature', geometry: { type: 'Point', coordinates: [103.5, -1.5] }, properties: { Nomor: 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-001', Duplikat: true } },
   { type: 'Feature', geometry: { type: 'Point', coordinates: [103.6, -1.5] }, properties: { Nomor: 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-002' } },
+  { type: 'Feature', geometry: { type: 'Point', coordinates: [103.5, -1.5] }, properties: { Nomor: 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-003' } },
 ] }), boundaries: [], dissolved: { type: 'FeatureCollection' as const, features: [] } });
+// The same dataset with one unit's pin replaced, as a newer publication would bring it.
+const moved = (code: string, lon: number, lat = -1.5, properties: Record<string, unknown> = {}) => {
+  const next = dataset(), index = next.points.findIndex(point => point.nomor.endsWith(`-${code}`));
+  next.points[index] = { ...next.points[index], ...properties, lonNum: lon, latNum: lat };
+  return next;
+};
 it('keeps map point identities when a progress refresh does not change verification flags', () => {
   const state = createSurveyState(dataset()), initial = state.points;
   state.progress = new Map();
@@ -23,13 +31,50 @@ it('uses fresh coordinates and labels when the published dataset changes', () =>
   const initial = dataset(), state = createSurveyState(initial);
   state.progress = new Map([[initial.points[0].nomor, 1]]);
   const previous = state.points;
-  const next = dataset();
-  next.points[0] = { ...next.points[0], lonNum: 104, alamat: 'Lokasi diperbarui' };
+  // About 3 m: still on 003's pin within GPS accuracy, so only the report verifies it.
+  const next = moved('001', 103.50003, -1.5, { alamat: 'Lokasi diperbarui' });
   state.replaceDataset(next);
   expect(state.points).not.toBe(previous);
-  expect(state.points[0]).toMatchObject({ lonNum: 104, alamat: 'Lokasi diperbarui', duplikat: false });
+  expect(state.points[0]).toMatchObject({ lonNum: 103.50003, alamat: 'Lokasi diperbarui', duplikat: false });
   state.progress = null;
   expect(state.points[0]).toBe(next.points[0]);
+});
+
+it('drops the verification mark once the unit that shared its pin is published elsewhere', () => {
+  const state = createSurveyState(dataset());
+  expect(state.points[0].duplikat).toBe(true);
+  // 003 was reported and its pin corrected about 55 m away: 001 is the only unit left on the old pin.
+  state.progress = new Map([['KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-003', 1]]);
+  state.replaceDataset(moved('003', 103.5005));
+  expect(state.points[0].duplikat).toBe(false);
+  expect(state.points[0].searchText).not.toContain('perlu konfirmasi');
+  state.openRegion(null, 'duplikat');
+  expect(state.visiblePoints).toHaveLength(0);
+});
+
+it('keeps the verification mark while another unit still shares the pin', () => {
+  const state = createSurveyState(dataset());
+  // Reported on the very same pin: the crew found 003 there, so 001 must stand somewhere else.
+  state.progress = new Map([['KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-003', 4]]);
+  expect(state.points[0].duplikat).toBe(true);
+  // Moved about 4 m, within a phone's GPS accuracy: still the same spot on the ground.
+  state.replaceDataset(moved('003', 103.500036));
+  expect(state.points[0].duplikat).toBe(true);
+});
+
+it('keeps a stack of three flagged until only one unit is left on the pin', () => {
+  const three = (next: ReturnType<typeof dataset>) => {
+    next.points[1] = { ...next.points[1], lonNum: 103.5, duplikat: true };
+    return next;
+  };
+  const state = createSurveyState(three(dataset()));
+  state.replaceDataset(three(moved('003', 103.5005)));
+  expect(state.points.map(point => point.duplikat)).toEqual([true, true, false]);
+});
+
+it('does not count a reserve unit as sharing the pin', () => {
+  const state = createSurveyState(moved('003', 103.5, -1.5, { cadangan: true }));
+  expect(state.points[0].duplikat).toBe(false);
 });
 
 it('starts on Sebaran and drops a status filter the progress view cannot show', () => {

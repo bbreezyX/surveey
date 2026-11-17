@@ -10,10 +10,11 @@
   import Icon from './Icon.svelte';
   // stage is null until esdm.cloud has answered, so a slow or failed fetch shows nothing rather than "Belum Dimulai".
   // reported: the stage a crew just sent from esdm.cloud/lapangan, set only once the feed holds that report.
-  let { point, dataset, stage = null, reported = null }: { point: SurveyPoint; dataset: SurveyDataset; stage?: number | null; reported?: { stage: number; receipt: ReportReceipt } | null } = $props();
+  // points: the state's points, not dataset.points, so the inset's dots drop a verification mark the pins dropped.
+  let { point, points, dataset, stage = null, reported = null }: { point: SurveyPoint; points: readonly SurveyPoint[]; dataset: SurveyDataset; stage?: number | null; reported?: { stage: number; receipt: ReportReceipt } | null } = $props();
   const photo = $derived(legacyPhotoUrl(point.photo));
   const kind = $derived(point.belum ? 'belum' : point.duplikat ? 'duplikat' : point.cadangan ? 'cadangan' : null);
-  const sharedCoordinateCount = $derived(dataset.points.filter(p => p.latNum.toFixed(6) === point.latNum.toFixed(6) && p.lonNum.toFixed(6) === point.lonNum.toFixed(6)).length);
+  const sharedCoordinateCount = $derived(points.filter(p => p.latNum.toFixed(6) === point.latNum.toFixed(6) && p.lonNum.toFixed(6) === point.lonNum.toFixed(6)).length);
   const note = $derived(point.catatan && (point.belum || point.duplikat) ? point.catatan : point.belum ? 'Pin perkiraan. Lokasi pasti ditentukan di lapangan bersama RT.' : point.duplikat ? sharedCoordinateCount > 1 ? `${sharedCoordinateCount} unit di satu koordinat. Konfirmasi posisi tiap tiang ke RT/desa setempat.` : 'Konfirmasi posisi tiang ke RT/desa setempat.' : point.cadangan ? 'Di luar jatah. Dipasang hanya jika ada titik lain yang batal.' : '');
   const region = $derived(dataset.boundaries.find(region => regionKey(String(region.properties.KABUPATEN_)) === regionKey(point.kabupaten)));
 </script>
@@ -22,7 +23,7 @@
     <a class="feature-popup__media" href={photo} target="_blank" rel="noopener" aria-label={`Buka foto lokasi ${point.nomor} di tab baru`}>
       <img src={photo} alt={`Foto lokasi ${point.nomor}`} decoding="async"/>
       <span class="feature-popup__media-badge"><Icon name="external" size={16}/><span>Lihat Foto</span></span>
-      <span class="popup-inset"><Shape {region} points={dataset.points.filter(p => p.kabupaten === point.kabupaten)} width={70} height={52} selected={point.nomor} inset/></span>
+      <span class="popup-inset"><Shape {region} points={points.filter(p => p.kabupaten === point.kabupaten)} width={70} height={52} selected={point.nomor} inset/></span>
     </a>
   {/if}
   {#if kind}<div class={`feature-popup__note feature-popup__note--${kind}`} role="note"><span class="feature-popup__note-mark" aria-hidden="true">{kind === 'belum' ? '?' : kind === 'duplikat' ? '!' : ''}</span><p><strong class="feature-popup__note-title">{STATUS_LABEL[kind].legend}</strong> {note}</p></div>{/if}
