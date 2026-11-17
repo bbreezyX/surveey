@@ -36,7 +36,7 @@
       {@const waiting = state.pending?.get(point.nomor)}
       {@const flags = [point.duplikat ? STATUS_LABEL.duplikat.tag : '', point.belum ? STATUS_LABEL.belum.tag : ''].filter(Boolean)}
       <div class="work-row">
-        <button class="work-row__main" type="button" data-item-id={point.nomor} aria-pressed={state.selectedNomor === point.nomor} aria-label={[`Titik ${point.display.code}`, ...flags, point.display.primary, waiting?.length ? pendingSummary(waiting) : '', 'lihat di peta'].filter(Boolean).join('. ')} onclick={event => state.select(point.nomor, event.currentTarget)}>
+        <button class="work-row__main" class:is-recent={state.recentNomor === point.nomor} type="button" data-item-id={point.nomor} aria-pressed={state.selectedNomor === point.nomor} aria-label={[`Titik ${point.display.code}`, ...flags, point.display.primary, waiting?.length ? pendingSummary(waiting) : '', state.recentNomor === point.nomor ? 'Terakhir dilihat' : '', 'lihat di peta'].filter(Boolean).join('. ')} onclick={event => state.select(point.nomor, event.currentTarget)}>
           <span class="atlas-unit" class:is-active={state.selectedNomor === point.nomor} class:is-duplikat={point.duplikat} class:is-belum={point.belum}>{point.display.code}</span>
           <span class="work-row__text">
             {#if waiting?.length}<span class="atlas-pt__stage is-pending" title={pendingSummary(waiting)}><svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{pendingLabel(waiting)}</span>{/if}

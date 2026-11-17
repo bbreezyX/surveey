@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { createSurveyState } from '../src/public/state/survey.svelte';
 import { parseSurveyCollection } from '../src/public/data/parse';
 const dataset = () => ({ points: parseSurveyCollection({ type: 'FeatureCollection', features: [
@@ -70,4 +70,49 @@ it('opens the waiting group first only for the kabupaten the waiting-reports lin
   expect(state.waitingFirst).toBe(true);
   state.openRegion(null);
   expect(state.waitingFirst).toBe(false);
+});
+
+it('reopens the list at half-height on close only when the detail came from an open sheet', () => {
+  const state = createSurveyState(dataset()), nomor = state.points[0].nomor;
+  state.sheetSnap = 'full';
+  state.select(nomor);
+  expect(state.sheetSnap).toBe('closed');
+  state.closeDetail();
+  expect(state.sheetSnap).toBe('half');
+  expect(state.recentNomor).toBe(nomor);
+
+  // Closing a detail opened from the map or a link keeps the sheet collapsed.
+  state.sheetSnap = 'closed';
+  state.select(nomor);
+  state.closeDetail();
+  expect(state.sheetSnap).toBe('closed');
+
+  state.openLinked(nomor);
+  state.closeDetail();
+  expect(state.sheetSnap).toBe('closed');
+});
+
+it('dismisses detail directly into the requested sheet height while marking recent', () => {
+  vi.useFakeTimers();
+  try {
+    const state = createSurveyState(dataset()), nomor = state.points[1].nomor;
+    state.select(nomor);
+    state.dismissDetailToSheet('half');
+    expect(state.selectedNomor).toBeNull();
+    expect(state.sheetSnap).toBe('half');
+    expect(state.recentNomor).toBe(nomor);
+
+    // Recent highlight clears automatically after its cue fades.
+    vi.advanceTimersByTime(2100);
+    expect(state.recentNomor).toBeNull();
+
+    // Selecting another unit also clears an active recent mark immediately.
+    state.select(nomor);
+    state.closeDetail();
+    expect(state.recentNomor).toBe(nomor);
+    state.select(state.points[0].nomor);
+    expect(state.recentNomor).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
 });

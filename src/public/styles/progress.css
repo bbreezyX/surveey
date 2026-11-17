@@ -602,6 +602,15 @@
     body:not(.is-panel-open) .list-mode {
         display: none;
     }
+
+    body.is-panel-half .list-mode {
+        margin: 0 16px 8px;
+    }
+
+    body.is-panel-half .list-mode button {
+        height: 30px;
+        font-size: 13px;
+    }
 }
 
 /* ---------- Waiting for esdm.cloud ---------- */

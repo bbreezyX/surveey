@@ -228,6 +228,51 @@ test('closing a phone detail leaves the list down and centres its pin in the ope
     return pixels;
   }).toBeGreaterThan(10);
 });
+
+test('keeps a slim bottom bar during detail and restores the list at half-height on close', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 360, height: 645 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Lihat daftar titik', exact: true }).click();
+  await page.getByRole('button', { name: /Kota Jambi, 72 titik/ }).click();
+
+  const scroller = page.locator('.sidebar-scroll');
+  const target = page.locator('.atlas-pt').nth(25);
+  await target.scrollIntoViewIfNeeded();
+  const targetNomor = (await target.getAttribute('data-item-id'))!;
+  await target.click();
+
+  await expect(page.locator('#popup')).toBeVisible();
+  const popupBox = (await page.locator('#popup').boundingBox())!;
+  const handleBox = (await page.locator('#sheet-handle').boundingBox())!;
+  // Bottom bar remains visible without covering the popup or exceeding a slim strip height.
+  expect(handleBox.y).toBeGreaterThan(popupBox.y + popupBox.height + 40);
+  expect(handleBox.y + handleBox.height).toBeLessThanOrEqual(645);
+  expect(handleBox.height).toBeLessThanOrEqual(64);
+
+  await page.getByRole('button', { name: 'Tutup info titik' }).click();
+  await expect(page.locator('#popup')).toBeHidden();
+  await expect(page.locator('#sheet-handle')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('body')).toHaveClass(/is-panel-half/);
+
+  // Half-sheet leaves the upper map open while keeping the just-closed point visible in the list.
+  const sheetTop = await page.locator('#sidebar').evaluate(el => el.getBoundingClientRect().top);
+  expect(sheetTop).toBeGreaterThan(280);
+  expect(sheetTop).toBeLessThan(400);
+  const recentItem = page.locator(`.atlas-pt[data-item-id="${targetNomor}"]`);
+  await expect(recentItem).toHaveClass(/is-recent/);
+  const itemBox = (await recentItem.boundingBox())!;
+  expect(itemBox.y).toBeGreaterThanOrEqual(sheetTop);
+  expect(itemBox.y + itemBox.height).toBeLessThanOrEqual(645);
+  expect(await scroller.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+
+  // Tapping the slim bar while viewing a second point also switches straight to the half-sheet list.
+  await recentItem.click();
+  await expect(page.locator('#popup')).toBeVisible();
+  await page.locator('#sheet-handle').click();
+  await expect(page.locator('#popup')).toBeHidden();
+  await expect(page.locator('body')).toHaveClass(/is-panel-half/);
+});
 test('preserves counts, point search, photo evidence and route coordinates', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/', { waitUntil: 'domcontentloaded' });

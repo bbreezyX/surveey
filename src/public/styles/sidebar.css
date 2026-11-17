@@ -786,39 +786,91 @@ body.is-sidebar-collapsed #sidebar {
 }
 
 /* The point whose detail was just closed, so the reader finds where they left
-   off. Only the numbered tile is marked: the code is what the eye scans for.
-   Blue, not yellow: yellow keeps meaning "selected on the map". A halo ring
-   instead of a new border keeps the duplikat/cadangan tile colours readable.
-   The mark is a cue, not a state: it pulses once after the sheet has finished
-   rising, then fades out before the state drops the class (2.8s). */
-.atlas-pt.is-recent .atlas-unit:not(.is-active) {
+   off. Both the item row and its numbered tile highlight boldly in deep blue,
+   pulse once, and fade out quickly before the state drops .is-recent (2.1 s);
+   yellow-on-ink stays reserved for active selection. */
+.atlas-pt.is-recent {
+    background-color: var(--blue-tint);
+    box-shadow: inset 0 0 0 1.5px var(--blue);
+}
+
+.atlas-pt.is-recent:hover {
+    background-color: #dcecfb;
+}
+
+.work-row__main.is-recent {
+    background-color: var(--blue-tint);
+    box-shadow: inset 4px 0 0 var(--blue);
+}
+
+.work-row__main.is-recent:hover {
+    background-color: #dcecfb;
+}
+
+.atlas-pt.is-recent .atlas-unit:not(.is-active),
+.work-row__main.is-recent .atlas-unit:not(.is-active) {
     box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue);
 }
 
-.atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
-    border-color: var(--blue);
-    background-color: var(--blue-tint);
-    color: var(--blue-deep);
+.atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active),
+.work-row__main.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
+    border-color: var(--blue-deep);
+    background-color: var(--blue-deep);
+    color: #fff;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-    .atlas-pt.is-recent .atlas-unit:not(.is-active) {
-        animation: atlas-recent 2.4s ease-out 0.3s both;
+    .atlas-pt.is-recent {
+        animation: atlas-recent-card 1.8s ease-out 0.2s both;
     }
 
-    .atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
-        animation: atlas-recent 2.4s ease-out 0.3s both, atlas-recent-tile 2.4s ease-out 0.3s both;
+    .work-row__main.is-recent {
+        animation: atlas-recent-row 1.8s ease-out 0.2s both;
+    }
+
+    .atlas-pt.is-recent .atlas-unit:not(.is-active),
+    .work-row__main.is-recent .atlas-unit:not(.is-active) {
+        animation: atlas-recent 1.8s ease-out 0.2s both;
+    }
+
+    .atlas-pt.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active),
+    .work-row__main.is-recent .atlas-unit:not(.is-duplikat):not(.is-cadangan):not(.is-active) {
+        animation: atlas-recent 1.8s ease-out 0.2s both, atlas-recent-tile 1.8s ease-out 0.2s both;
+    }
+}
+
+@keyframes atlas-recent-card {
+    0%,
+    60% {
+        background-color: var(--blue-tint);
+        box-shadow: inset 0 0 0 1.5px var(--blue);
+    }
+    100% {
+        background-color: transparent;
+        box-shadow: inset 0 0 0 1.5px rgba(0, 114, 188, 0);
+    }
+}
+
+@keyframes atlas-recent-row {
+    0%,
+    60% {
+        background-color: var(--blue-tint);
+        box-shadow: inset 4px 0 0 var(--blue);
+    }
+    100% {
+        background-color: transparent;
+        box-shadow: inset 4px 0 0 rgba(0, 114, 188, 0);
     }
 }
 
 @keyframes atlas-recent {
     0% {
-        box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue), 0 0 0 4px rgba(0, 114, 188, 0.45);
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue), 0 0 0 4px rgba(0, 114, 188, 0.58);
     }
-    25% {
-        box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue), 0 0 0 12px rgba(0, 114, 188, 0);
+    32% {
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue), 0 0 0 13px rgba(0, 114, 188, 0);
     }
-    65% {
+    60% {
         box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue), 0 0 0 4px rgba(0, 114, 188, 0);
     }
     100% {
@@ -828,15 +880,15 @@ body.is-sidebar-collapsed #sidebar {
 
 @keyframes atlas-recent-tile {
     0%,
-    65% {
-        border-color: var(--blue);
-        background-color: var(--blue-tint);
-        color: var(--blue-deep);
+    60% {
+        border-color: var(--blue-deep);
+        background-color: var(--blue-deep);
+        color: #fff;
     }
     100% {
-        border-color: #c6d3df;
+        border-color: var(--recent-border, #c6d3df);
         background-color: #fff;
-        color: var(--ink);
+        color: var(--recent-color, var(--ink));
     }
 }
 
@@ -974,6 +1026,8 @@ body.is-sidebar-collapsed #sidebar {
 }
 
 .atlas-unit.is-belum {
+    --recent-border: var(--muted-2);
+    --recent-color: var(--muted);
     border: 1.5px dashed var(--muted-2);
     color: var(--muted);
 }
@@ -1451,38 +1505,34 @@ body.is-data-unavailable .atlas-summary {
         padding-right: 12px;
     }
 
-    /* Collapsed, the peek shows only the answer under the search: the
-       nearest unit as a plain row, or the one-line status while there is
-       none yet. The card, its header, the off switch and the runners-up
-       come with the opened sheet. */
-    body:not(.is-panel-open) .nearby {
+    /* Collapsed or half-open, keep only the nearest unit compactly above the list
+       so the peek and half-sheet still leave room for the map or list rows. */
+    body:is(:not(.is-panel-open), .is-panel-half) .nearby {
         padding: 0 2px;
         border-color: transparent;
         background: none;
         animation: none;
     }
 
-    body:not(.is-panel-open) .nearby__head,
-    body:not(.is-panel-open) .nearby__row:not(:first-child) {
+    body:is(:not(.is-panel-open), .is-panel-half) .nearby__head,
+    body:is(:not(.is-panel-open), .is-panel-half) .nearby__row:not(:first-child) {
         display: none;
     }
 
-    body:not(.is-panel-open) .nearby__note {
+    body:is(:not(.is-panel-open), .is-panel-half) .nearby__note {
         margin: 8px 4px;
     }
 
-    /* One kabupaten, collapsed: its header shrinks to a single line (back,
-       name, count) so the peek leaves the map room for the lead to the
-       nearest unit. The locator and the "Semua Wilayah" label come back
-       with the opened sheet; the button keeps its aria-label throughout. */
-    body:not(.is-panel-open) .atlas-detail {
+    /* One kabupaten, collapsed or half-open: its header shrinks to a single line
+       (back, name, count) so the half-sheet gives its height to the list. */
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-detail {
         display: flex;
         align-items: center;
         gap: 2px;
-        padding: 2px 16px 10px 10px;
+        padding: 2px 16px 8px 10px;
     }
 
-    body:not(.is-panel-open) .atlas-back {
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-back {
         justify-content: center;
         min-width: 36px;
         min-height: 36px;
@@ -1490,13 +1540,13 @@ body.is-data-unavailable .atlas-summary {
         padding: 0;
     }
 
-    body:not(.is-panel-open) .atlas-back__label,
-    body:not(.is-panel-open) .atlas-detail__kec,
-    body:not(.is-panel-open) .atlas-locator {
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-back__label,
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-detail__kec,
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-locator {
         display: none;
     }
 
-    body:not(.is-panel-open) .atlas-detail__main {
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-detail__main {
         display: block;
         flex: 1;
         min-width: 0;
@@ -1508,7 +1558,7 @@ body.is-data-unavailable .atlas-summary {
        fits beside it, the count wraps onto a second line that the one-line
        height clips away, so it disappears whole instead of reading "43 …".
        The name only ends in an ellipsis if it alone outruns the row. */
-    body:not(.is-panel-open) .atlas-detail__main > div:first-child {
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-detail__main > div:first-child {
         display: flex;
         flex-wrap: wrap;
         align-items: baseline;
@@ -1518,20 +1568,20 @@ body.is-data-unavailable .atlas-summary {
         overflow: hidden;
     }
 
-    body:not(.is-panel-open) .atlas-detail h1,
-    body:not(.is-panel-open) .atlas-detail p {
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-detail h1,
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-detail p {
         margin: 0;
         white-space: nowrap;
     }
 
-    body:not(.is-panel-open) .atlas-detail h1 {
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-detail h1 {
         overflow: hidden;
         min-width: 0;
         font-size: 18px;
         text-overflow: ellipsis;
     }
 
-    body:not(.is-panel-open) .atlas-detail p {
+    body:is(:not(.is-panel-open), .is-panel-half) .atlas-detail p {
         flex: none;
     }
 }

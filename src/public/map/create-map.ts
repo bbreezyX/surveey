@@ -101,7 +101,15 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   let feedback = attachFeedback();
   const padding = () => {
     const sidebar = document.getElementById('sidebar')?.getBoundingClientRect();
-    if (window.innerWidth < 960) return [72, 24, (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sheet-peek'), 10) || 240) + 24, 24];
+    if (window.innerWidth < 960) {
+      const styles = getComputedStyle(document.documentElement);
+      const sheet = document.body.classList.contains('is-panel-half')
+        ? (parseInt(styles.getPropertyValue('--sheet-half'), 10) || Math.round(innerHeight * 0.46))
+        : document.body.classList.contains('is-popup-open')
+          ? (parseInt(styles.getPropertyValue('--sheet-bar'), 10) || 52)
+          : (parseInt(styles.getPropertyValue('--sheet-peek'), 10) || 240);
+      return [72, 24, sheet + 24, 24];
+    }
     return [56, 72, 72, (document.body.classList.contains('is-sidebar-collapsed') ? 0 : Math.round(sidebar?.right ?? 0)) + 48];
   };
   function fitToPoints(ids: ReadonlySet<string>, fit: FitOptions = {}) {
@@ -137,7 +145,8 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     const coordinate = fromLonLat([point.lonNum, point.latNum]), view = map.getView();
     view.cancelAnimations(); const resolution = view.getResolutionForZoom(zoom);
     const [, right, , left] = padding();
-    const pinY = innerWidth < 960 ? Math.min(options.popup.getBoundingClientRect().bottom + 56, innerHeight - 28) : Math.min(options.popup.offsetHeight + 72, innerHeight - 56);
+    const bar = innerWidth < 960 ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-bar')) || 52) : 0;
+    const pinY = innerWidth < 960 ? Math.min(options.popup.getBoundingClientRect().bottom + 56, innerHeight - bar - 16) : Math.min(options.popup.offsetHeight + 72, innerHeight - 56);
     const center = [coordinate[0] - (left - right) * resolution / 2, coordinate[1] + (pinY - innerHeight / 2) * resolution];
     if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { view.setZoom(zoom); view.setCenter(center); return; }
     const currentZoom = view.getZoom() ?? 0, delta = Math.abs(zoom - currentZoom), current = view.getCenter();

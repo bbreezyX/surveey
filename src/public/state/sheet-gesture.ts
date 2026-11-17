@@ -1,23 +1,46 @@
-// Preserve the established finger tracking, distance and velocity thresholds.
-export function createSheetGesture(sheet: () => HTMLElement, opened: () => boolean, setOpened: (open: boolean) => void, stopHints: () => void) {
-  let drag: { id: number; startY: number; lastY: number; lastT: number; velocity: number; travel: number; wasOpen: boolean; from: number; y: number; moved: boolean } | null = null;
+import type { SheetSnap } from './survey.svelte';
+
+// Preserve the established finger tracking, distance and velocity thresholds across three resting stops:
+// collapsed peek (or compact bar during detail), half-sheet list, and full-sheet list.
+export function createSheetGesture(
+  sheet: () => HTMLElement,
+  snap: () => SheetSnap,
+  setSnap: (next: SheetSnap) => void,
+  stopHints: () => void,
+  popupOpen: () => boolean = () => false,
+  preferFullOnTap: () => boolean = () => true,
+) {
+  let drag: { id: number; startY: number; lastY: number; lastT: number; velocity: number; restY: number; halfY: number; wasSnap: SheetSnap; from: number; y: number; moved: boolean } | null = null;
   let suppressClick = false;
   function finish(commit: boolean) {
     if (!drag) return;
-    let open = drag.wasOpen;
+    let next: SheetSnap = drag.wasSnap;
     if (commit) {
-      if (Math.abs(drag.velocity) > .4) open = drag.velocity < 0;
-      else if (Math.abs(drag.y - drag.from) > drag.travel * .25) open = drag.y < drag.from;
+      const { velocity, y, from, halfY, restY, wasSnap } = drag, dy = y - from;
+      if (velocity < -0.4) {
+        next = y < halfY * 0.65 || wasSnap === 'half' ? 'full' : 'half';
+      } else if (velocity > 0.4) {
+        next = wasSnap === 'full' && y < (halfY + restY) * 0.55 ? 'half' : 'closed';
+      } else if (dy < 0) {
+        if (wasSnap === 'closed') next = y < halfY * 0.55 ? 'full' : -dy > (restY - halfY) * 0.25 ? 'half' : 'closed';
+        else if (wasSnap === 'half') next = -dy > halfY * 0.25 ? 'full' : 'half';
+      } else if (dy > 0) {
+        if (wasSnap === 'full') next = y > (halfY + restY) * 0.55 ? 'closed' : dy > halfY * 0.25 ? 'half' : 'full';
+        else if (wasSnap === 'half') next = dy > (restY - halfY) * 0.25 ? 'closed' : 'half';
+      }
     }
-    drag = null; document.body.classList.remove('is-sheet-dragging'); sheet().style.transform = ''; setOpened(open);
+    drag = null; document.body.classList.remove('is-sheet-dragging'); sheet().style.transform = ''; setSnap(next);
   }
   return {
     down(event: PointerEvent) {
       if (!event.isPrimary) return;
       stopHints();
-      const peek = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-peek')) || 0;
-      const travel = Math.max(sheet().offsetHeight - peek, 1), wasOpen = opened();
-      drag = { id: event.pointerId, startY: event.clientY, lastY: event.clientY, lastT: event.timeStamp, velocity: 0, travel, wasOpen, from: wasOpen ? 0 : travel, y: wasOpen ? 0 : travel, moved: false };
+      const styles = getComputedStyle(document.documentElement), isPopup = popupOpen();
+      const rest = parseFloat(styles.getPropertyValue(isPopup ? '--sheet-bar' : '--sheet-peek')) || (isPopup ? 52 : 152);
+      const half = parseFloat(styles.getPropertyValue('--sheet-half')) || Math.round(window.innerHeight * 0.46);
+      const h = sheet().offsetHeight, restY = Math.max(h - rest, 1), halfY = Math.max(0, Math.min(h - half, restY - 40));
+      const wasSnap = snap(), from = wasSnap === 'full' ? 0 : wasSnap === 'half' ? halfY : restY;
+      drag = { id: event.pointerId, startY: event.clientY, lastY: event.clientY, lastT: event.timeStamp, velocity: 0, restY, halfY, wasSnap, from, y: from, moved: false };
       if (event.currentTarget instanceof HTMLElement) event.currentTarget.setPointerCapture(event.pointerId);
     },
     move(event: PointerEvent) {
@@ -28,12 +51,16 @@ export function createSheetGesture(sheet: () => HTMLElement, opened: () => boole
       const dt = event.timeStamp - drag.lastT;
       if (dt > 0) drag.velocity = (event.clientY - drag.lastY) / dt;
       drag.lastY = event.clientY; drag.lastT = event.timeStamp;
-      drag.y = Math.min(Math.max(drag.from + dy, 0), drag.travel);
+      drag.y = Math.min(Math.max(drag.from + dy, 0), drag.restY);
       sheet().style.transform = `translate3d(0, ${drag.y}px, 0)`;
     },
     up(event: PointerEvent) { if (drag?.id === event.pointerId) { suppressClick = drag.moved; finish(suppressClick); } },
     cancel(event: PointerEvent) { if (drag?.id === event.pointerId) finish(false); },
-    click() { if (suppressClick) { suppressClick = false; return; } stopHints(); setOpened(!opened()); },
+    click() {
+      if (suppressClick) { suppressClick = false; return; }
+      stopHints();
+      setSnap(snap() === 'closed' ? (preferFullOnTap() ? 'full' : 'half') : 'closed');
+    },
     dispose() { drag = null; document.body.classList.remove('is-sheet-dragging'); sheet().style.transform = ''; },
   };
 }

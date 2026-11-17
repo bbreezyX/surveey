@@ -3,6 +3,7 @@ import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
 import { reportReceipt, type SurveyPending, type SurveyProgress, type SurveyToday } from '../../shared/survey/progress';
 import type { LastReport, ListMode, WorkMemory } from './work-memory';
+export type SheetSnap = 'closed' | 'half' | 'full';
 const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
 // memory: what this phone kept from earlier visits (work-memory.ts); App reads and writes the storage, except the
 // basemap, which the layer panel writes when it is picked.
@@ -31,9 +32,17 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
   // Set when the "menunggu diperiksa" line opened the kabupaten, so its waiting group opens first.
   let waitingFirst = $state(false);
   let fitRevision = $state(0), fitReason = $state<'initial' | 'region' | 'search' | 'filter'>('initial');
-  let panelOpen = $state(false), sidebarCollapsed = $state(false);
-  // The card of the detail just closed is marked briefly so the eye lands on it, then lets go.
+  let sheetSnap = $state<SheetSnap>('closed'), sidebarCollapsed = $state(false);
+  // True when the current detail came from the list sheet, so closing it restores the list at half-height
+  // without covering the map or forcing the reporter to swipe the sheet open again.
+  let reopenHalfOnClose = false;
+  // The card of the detail just closed pulses clearly in the list, then clears automatically after ~2.1 s.
   let recentNomor = $state<string | null>(null), recentTimer: ReturnType<typeof setTimeout> | undefined;
+  function markRecent(nomor: string | null) {
+    recentNomor = nomor;
+    clearTimeout(recentTimer);
+    if (nomor) recentTimer = setTimeout(() => { recentNomor = null; }, 2100);
+  }
   const google = memory.basemap === 'google';
   const layers = $state({ google, esri: !google, boundaries: true, mask: true, area: false, sk: true, cadangan: false, belum: true });
   // Once esdm.cloud has accepted any build stage for a shared-coordinate unit, the crew has found and dug
@@ -72,7 +81,7 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
       // Unchanged points keep their objects, so nothing downstream (map features, list) rebuilds.
       if (!next.signature || next.signature !== dataset.signature) dataset = next;
     },
-    get query() { return query; }, set query(value: string) { if (value !== query) { query = value; recentNomor = null; fitReason = 'search'; fitRevision++; } },
+    get query() { return query; }, set query(value: string) { if (value !== query) { query = value; markRecent(null); fitReason = 'search'; fitRevision++; } },
     get fitRevision() { return fitRevision; }, get fitReason() { return fitReason; },
     get activeRegion() { return activeRegion; }, get statusFilter() { return statusFilter; },
     get selectionOrigin() { return selectionOrigin; },
@@ -95,29 +104,47 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     get selectedNomor() { return selectedNomor; }, get selected() { return selected; },
     get visiblePoints() { return visiblePoints; }, get visibleIds() { return visibleIds; },
     get count() { return countOfficialPoints(visiblePoints); },
-    get panelOpen() { return panelOpen; }, set panelOpen(value: boolean) { panelOpen = value; },
+    get sheetSnap() { return sheetSnap; }, set sheetSnap(value: SheetSnap) { sheetSnap = value; },
+    get panelOpen() { return sheetSnap !== 'closed'; }, set panelOpen(value: boolean) { sheetSnap = value ? 'full' : 'closed'; },
     // A link naming a point (?nomor=) opens its kabupaten with nothing filtered out, so the point is in the list.
     openLinked(nomor: string) {
       const point = points.find(item => item.nomor === nomor);
       if (!point) return false;
-      activeRegion = point.kabupaten; statusFilter = null; query = ''; panelOpen = false;
+      markRecent(null); activeRegion = point.kabupaten; statusFilter = null; query = ''; sheetSnap = 'closed'; reopenHalfOnClose = false;
       selectedNomor = point.nomor; return true;
     },
     get sidebarCollapsed() { return sidebarCollapsed; }, set sidebarCollapsed(value: boolean) { sidebarCollapsed = value; },
-    openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { recentNomor = null; waitingFirst = false; activeRegion = name; statusFilter = filter; selectedNomor = null; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
-    setFilter(filter: StatusFilter) { recentNomor = null; statusFilter = filter; selectedNomor = null; fitReason = 'filter'; fitRevision++; },
+    openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { markRecent(null); waitingFirst = false; activeRegion = name; statusFilter = filter; selectedNomor = null; reopenHalfOnClose = false; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
+    setFilter(filter: StatusFilter) { markRecent(null); statusFilter = filter; selectedNomor = null; reopenHalfOnClose = false; fitReason = 'filter'; fitRevision++; },
     select(nomor: string | null, origin: HTMLElement | null = null) {
-      if (nomor) { recentNomor = null; selectionOrigin = origin; panelOpen = false; }
+      if (nomor) {
+        markRecent(null);
+        selectionOrigin = origin;
+        reopenHalfOnClose = sheetSnap !== 'closed' || !!(origin && origin.closest('.sidebar-scroll'));
+        sheetSnap = 'closed';
+      } else {
+        reopenHalfOnClose = false;
+      }
       if (nomor !== selectedNomor) reported = null;
       selectedNomor = nomor;
     },
-    // Closing a detail leaves the reader on the map. On phones it used to pull the list sheet back up
-    // over the map whenever a kabupaten or search was open, which a ?nomor= link always opens, so the
-    // map the reader had just closed the card to see disappeared again. The list opens on request only.
+    // Pulling the persistent bottom bar up while a detail card is open turns the detail back into the list
+    // without leaving a stale card behind the sheet.
+    dismissDetailToSheet(snap: 'half' | 'full') {
+      const point = selected;
+      selectedNomor = null; reported = null; reopenHalfOnClose = false;
+      sheetSnap = snap;
+      markRecent(point?.nomor ?? null);
+    },
+    // Closing a detail opened from the list returns the sheet to half-height so the reporter can pick the
+    // next unit without pulling the bar up again, while leaving the map open above. Details opened directly
+    // from the map or a ?nomor= link stay collapsed so the map remains clear.
     closeDetail() {
       const point = selected;
-      selectedNomor = null; reported = null; recentNomor = point?.nomor ?? null;
-      clearTimeout(recentTimer); recentTimer = setTimeout(() => { recentNomor = null; }, 2800);
+      const reopen = !!point && reopenHalfOnClose && (typeof window === 'undefined' || window.innerWidth < 960);
+      selectedNomor = null; reported = null; reopenHalfOnClose = false;
+      if (reopen) sheetSnap = 'half';
+      markRecent(point?.nomor ?? null);
     },
   };
 }

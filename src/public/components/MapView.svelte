@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { createSurveyMap, type SurveyMapAdapter, type LayerKey } from '../map/create-map';
   import type { SurveyState } from '../state/survey.svelte';
   import type { Locator } from '../state/locate.svelte';
@@ -14,7 +14,7 @@
   let target: HTMLDivElement, popup: HTMLDivElement, content: HTMLDivElement;
   function scrollHint() { const scroller = innerWidth < 960 ? popup : content; popup.classList.toggle("is-scrollable", scroller.scrollHeight - scroller.clientHeight > 4); popup.classList.toggle("is-scroll-end", scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4); }
   let returnFocus: HTMLElement | null = null;
-  function closeDetail() { const nomor = state.selectedNomor; state.closeDetail(); if (nomor) adapter?.centerAfterClose(nomor); }
+  async function closeDetail() { const nomor = state.selectedNomor; state.closeDetail(); await tick(); if (nomor) adapter?.centerAfterClose(nomor); }
   onMount(() => {
     let instance: SurveyMapAdapter | null = null, disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;

@@ -20,7 +20,21 @@
   import type { Locator as GpsLocator } from '../state/locate.svelte';
   let { state, onfit, onrefresh, refreshing = false, locator }: { state: SurveyState; onfit: () => void; onrefresh: () => void; refreshing?: boolean; locator: GpsLocator } = $props();
   let sidebar: HTMLElement, scroller: HTMLDivElement, search: HTMLInputElement, near: HTMLDivElement;
-  const gesture = createSheetGesture(() => sidebar, () => state.panelOpen, open => { state.panelOpen = open; state.select(null); }, () => document.body.classList.remove('is-sheet-hinting', 'is-sheet-nudging'));
+  const gesture = createSheetGesture(
+    () => sidebar,
+    () => state.sheetSnap,
+    snap => {
+      if (snap !== 'closed' && state.selectedNomor) {
+        state.dismissDetailToSheet(snap);
+      } else {
+        state.sheetSnap = snap;
+        if (snap === 'closed') state.select(null);
+      }
+    },
+    () => document.body.classList.remove('is-sheet-hinting', 'is-sheet-nudging'),
+    () => !!state.selected,
+    () => !state.activeRegion && !state.selected,
+  );
   const regionPoints = $derived(state.points.filter(point => point.kabupaten === state.activeRegion));
   const filterFlags = $derived((['duplikat', 'belum'] as const).filter(key => regionPoints.some(point => point[key] && !point.cadangan)));
   const regionCount = $derived(countOfficialPoints(regionPoints));
@@ -54,11 +68,19 @@
   // block carries its own bottom padding, so it needs none of the 14px the other two get.
   function measurePeek() {
     if (!sidebar || window.innerWidth >= 960) return;
+    const root = document.documentElement.style;
+    const handle = sidebar.querySelector<HTMLElement>('#sheet-handle');
+    const bar = handle ? Math.max(handle.offsetHeight, window.innerHeight <= 500 ? 36 : 48) : 48;
+    root.setProperty('--sheet-bar', `${Math.round(bar)}px`);
+    const cap = Math.max(180, window.innerHeight - 150);
+    const half = Math.round(Math.min(Math.max(window.innerHeight * 0.46, 276), Math.min(390, cap)));
+    root.setProperty('--sheet-half', `${half}px`);
+    if (state.panelOpen || state.selected) return;
     const search = sidebar.querySelector<HTMLElement>('.panel-search'), card = near?.firstElementChild, summary = sidebar.querySelector<HTMLElement>('#panel-meta > .atlas-summary');
     const end = card instanceof HTMLElement && card.offsetHeight ? card.offsetTop + card.offsetHeight + 14 : summary?.offsetHeight ? summary.offsetTop + summary.offsetHeight : search ? search.offsetTop + search.offsetHeight + 14 : 0;
-    if (end) document.documentElement.style.setProperty('--sheet-peek', `${Math.round(end)}px`);
+    if (end) root.setProperty('--sheet-peek', `${Math.round(end)}px`);
   }
-  onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(sidebar.querySelector('#panel-meta')!); observer.observe(near); window.addEventListener('resize', measurePeek); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); }; });
+  onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#sheet-handle')!); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(sidebar.querySelector('#panel-meta')!); observer.observe(near); window.addEventListener('resize', measurePeek); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); document.documentElement.style.removeProperty('--sheet-half'); document.documentElement.style.removeProperty('--sheet-bar'); }; });
   let scrollInitialized = false;
   $effect(() => {
     state.activeRegion; state.statusFilter; state.query; state.listMode;
@@ -66,6 +88,24 @@
     // effect forced a full layout while the rest of the map was still mounting.
     if (scroller && scrollInitialized) scroller.scrollTop = 0;
     scrollInitialized = true;
+  });
+  $effect(() => {
+    const snap = state.sheetSnap, recent = state.recentNomor, selected = state.selectedNomor;
+    if (snap === 'closed') { void tick().then(measurePeek); return; }
+    if (snap !== 'half' || !recent || window.innerWidth >= 960) return;
+    // Keep the just-closed point inside the half-sheet's visible area so the reporter resumes right there.
+    void tick().then(() => {
+      if (state.sheetSnap !== 'half' || state.recentNomor !== recent || !scroller) return;
+      const card = scroller.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(recent)}"]`);
+      if (!card) return;
+      const half = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-half')) || Math.round(window.innerHeight * 0.46);
+      const visibleHeight = Math.max(80, half - (scroller.getBoundingClientRect().top - sidebar.getBoundingClientRect().top));
+      const offset = card.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+      const stickyTop = scroller.querySelector<HTMLElement>('.atlas-section, .work-group[open] > summary')?.offsetHeight ?? 0;
+      if (offset < stickyTop + 4 || offset + card.offsetHeight > visibleHeight - 8) {
+        scroller.scrollTop += offset - Math.max(stickyTop + 8, (visibleHeight - card.offsetHeight) / 3);
+      }
+    });
   });
   function syncScroll() {
     sidebar.classList.toggle('is-scrolled', scroller.scrollTop > 2);
@@ -76,7 +116,7 @@
 </script>
 <aside id="sidebar" aria-label="Daftar titik PUTS" bind:this={sidebar} inert={state.sidebarCollapsed} data-screen={state.activeRegion ? 'items' : 'groups'}>
   <button id="sheet-handle" type="button" aria-controls="sidebar" aria-expanded={state.panelOpen} aria-label={state.panelOpen ? 'Tutup daftar titik' : 'Lihat daftar titik'} onclick={gesture.click} onpointerdown={gesture.down} onpointermove={gesture.move} onpointerup={gesture.up} onpointercancel={gesture.cancel}>
-    <span class="sheet-handle__grabber" aria-hidden="true"></span><span class="sheet-handle__text" aria-hidden="true">{state.panelOpen ? 'Tutup Daftar Titik' : 'Lihat Daftar Titik'}</span>
+    <span class="sheet-handle__grabber" aria-hidden="true"></span><span class="sheet-handle__text" aria-hidden="true">{state.panelOpen ? 'Tutup Daftar Titik' : state.selected && state.activeRegion ? `Lihat Daftar Titik · ${state.activeRegion}` : 'Lihat Daftar Titik'}</span>
   </button>
   <div class="panel-top" id="panel-top">
     {#if state.activeRegion}
@@ -106,7 +146,7 @@
             <button class="atlas-pill" aria-pressed={state.statusFilter === key} onclick={() => state.setFilter(state.statusFilter === key ? null : key)}><span class={`atlas-pill__swatch atlas-pill__swatch--${key}`} aria-hidden="true"></span>{STATUS_LABEL[key === 'duplikat' ? 'duplikat' : 'belum'].short} <b>{regionPoints.filter(point => point[key] && !point.cadangan).length}</b></button>
           {/if}
         {/each}
-      </div>{/if}<p class="atlas-hint" role="status">{state.query || state.statusFilter ? summary : 'Pilih nomor titik untuk melihatnya di peta.'}</p>
+      </div>{/if}<p class="atlas-hint" class:is-generic={!state.query && !state.statusFilter} role="status">{state.query || state.statusFilter ? summary : 'Pilih nomor titik untuk melihatnya di peta.'}</p>
     {:else if state.query}<p class="atlas-summary" role="status">{state.count} titik cocok di {new Set(state.visiblePoints.map(point => point.kabupaten)).size} kabupaten</p>
     {:else}<div class="atlas-summary atlas-summary--total"><p class="atlas-total" role="status"><b class="atlas-total__num">{state.count}</b><span class="atlas-total__label"><span>Titik PUTS</span><span>di <b>{state.regionNames.length}</b> kabupaten/kota</span></span></p><button id="fit-map" type="button" class="atlas-fit" aria-label="Lihat semua" title="Tampilkan semua titik di peta" onclick={onfit}><Icon name="fit" size={16}/><span>Lihat Semua</span></button></div>{/if}
   </div>

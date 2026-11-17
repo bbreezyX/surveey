@@ -600,6 +600,8 @@ body.is-sidebar-collapsed .map-legend {
            the real value from the rendered sheet on every screen; this is
            only the first paint's guess. */
         --sheet-peek: 152px;
+        --sheet-half: 46dvh;
+        --sheet-bar: 52px;
         --sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);
         --popup-ease: cubic-bezier(0.22, 1, 0.36, 1);
         /* 48px touch target. Drives the layer button AND its icon overlay —
@@ -738,33 +740,49 @@ body.is-sidebar-collapsed .map-legend {
         transform: translate3d(0, 0, 0);
     }
 
+    body.is-panel-open.is-panel-half #sidebar {
+        transform: translate3d(0, calc(100% - var(--sheet-half)), 0);
+    }
+
     /* While a finger owns the sheet it has to sit exactly under it — a 0.32s
        transition would make every drag lag behind by a third of a second. */
     body.is-sheet-dragging #sidebar {
         transition: none;
     }
 
-    /* A selected point owns the screen: the sheet drops fully out of the way
-       instead of peeking over the popup.
-
-       ba82f9f removed this rule because a stale is-popup-open could strand the
-       sheet down. That race is gone — openPopupForItem now sets the class
-       synchronously instead of deferring it two animation frames — and the
-       tiebreaker below still wins if the class ever does linger. */
-    body.is-popup-open #sidebar {
-        transform: translate3d(0, 100%, 0);
-        pointer-events: none;
+    /* A selected point owns the upper map, while the sheet shrinks to a slim
+       bottom bar so the reporter always keeps one-tap access to the list
+       without blocking the detail card or the pin underneath it. */
+    body.is-popup-open:not(.is-panel-open) #sidebar {
+        transform: translate3d(0, calc(100% - var(--sheet-bar)), 0);
+        pointer-events: auto;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -2px 6px rgba(20, 38, 53, 0.1), 0 -8px 24px rgba(20, 38, 53, 0.18);
         transition-duration: 0.28s;
     }
 
     /* Panel open always beats a stale popup state. */
-    body.is-panel-open.is-popup-open #sidebar {
+    body.is-panel-open.is-popup-open:not(.is-panel-half) #sidebar {
         transform: translate3d(0, 0, 0);
+        pointer-events: auto;
+    }
+
+    body.is-panel-open.is-popup-open.is-panel-half #sidebar {
+        transform: translate3d(0, calc(100% - var(--sheet-half)), 0);
         pointer-events: auto;
     }
 
     body.is-panel-open .ol-popup {
         pointer-events: none;
+        visibility: hidden;
+    }
+
+    /* Keep off-screen content out of keyboard Tab order while collapsed or in bar mode. */
+    body:not(.is-panel-open):not(.is-sheet-dragging) .sidebar-scroll {
+        visibility: hidden;
+    }
+
+    body.is-popup-open:not(.is-panel-open):not(.is-sheet-dragging) #sidebar > :not(#sheet-handle) {
         visibility: hidden;
     }
 
@@ -805,9 +823,49 @@ body.is-sidebar-collapsed .map-legend {
     }
 
     .sheet-handle__text {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font: 600 12px/1.2 var(--font-ui);
         color: var(--muted);
         white-space: nowrap;
+    }
+
+    body.is-popup-open:not(.is-panel-open) #sheet-handle {
+        min-height: 48px;
+        padding: 7px 16px calc(9px + env(safe-area-inset-bottom, 0px));
+    }
+
+    body.is-panel-half #sheet-handle {
+        min-height: 32px;
+        padding: 6px 12px 4px;
+        gap: 4px;
+    }
+
+    body.is-panel-half .panel-search-row {
+        margin-bottom: 8px;
+    }
+
+    body.is-panel-half .panel-search,
+    body.is-panel-half .locate-btn {
+        height: 40px;
+    }
+
+    body.is-panel-half .atlas-pills {
+        padding-bottom: 6px;
+    }
+
+    body.is-panel-half .atlas-hint.is-generic {
+        display: none;
+    }
+
+    body.is-panel-half .atlas-summary--total {
+        padding-top: 0;
+        padding-bottom: 8px;
+    }
+
+    body.is-panel-half .atlas-summary--total .atlas-total__num {
+        font-size: 26px;
     }
 
     #sheet-handle:active .sheet-handle__grabber {
@@ -952,6 +1010,13 @@ body.is-sidebar-collapsed .map-legend {
         overflow-y: auto;
     }
 
+    /* In half-sheet mode the bottom of #sidebar sits off-screen; reserve equivalent tail room
+       so the last list entries can scroll fully into the visible half-sheet window. */
+    body.is-panel-half .sidebar-scroll {
+        padding-bottom: calc(100dvh - 72px - var(--sheet-half) + 16px);
+        scroll-padding-bottom: calc(100dvh - 72px - var(--sheet-half) + 16px);
+    }
+
     .sidebar-footer {
         display: none;
         padding: 8px 16px 12px;
@@ -959,7 +1024,7 @@ body.is-sidebar-collapsed .map-legend {
         background: transparent;
     }
 
-    body.is-panel-open .sidebar-footer {
+    body.is-panel-open:not(.is-panel-half) .sidebar-footer {
         display: block;
     }
 
@@ -1009,7 +1074,7 @@ body.is-sidebar-collapsed .map-legend {
         width: auto !important;
         transform: translate3d(0, 10px, 0) scale(0.97) !important;
         opacity: 0;
-        max-height: max(62dvh, calc(100dvh - 190px));
+        max-height: max(58dvh, calc(100dvh - 196px));
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         z-index: 22;
@@ -1845,7 +1910,7 @@ body.is-sidebar-collapsed .map-legend {
        above the screen's foot. */
     @media (max-height: 599px) {
         .ol-popup {
-            max-height: max(62dvh, calc(100dvh - 174px));
+            max-height: max(58dvh, calc(100dvh - 186px));
         }
 
         .feature-popup__media {
