@@ -4,25 +4,29 @@
   import { stageBadgeSvg, stageDone, stageSummary } from '../../src/shared/survey/progress';
   import Select from './Select.svelte';
   import AddressPicker from './AddressPicker.svelte';
-  let { editor, stage = 0, onReload }: { editor: PointEditor; stage?: number; onReload: () => void } = $props();
+  let { editor, canPublish = false, stage = 0, onReload }: { editor: PointEditor; canPublish?: boolean; stage?: number; onReload: () => void } = $props();
   const labels: Record<string, string> = { nomor: 'Nomor', nama: 'Pengusul', jalur: 'Jalur', alamat: 'Alamat lengkap', keterangan: 'Keterangan',
     lokasi_rekapan: 'Lokasi rekapan', catatan: 'Catatan', status: 'Status alokasi', duplikat: 'Perlu verifikasi', archived: 'Diarsipkan', lat: 'Latitude', lon: 'Longitude', photo_id: 'Foto', date: 'Tanggal' };
   let detail = $derived(editor.detail);
   let edit = $derived(editor.edit);
   let badge = $derived(badgeOf(detail.state));
+  let form: HTMLFormElement;
   $effect(() => editor.remember());
   // The address text opens on request; it stays open when the wilayah list failed, since typing is then the only way.
   let addressOpen = $state(false), pickerFailed = $state(false);
   // The review table showed raw "true"/"false" and a blank cell for an emptied field.
   const shown = (value: unknown) => value === true ? 'Ya' : value === false ? 'Tidak' : value == null || value === '' ? '—' : String(value);
   const counted = (state: PointState) => state.archived || state.status === 'Cadangan' ? 0 : 1;
+  let hasChanges = $derived(!!editor.changed.length || editor.mode === 'visit');
   // The footer says why the button is off, or what saving will do.
   let footNote = $derived(
     editor.restored ? 'Isian belum tersimpan dipulihkan.'
-    : !editor.changed.length && editor.mode !== 'visit' ? 'Belum ada perubahan.'
-    : !editor.reason.trim() ? 'Isi alasan perubahan untuk menyimpan.'
-    : detail.own_draft ? 'Menyimpan memperbarui draf Anda.'
-    : `${editor.changed.length ? `${editor.changed.length} perubahan` : 'Kunjungan baru'} · peta publik belum berubah.`);
+    : !hasChanges ? 'Belum ada perubahan.'
+    : canPublish
+      ? (detail.own_draft ? 'Siap diterbitkan dari draf Anda, atau perbarui draf.' : `${editor.changed.length ? `${editor.changed.length} perubahan` : 'Kunjungan baru'} · siap diterbitkan.`)
+      : detail.own_draft ? 'Menyimpan memperbarui draf Anda.'
+      : `${editor.changed.length ? `${editor.changed.length} perubahan` : 'Kunjungan baru'} · peta publik belum berubah.`);
+  function saveAsDraft() { if (form.reportValidity()) void editor.save(); }
 </script>
 <div class="edit-head">
   <div class="edit-title">
@@ -34,7 +38,7 @@
 </div>
 {#if editor.error}<p class="notice-error edit-notice" role="alert">{editor.error}</p>{/if}
 {#if editor.conflict}<p class="hint edit-notice">Perubahan ini masih tampil di formulir dan akan terganti saat “Muat ulang” memuat revisi terbaru. Penyimpanan berikutnya mengacu pada revisi terbaru tersebut.</p>{/if}
-<form class="edit-form" onsubmit={event => editor.save(event)}>
+<form class="edit-form" bind:this={form} onsubmit={event => canPublish ? editor.publish(event) : editor.save(event)}>
   <div class="edit-scroll">
     <fieldset disabled={editor.busy}><legend>Data alokasi</legend>
       <AddressPicker bind:value={edit.alamat} bind:failed={pickerFailed}/>
@@ -72,11 +76,18 @@
     <fieldset disabled={editor.busy}><legend>Tinjau perubahan</legend>
       {#if editor.changed.length}<div class="table-wrap"><table><thead><tr><th>Data</th><th>Lama</th><th>Baru</th></tr></thead><tbody>{#each editor.changed as key}<tr><th>{labels[key] || key}</th><td>{shown(detail.state[key as keyof PointState])}</td><td>{shown(edit[key as keyof PointState])}</td></tr>{/each}</tbody></table></div>{/if}
       <p class="hint">Jumlah resmi: <strong>{counted(detail.state)} → {counted(edit)}</strong>{#if edit.status === 'Belum Ditetapkan'} (belum ditetapkan tetap dihitung){/if}</p>
-      <label class="field">Alasan perubahan<span class="field__req" aria-hidden="true">*</span><textarea bind:value={editor.reason} rows="2" maxlength="3000" required></textarea></label>
+      <label class="field">Alasan perubahan<textarea bind:value={editor.reason} rows="2" maxlength="3000" placeholder="Opsional — terisi otomatis bila dikosongkan"></textarea></label>
     </fieldset>
   </div>
   <div class="edit-foot">
     <p>{footNote}</p>
-    <button class="btn-primary" type="submit" disabled={editor.busy || (!editor.changed.length && editor.mode !== 'visit')}>{editor.busy ? 'Memproses…' : detail.own_draft ? 'Perbarui draf' : 'Simpan draf'}</button>
+    <div class="edit-foot__actions">
+      {#if canPublish}
+        <button class="btn-ghost" type="button" onclick={saveAsDraft} disabled={editor.busy || !hasChanges}>{detail.own_draft ? 'Perbarui draf' : 'Simpan draf'}</button>
+        <button class="btn-primary" type="submit" disabled={editor.busy || !hasChanges}>{editor.busy ? 'Menerbitkan…' : 'Simpan & terbitkan'}</button>
+      {:else}
+        <button class="btn-primary" type="submit" disabled={editor.busy || !hasChanges}>{editor.busy ? 'Memproses…' : detail.own_draft ? 'Perbarui draf' : 'Simpan draf'}</button>
+      {/if}
+    </div>
   </div>
 </form>

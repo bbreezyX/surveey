@@ -98,7 +98,18 @@
   }
   async function select(id: string) {
     busy = true; error = ''; creating = false; pane = 'edit';
-    try { detail = await api<Detail>(`points/${id}`); editor = new PointEditor(detail, { onSaved: text => { announce(text); loadPoints(); select(id); } }); backdrop?.setSelected(id); }
+    try {
+      detail = await api<Detail>(`points/${id}`);
+      editor = new PointEditor(detail, {
+        onSaved: (text, published) => {
+          announce(text);
+          loadPoints();
+          select(id);
+          if (published) api<{items: MapPoint[]}>('points/map').then(result => backdrop?.setPoints(result.items)).catch(() => {});
+        },
+      });
+      backdrop?.setSelected(id);
+    }
     catch(e) { failed(e); } finally { busy = false; }
   }
   async function navigate(next: typeof page) { page = next; error = ''; message = ''; try {
@@ -185,7 +196,7 @@
   {#if !account}<p class="sheet-body loading">Memuat sesi…</p>
   {:else if page === 'points'}
     <section class="editor sheet-body">
-      {#if editor}{#key editor}<EditorSheet {editor} stage={stageOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} onReload={() => select(editor!.detail.id)}/>{/key}
+      {#if editor}{#key editor}<EditorSheet {editor} {canPublish} stage={stageOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} onReload={() => select(editor!.detail.id)}/>{/key}
       {:else if creating}<div class="edit-head"><div class="edit-title"><h2>Titik baru</h2><p class="edit-id">Titik baru dimulai sebagai arsip. Setelah data dan bukti lengkap, aktivasi diajukan melalui draf.</p></div></div>
         <form class="edit-form" onsubmit={create}><div class="edit-scroll"><fieldset disabled={busy}><legend>Identitas & lokasi</legend>
           <label class="field">Nomor<input bind:value={newPoint.nomor} placeholder="KABUPATEN-KECAMATAN-DESA-001" required maxlength="250"></label>
@@ -195,7 +206,7 @@
           <p class="hint">Lokasi dapat ditentukan lewat peta di panel Foto & lokasi, diketik, atau ditempel sebagai “lat, long”.</p>
           <label class="field">Alasan penambahan<textarea bind:value={newReason} rows="2" maxlength="3000" required></textarea></label>
         </fieldset></div><div class="edit-foot"><p>Titik baru belum tampil di peta publik.</p><button class="btn-primary" disabled={busy}>Buat titik</button></div></form>
-      {:else}<div class="editor-empty"><h2>Belum ada titik terpilih</h2><p>Titik dari daftar atau pin di peta terbuka di sini. Setiap perubahan tersimpan sebagai draf dan ditinjau sebelum diterbitkan.</p></div>{/if}
+      {:else}<div class="editor-empty"><h2>Belum ada titik terpilih</h2><p>{canPublish ? 'Titik dari daftar atau pin di peta terbuka di sini. Perubahan dapat disimpan sebagai draf atau langsung diterbitkan.' : 'Titik dari daftar atau pin di peta terbuka di sini. Setiap perubahan tersimpan sebagai draf dan ditinjau sebelum diterbitkan.'}</p></div>{/if}
     </section>
   {:else}<section class="page sheet-body">
     {#if page === 'drafts'}{#key page}<Drafts {canPublish} onMessage={announce}/>{/key}

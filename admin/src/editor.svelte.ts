@@ -21,7 +21,7 @@ export class PointEditor {
   private basis = '';
   changed = $derived(Object.keys(this.edit).filter(key => this.edit[key as keyof PointState] !== this.detail.state[key as keyof PointState]));
 
-  constructor(detail: Detail, private hooks: { onSaved: (message: string) => void }) {
+  constructor(detail: Detail, private hooks: { onSaved: (message: string, published?: boolean) => void }) {
     this.detail = detail;
     // A saved draft reopens in the form, so saving again revises it.
     const own = detail.own_draft;
@@ -68,15 +68,38 @@ export class PointEditor {
     finally { this.busy = false; input.value = ''; }
   }
 
-  async save(event: SubmitEvent) {
-    event.preventDefault(); this.busy = true; this.error = ''; this.conflict = false;
+  private proposalPayload() {
+    return {
+      base_revision: this.detail.revision,
+      proposed: {
+        state: $state.snapshot(this.edit),
+        new_observation: this.mode === 'visit' ? { date: this.surveyDate, source: this.source, notes: this.notes } : null,
+      },
+      reason: this.reason,
+    };
+  }
+
+  private async submitProposal(url: string, body: unknown, message: string, published: boolean, fallbackError: string) {
+    this.busy = true; this.error = ''; this.conflict = false;
     try {
-      await api('drafts', 'POST', { point_id: this.detail.id, base_revision: this.detail.revision,
-        proposed: { state: $state.snapshot(this.edit), new_observation: this.mode === 'visit' ? { date: this.surveyDate, source: this.source, notes: this.notes } : null }, reason: this.reason });
+      await api(url, 'POST', body);
       this.forget();
-      this.hooks.onSaved('Draf tersimpan. Peta publik berubah setelah penerbitan.');
-    } catch (e) { this.error = e instanceof Error ? e.message : 'Simpan gagal.'; this.conflict = e instanceof ApiError && e.status === 409; }
+      this.hooks.onSaved(message, published);
+    } catch (e) { this.error = e instanceof Error ? e.message : fallbackError; this.conflict = e instanceof ApiError && e.status === 409; }
     finally { this.busy = false; }
+  }
+
+  async save(event?: SubmitEvent) {
+    event?.preventDefault();
+    const { base_revision, proposed, reason } = this.proposalPayload();
+    await this.submitProposal('drafts', { point_id: this.detail.id, base_revision, proposed, reason },
+      'Draf tersimpan. Peta publik berubah setelah penerbitan.', false, 'Simpan gagal.');
+  }
+
+  async publish(event?: SubmitEvent) {
+    event?.preventDefault();
+    await this.submitProposal(`points/${this.detail.id}/publish`, this.proposalPayload(),
+      'Perubahan disimpan dan diterbitkan. Peta publik akan memperbarui titik secara otomatis.', true, 'Penerbitan gagal.');
   }
 
   async restore(number: number) {

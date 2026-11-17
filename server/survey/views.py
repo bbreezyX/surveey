@@ -261,6 +261,13 @@ def restore(request, point_id):
     return response(services.draft_preview(draft), 201)
 
 @api(['POST'])
+def publish_point(request, point_id):
+    data = body(request, ['base_revision', 'proposed', 'reason'])
+    point, publication = services.publish_point(
+        request.user, point_id, data['base_revision'], data['proposed'], data['reason'])
+    return response({'id': str(point.pk), 'revision': point.revision, 'publication_id': str(publication.id)}, 201)
+
+@api(['POST'])
 def publish(request):
     data = body(request, ['draft_ids', 'reason'])
     publication = services.publish(request.user, data['draft_ids'], data['reason'])

@@ -365,3 +365,85 @@ class PublicationCostTests(TestCase):
         active = ActivePublication.objects.get(id=1).publication
         self.assertEqual(MediaGrant.objects.filter(publication=active).count(), 24)
         self.assertEqual(len(active.manifest), 24)
+
+
+class DirectPublishAndOptionalReasonTests(TestCase):
+    def setUp(self):
+        self.owner = Account.objects.create_user(username='direct-owner', password='test-only-password-347192', role='owner')
+        self.editor = Account.objects.create_user(username='direct-editor', password='test-only-password-347193', role='editor')
+        self.client = Client(enforce_csrf_checks=True)
+
+    def login(self, username, password):
+        self.client.get('/admin/')
+        token = self.client.cookies['survey_admin_csrf'].value
+        self.client.post('/admin/login', {'username': username, 'password': password, 'csrfmiddlewaretoken': token})
+        return self.client.get('/admin/api/session').json()['csrf']
+
+    def test_optional_reason_autofills_and_publisher_can_publish_directly(self):
+        from delivery.models import ActivePublication
+        from .models import Draft, Point, Revision
+        from .services import create_point, publish_baseline, save_draft
+        ActivePublication.objects.get_or_create(id=1)
+        state = {'nomor': 'KOTA JAMBI-KOTA BARU-PAAL LIMA-001', 'nama': '', 'jalur': '', 'alamat': 'Kel. Paal Lima, Kecamatan Kota Baru, Kota Jambi',
+            'keterangan': '', 'lokasi_rekapan': '', 'catatan': '', 'status': '', 'duplikat': False, 'archived': False,
+            'lon': 103.6, 'lat': -1.6, 'date': '', 'photo_id': None, 'observation_id': None}
+        point = create_point(self.owner, state, 'Uji')
+        Point.objects.filter(pk=point.pk).update(state={**point.state, 'archived': False}, archived=False)
+        point.refresh_from_db()
+        publish_baseline(self.owner, 'Baseline')
+
+        # Optional reason on draft auto-summarizes coordinate movement.
+        own_draft = save_draft(self.owner, str(point.id), point.revision,
+            {'state': {**point.state, 'lat': -1.60015}, 'new_observation': None}, '')
+        self.assertRegex(own_draft.reason, r'^Geser koordinat \d+ m$')
+        other_draft = save_draft(self.editor, str(point.id), point.revision,
+            {'state': {**point.state, 'catatan': 'Catatan editor'}, 'new_observation': None}, '')
+        self.assertEqual(other_draft.reason, 'Koreksi data titik')
+
+        # Editor role cannot publish directly.
+        editor_csrf = self.login(self.editor.username, 'test-only-password-347193')
+        denied = self.client.post(f'/admin/api/points/{point.id}/publish',
+            {'base_revision': point.revision, 'proposed': {'state': {**point.state, 'lat': -1.6002}, 'new_observation': None}, 'reason': ''},
+            content_type='application/json', HTTP_X_CSRFTOKEN=editor_csrf)
+        self.assertEqual(denied.status_code, 403)
+
+        # Owner can publish directly with an empty reason; own pending draft closes, other user's draft remains pending.
+        owner_csrf = self.login(self.owner.username, 'test-only-password-347192')
+        published = self.client.post(f'/admin/api/points/{point.id}/publish',
+            {'base_revision': point.revision, 'proposed': {'state': {**point.state, 'lat': -1.6002}, 'new_observation': None}, 'reason': ''},
+            content_type='application/json', HTTP_X_CSRFTOKEN=owner_csrf)
+        self.assertEqual(published.status_code, 201, published.content)
+        point.refresh_from_db()
+        own_draft.refresh_from_db()
+        other_draft.refresh_from_db()
+        self.assertEqual(point.revision, 2)
+        self.assertEqual(point.state['lat'], -1.6002)
+        self.assertEqual(own_draft.status, 'published')
+        self.assertEqual(other_draft.status, 'pending')
+        self.assertRegex(Revision.objects.get(point=point, number=2).reason, r'^Geser koordinat \d+ m$')
+        active = ActivePublication.objects.get(id=1).publication
+        self.assertEqual(active.geojson['features'][0]['geometry']['coordinates'], [103.6, -1.6002])
+
+        # Stale base_revision returns 409 without changing active publication.
+        conflict = self.client.post(f'/admin/api/points/{point.id}/publish',
+            {'base_revision': 1, 'proposed': {'state': {**point.state, 'lat': -1.6005}, 'new_observation': None}, 'reason': ''},
+            content_type='application/json', HTTP_X_CSRFTOKEN=owner_csrf)
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(Draft.objects.filter(point=point, status='pending').count(), 1)
+
+    def test_batch_publish_accepts_blank_reason(self):
+        from delivery.models import ActivePublication
+        from .models import Point
+        from .services import create_point, publish, publish_baseline, save_draft
+        ActivePublication.objects.get_or_create(id=1)
+        state = {'nomor': 'KOTA JAMBI-KOTA BARU-PAAL LIMA-002', 'nama': '', 'jalur': '', 'alamat': 'Kel. Paal Lima, Kecamatan Kota Baru, Kota Jambi',
+            'keterangan': '', 'lokasi_rekapan': '', 'catatan': '', 'status': '', 'duplikat': False, 'archived': False,
+            'lon': 103.6, 'lat': -1.6, 'date': '', 'photo_id': None, 'observation_id': None}
+        point = create_point(self.owner, state, 'Uji')
+        Point.objects.filter(pk=point.pk).update(state={**point.state, 'archived': False}, archived=False)
+        point.refresh_from_db()
+        publish_baseline(self.owner, 'Baseline')
+        draft = save_draft(self.owner, str(point.id), point.revision,
+            {'state': {**point.state, 'catatan': 'Baru'}, 'new_observation': None}, '')
+        publication = publish(self.owner, [str(draft.id)], '')
+        self.assertEqual(str(ActivePublication.objects.get(id=1).publication_id), str(publication.id))

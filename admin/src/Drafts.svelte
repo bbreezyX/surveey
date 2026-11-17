@@ -41,7 +41,7 @@
 {/each}
 {#if canPublish && items.length}
   <form class="page-foot" onsubmit={publish}>
-    <label class="field">Catatan penerbitan<textarea bind:value={reason} rows="2" maxlength="3000" required></textarea></label>
+    <label class="field">Catatan penerbitan<textarea bind:value={reason} rows="2" maxlength="3000" placeholder="Opsional — terisi otomatis dari draf bila dikosongkan"></textarea></label>
     <div class="page-foot__bar"><p>{selected.length} draf dipilih. Foto dan revisi diperiksa sebelum snapshot diaktifkan.</p><button class="btn-primary" disabled={busy || !selected.length}>{busy ? 'Menerbitkan…' : 'Terbitkan draf terpilih'}</button></div>
   </form>
 {/if}

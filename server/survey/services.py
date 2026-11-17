@@ -77,6 +77,51 @@ def validate_proposal(point, proposed):
             raise Problem('Koreksi tidak mengubah tanggal atau pengamatan; pilih survei baru untuk kunjungan baru.')
     return {'state': state, 'new_observation': obs}
 
+def format_distance_id(metres):
+    return f'{round(metres)} m' if metres < 1000 else f'{metres / 1000:.2f} km'.replace('.', ',')
+
+
+def default_change_reason(before, after, new_observation=None):
+    parts = []
+    if before['lat'] != after['lat'] or before['lon'] != after['lon']:
+        dist = movement(before, after)
+        parts.append(f'Geser koordinat {format_distance_id(dist)}' if dist >= 1 else 'Koreksi koordinat')
+    if before['archived'] != after['archived']:
+        parts.append('Arsipkan titik' if after['archived'] else 'Aktifkan titik')
+    if before['status'] != after['status']:
+        parts.append(f"Ubah status ({after['status'] or 'Alokasi utama'})")
+    if before['alamat'] != after['alamat']:
+        parts.append('Ubah alamat')
+    if before['photo_id'] != after['photo_id']:
+        parts.append('Ganti foto survei' if after['photo_id'] else 'Hapus foto survei')
+    if new_observation:
+        parts.append('Kunjungan survei baru')
+    if any(before[k] != after[k] for k in ('nama', 'jalur', 'keterangan', 'lokasi_rekapan', 'catatan', 'duplikat')):
+        parts.append('Koreksi data titik')
+    return ' · '.join(parts)[:3000] or 'Pembaruan data titik'
+
+
+def apply_point_proposal(actor, author, point, proposal, reason):
+    state, obs = proposal['state'], proposal['new_observation']
+    if obs:
+        observation = Observation.objects.create(point=point, date=obs['date'], longitude=state['lon'],
+            latitude=state['lat'], notes=obs['notes'], source=obs['source'], author=author)
+        state['observation_id'] = str(observation.id)
+    elif state['observation_id']:
+        observation = Observation.objects.get(id=state['observation_id'], point=point)
+    else:
+        observation = None
+    if observation and state['photo_id']:
+        ObservationEvidence.objects.get_or_create(observation=observation, photo_id=state['photo_id'])
+    before = point.state
+    point.revision += 1
+    point.state, point.archived, point.nomor = state, state['archived'], state['nomor']
+    point.save(update_fields=['revision', 'state', 'archived', 'nomor', 'updated_at'])
+    Revision.objects.create(point=point, number=point.revision, state=state, actor=actor, reason=reason)
+    audit(actor, 'point.published', point.id, before, state, reason)
+    return point
+
+
 @transaction.atomic
 def save_draft(actor, point_id, base_revision, proposed, reason):
     permission(actor, 'edit')
@@ -84,19 +129,47 @@ def save_draft(actor, point_id, base_revision, proposed, reason):
     if type(base_revision) is not int or point.revision != base_revision:
         raise Problem('Titik telah berubah. Muat ulang dan bandingkan perubahan sebelum menyimpan.', 409,
             {'revision': point.revision, 'state': point.state})
+    before = point.state
     proposed = validate_proposal(point, proposed)
-    reason = text(reason, 'Alasan perubahan', 3000, True)
+    reason = text(reason, 'Alasan perubahan', 3000) or default_change_reason(
+        before, proposed['state'], proposed['new_observation'])
     # One pending draft per author and point: the editor reopens it, and saving
     # again revises it instead of stacking near-identical drafts for review.
     draft = Draft.objects.select_for_update().filter(point=point, author=actor, status='pending').order_by('-created_at').first()
     if draft:
         draft.base_revision, draft.proposed, draft.reason = base_revision, proposed, reason
         draft.save(update_fields=['base_revision', 'proposed', 'reason'])
-        audit(actor, 'draft.updated', draft.id, point.state, proposed, reason)
+        audit(actor, 'draft.updated', draft.id, before, proposed, reason)
         return draft
     draft = Draft.objects.create(point=point, base_revision=base_revision, proposed=proposed, reason=reason, author=actor)
-    audit(actor, 'draft.created', draft.id, point.state, proposed, reason)
+    audit(actor, 'draft.created', draft.id, before, proposed, reason)
     return draft
+
+
+@transaction.atomic
+def publish_point(actor, point_id, base_revision, proposed, reason):
+    permission(actor, 'publish')
+    # Same lock order as publish() (ActivePublication -> Draft -> Point) to prevent deadlocks.
+    active = ActivePublication.objects.select_for_update().get(id=1)
+    point_uuid = identifier(point_id)
+    own_drafts = list(Draft.objects.select_for_update().filter(point_id=point_uuid, author=actor, status='pending').order_by('-created_at'))
+    point = Point.objects.select_for_update().get(id=point_uuid)
+    if type(base_revision) is not int or point.revision != base_revision:
+        raise Problem('Titik telah berubah. Muat ulang dan bandingkan perubahan sebelum menerbitkan.', 409,
+            {'revision': point.revision, 'state': point.state})
+    before = point.state
+    proposal = validate_proposal(point, proposed)
+    clean_reason = text(reason, 'Alasan perubahan', 3000) or default_change_reason(
+        before, proposal['state'], proposal['new_observation'])
+    apply_point_proposal(actor, actor, point, proposal, clean_reason)
+    if own_drafts:
+        latest = own_drafts[0]
+        latest.base_revision, latest.proposed, latest.reason, latest.status = base_revision, proposal, clean_reason, 'published'
+        latest.save(update_fields=['base_revision', 'proposed', 'reason', 'status'])
+        for extra in own_drafts[1:]:
+            extra.status = 'discarded'
+            extra.save(update_fields=['status'])
+    return point, build_publication(actor, active, clean_reason)
 
 @transaction.atomic
 def create_point(actor, state, reason):
@@ -165,7 +238,7 @@ def validate_saved_draft(draft):
 @transaction.atomic
 def publish(actor, draft_ids, reason):
     permission(actor, 'publish')
-    reason = text(reason, 'Catatan penerbitan', 3000, True)
+    reason = text(reason, 'Catatan penerbitan', 3000)
     if not isinstance(draft_ids, list) or not 1 <= len(draft_ids) <= 100 or len(set(draft_ids)) != len(draft_ids):
         raise Problem('Pilih 1–100 draf yang berbeda.')
     ids = [identifier(v) for v in draft_ids]
@@ -184,26 +257,11 @@ def publish(actor, draft_ids, reason):
             raise Problem(f'{point.nomor} telah berubah; draf harus ditinjau ulang.', 409,
                 {'point_id': str(point.id), 'revision': point.revision})
         proposal = validate_saved_draft(draft)
-        state, obs = proposal['state'], proposal['new_observation']
-        if obs:
-            observation = Observation.objects.create(point=point, date=obs['date'], longitude=state['lon'],
-                latitude=state['lat'], notes=obs['notes'], source=obs['source'], author=draft.author)
-            state['observation_id'] = str(observation.id)
-        elif state['observation_id']:
-            observation = Observation.objects.get(id=state['observation_id'], point=point)
-        else:
-            observation = None
-        if observation and state['photo_id']:
-            ObservationEvidence.objects.get_or_create(observation=observation, photo_id=state['photo_id'])
-        before = point.state
-        point.revision += 1
-        point.state, point.archived, point.nomor = state, state['archived'], state['nomor']
-        point.save(update_fields=['revision', 'state', 'archived', 'nomor', 'updated_at'])
-        Revision.objects.create(point=point, number=point.revision, state=state, actor=actor, reason=draft.reason)
+        apply_point_proposal(actor, draft.author, point, proposal, draft.reason)
         draft.status = 'published'
         draft.save(update_fields=['status'])
-        audit(actor, 'point.published', point.id, before, state, draft.reason)
-    return build_publication(actor, active, reason)
+    pub_reason = reason or (drafts[0].reason if len(drafts) == 1 else f'Penerbitan {len(drafts)} draf')
+    return build_publication(actor, active, pub_reason)
 
 @transaction.atomic
 def renumber(actor, prefix, reason):
