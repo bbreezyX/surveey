@@ -3,6 +3,7 @@
   import { badgeOf, type PointEditor } from './editor.svelte';
   import { formatPointFieldValue, pointFieldLabel } from './labels';
   import { PENDING_CLOCK_SVG, pendingSummary, stageBadgeSvg, stageDone, stageSummary } from '../../src/shared/survey/progress';
+  import { clearsVerificationOnOldPin, OLD_PIN_WARNING } from './verification';
   import Select from './Select.svelte';
   import AddressPicker from './AddressPicker.svelte';
   // pending: stages reported from esdm.cloud/lapangan and not yet accepted there.
@@ -56,6 +57,8 @@
       <div class="pair"><label class="field">Latitude<span class="field__req" aria-hidden="true">*</span><input type="number" min="-90" max="90" step="any" bind:value={edit.lat} onpaste={event => pasteCoordinates(event, edit)} onwheel={event => event.currentTarget.blur()} required></label><label class="field">Longitude<span class="field__req" aria-hidden="true">*</span><input type="number" min="-180" max="180" step="any" bind:value={edit.lon} onpaste={event => pasteCoordinates(event, edit)} onwheel={event => event.currentTarget.blur()} required></label></div>
       <p class="hint">Bergeser <strong>{formatDistance(distance(detail.state, edit))}</strong> · tempel “lat, long” atau geser pin di peta.</p>
       <label class="switch-row"><span class="ctl-switch"><input type="checkbox" bind:checked={edit.duplikat}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Perlu Verifikasi Lapangan (Duplikat)</label>
+      <!-- Polite live region: the warning appears the moment the switch is turned off. -->
+      <div aria-live="polite">{#if clearsVerificationOnOldPin(detail.state, edit)}<p class="pin-warning">{OLD_PIN_WARNING}</p>{/if}</div>
     </fieldset>
     <fieldset disabled={editor.busy}><legend>Pengamatan Survei</legend>
       <label class="field">Jenis Perubahan<Select label="Jenis Perubahan" bind:value={editor.mode} options={[{ value: 'correction', label: 'Koreksi Foto / Data pada Pengamatan yang Ada' }, { value: 'visit', label: 'Kunjungan Survei Baru' }]}/></label>

@@ -103,6 +103,9 @@ legend { padding: 0; margin-bottom: 10px; font-size: 14.5px; font-weight: 750; }
 .check { display: flex; align-items: center; gap: 9px; margin: 0 0 12px; font-size: 14px; }
 .check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ink); }
 .hint { margin: 0 0 12px; font-size: 13px; line-height: 1.5; color: var(--muted-2); }
+/* Perlu Verifikasi dropped on an uncorrected pin (verification.ts). Orange, the flag's own "check this" colour,
+   so it reads as a caution rather than an error. */
+.pin-warning { margin: 0 0 12px; padding: 8px 10px; border-radius: 8px; background: var(--orange-tint); color: var(--orange-deep); font-size: 13px; line-height: 1.45; }
 .table-wrap { overflow: auto; margin-bottom: 12px; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--divider); overflow-wrap: anywhere; }

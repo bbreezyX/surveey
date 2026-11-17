@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { api, photoUrl, formatDistance, type Draft, type PointState } from './api';
   import { formatPointFieldValue, pointFieldLabel } from './labels';
+  import { clearsVerificationOnOldPin, OLD_PIN_WARNING } from './verification';
   let { canPublish, onMessage }: { canPublish: boolean; onMessage: (text: string) => void } = $props();
   let items = $state<Draft[]>([]); let selected = $state<string[]>([]); let reason = $state(''); let busy = $state(false); let error = $state('');
   async function load() { try { items = (await api<{items: Draft[]}>('drafts')).items; selected = []; } catch(e) { error = e instanceof Error ? e.message : 'Gagal memuat draf.'; } }
@@ -26,6 +27,7 @@
       {#if canPublish}<label class="switch-row"><span class="ctl-switch"><input type="checkbox" bind:group={selected} value={draft.id} disabled={busy || conflict}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Terbitkan</label>{/if}
     </div>
     {#if conflict}<p class="notice-error">Konflik: titik sudah pada revisi {draft.current_revision}. Draf ini tidak dapat diterbitkan; perubahan perlu diajukan ulang dari data terbaru.</p>{/if}
+    {#if clearsVerificationOnOldPin(draft.before, draft.after)}<p class="pin-warning">{OLD_PIN_WARNING}</p>{/if}
     <p class="page-row__text">{draft.reason}</p>
     <dl class="stats-line">
       <div><dt>Perpindahan</dt><dd>{formatDistance(draft.movement_m)}</dd></div>
