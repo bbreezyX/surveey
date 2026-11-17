@@ -241,6 +241,20 @@ test('closing a phone detail opens the list at half-height on the closed point a
   }).toBeGreaterThan(10);
 });
 
+test('a list tab tapped on the half-sheet after a closed detail opens the full sheet', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.setViewportSize({ width: 360, height: 645 });
+  await page.goto('/?nomor=' + encodeURIComponent('KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-007'));
+  await page.getByRole('button', { name: 'Tutup info titik' }).click();
+  await expect(page.locator('body')).toHaveClass(/is-panel-half/);
+  await page.locator('.list-mode').getByRole('button', { name: /^Progres/ }).click();
+  await expect(page.locator('.list-mode').getByRole('button', { name: /^Progres/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('body')).toHaveClass(/is-panel-open/);
+  await expect(page.locator('body')).not.toHaveClass(/is-panel-half/);
+  // Back to Sebaran keeps the full sheet rather than dropping to half again.
+  await page.locator('.list-mode').getByRole('button', { name: 'Sebaran' }).click();
+  await expect(page.locator('body')).not.toHaveClass(/is-panel-half/);
+});
+
 test('keeps a slim bottom bar during detail and restores the list at half-height on close', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 360, height: 645 });

@@ -66,9 +66,15 @@
   // the search (all units, or the search's matches), so the total is on screen without opening the list. A
   // kabupaten keeps its count in the header above the search, so its peek still ends at the search. The count
   // block carries its own bottom padding, so it needs none of the 14px the other two get.
+  // On a phone a tab always opens the full sheet. Half-height is kept for coming back from a closed detail
+  // onto its row; a tab swaps to another list, where that row is no longer the point, and the progress grid
+  // and work list need the height. A detail card still open behind the bar closes the way a pull-up does,
+  // so no stale card is left under the sheet.
   function pickMode(mode: ListMode) {
     state.listMode = mode;
-    if (innerWidth < 960 && state.sheetSnap === 'closed') state.sheetSnap = 'full';
+    if (innerWidth >= 960) return;
+    if (state.selectedNomor) state.dismissDetailToSheet('full');
+    else state.sheetSnap = 'full';
   }
   function measurePeek() {
     if (!sidebar || window.innerWidth >= 960) return;
