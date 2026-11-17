@@ -6,7 +6,7 @@
   async function load() { try { items = (await api<{items: Draft[]}>('drafts')).items; selected = []; } catch(e) { error = e instanceof Error ? e.message : 'Gagal memuat draf.'; } }
   onMount(load);
   async function publish(event: SubmitEvent) { event.preventDefault(); busy = true; error = ''; try {
-    await api('publications/publish', 'POST', { draft_ids: selected, reason }); onMessage('Penerbitan tersimpan. Versi baru tampil setelah peta publik dimuat ulang.'); reason = ''; await load();
+    await api('publications/publish', 'POST', { draft_ids: selected, reason }); onMessage('Penerbitan tersimpan. Peta publik akan memperbarui titik secara otomatis.'); reason = ''; await load();
   } catch(e) { error = e instanceof Error ? e.message : 'Penerbitan gagal.'; } finally { busy = false; } }
   async function discard(id: string) { busy = true; error = ''; try { await api(`drafts/${id}/discard`, 'POST', {}); await load(); onMessage('Draf dibatalkan.'); } catch(e) { error = e instanceof Error ? e.message : 'Tidak dapat membatalkan draf.'; } finally { busy = false; } }
 </script>

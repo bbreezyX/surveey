@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
-  import { loadSurveyDataset } from './data/load';
+  import { loadSurveyDataset, loadSurveyPoints, checkPointsVersion } from './data/load';
   import { loadProgress, type ProgressFeed } from './data/progress';
   import { createSurveyState, type SurveyState } from './state/survey.svelte';
   import type { SurveyMapAdapter } from './map/create-map';
@@ -23,7 +23,7 @@
   let fitFrame = 0;
   let fitTimer: ReturnType<typeof setTimeout> | undefined, appliedFit = -1;
   // When the points last came from the network rather than the service worker's stored copy.
-  let freshAt = 0, refreshing = $state(false);
+  let freshAt = 0, lastCheckAt = 0, checking = false, refreshing = $state(false);
   // Only a phone or tablet gets its detail back: a desktop keeps its tab, so a reload there starts from the
   // province view, even in a narrowed window. Asked once here, because the same query measured false on a
   // touch device while the page was unloading, which is exactly when the detail is saved or cleared.
@@ -65,14 +65,17 @@
   }
   // Fetches again behind the map the reader is using: the list, search, open point and view stay put,
   // and only points that actually changed are swapped in. A failure leaves everything as it was.
-  async function refresh() {
+  async function refresh(includeProgress = true) {
     const state = model, attempt = controller; if (!state || !attempt || refreshing) return;
     refreshing = true;
     try {
-      const [dataset, progress] = await Promise.all([loadSurveyDataset(attempt.signal).catch(() => null), loadProgress(attempt.signal)]);
+      const [dataset, progress] = await Promise.all([
+        loadSurveyPoints(state.dataset, attempt.signal).catch(() => null),
+        includeProgress ? loadProgress(attempt.signal) : Promise.resolve(null),
+      ]);
       if (disposed || attempt.signal.aborted || model !== state) return;
       if (dataset) { if (!dataset.storedAt) freshAt = Date.now(); state.replaceDataset(dataset); }
-      settleProgress(state, progress);
+      if (includeProgress) settleProgress(state, progress);
     } finally { refreshing = false; }
   }
   // Build stages move while the points do not: a crew reports on esdm.cloud/lapangan in another tab and
@@ -83,26 +86,42 @@
     if (!disposed && !attempt.signal.aborted && model === state) settleProgress(state, progress);
   }
   // Data stays current without the reader doing anything: a failed first load retries, a stored copy is
-  // swapped for fresh data, and a map left open in a pocket all morning refreshes when it is looked at again.
-  const STALE_MS = 5 * 60_000, RETRY_MS = 30_000;
-  function reconnect(force = false) {
+  // swapped for fresh data, and an active map checks via lightweight HEAD (ETag / X-Publication-ID) on
+  // tab/window return and every 15 s so published admin changes appear silently without a manual reload.
+  const POLL_MS = 15_000, STALE_MS = 60_000, CHECK_COOLDOWN_MS = 2_000;
+  async function checkAndRefresh(withProgress: boolean) {
+    const state = model, attempt = controller; if (!state || !attempt || refreshing || checking) return;
+    checking = true; lastCheckAt = Date.now();
+    try {
+      const status = await checkPointsVersion(state.dataset.versionTag, attempt.signal);
+      if (disposed || attempt.signal.aborted || model !== state) return;
+      if (status === 'changed' || (status === 'unsupported' && Date.now() - freshAt > STALE_MS)) {
+        await refresh(withProgress);
+      } else {
+        if (status === 'unchanged') freshAt = Date.now();
+        if (withProgress) void refreshProgress();
+      }
+    } finally { checking = false; }
+  }
+  function reconnect(force = false, fromPoll = false) {
     // force: the reader pressed Perbarui, or the worker has news; otherwise a phone that knows it is offline waits.
     if (disposed || document.visibilityState !== 'visible' || (!force && navigator.onLine === false)) return;
     if (!model) { if (error) load(); return; }
-    if (force || model.storedAt || !model.progress || Date.now() - freshAt > STALE_MS) void refresh();
-    else void refreshProgress();
+    if (force || model.storedAt || !model.progress) { void refresh(); return; }
+    if (Date.now() - lastCheckAt < CHECK_COOLDOWN_MS) return;
+    void checkAndRefresh(!fromPoll);
   }
   onMount(() => {
     const stopConnection = connection.start();
     load();
-    const wake = () => reconnect(), retry = setInterval(() => { if (!model ? !!error : !!model.storedAt || !model.progress) reconnect(); }, RETRY_MS);
+    const wake = () => reconnect(), poll = setInterval(() => reconnect(false, true), POLL_MS);
     // The service worker says when a slow download it was still finishing has landed in its store.
     const fromWorker = (event: MessageEvent) => { if (event.data?.type === 'puts-data-updated') reconnect(true); };
     // Hidden is the last moment the page is sure to run: a phone may discard the tab without another event.
     const remember = () => { if (model && touchDevice) rememberOpenDetail(model.selectedNomor); };
     const hide = () => { if (document.visibilityState === 'hidden') remember(); };
-    addEventListener('online', wake); document.addEventListener('visibilitychange', wake); document.addEventListener('visibilitychange', hide); addEventListener('pagehide', remember); navigator.serviceWorker?.addEventListener('message', fromWorker);
-    return () => { disposed = true; stopConnection(); clearInterval(retry); removeEventListener('online', wake); document.removeEventListener('visibilitychange', wake); document.removeEventListener('visibilitychange', hide); removeEventListener('pagehide', remember); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
+    addEventListener('online', wake); addEventListener('focus', wake); document.addEventListener('visibilitychange', wake); document.addEventListener('visibilitychange', hide); addEventListener('pagehide', remember); navigator.serviceWorker?.addEventListener('message', fromWorker);
+    return () => { disposed = true; stopConnection(); clearInterval(poll); removeEventListener('online', wake); removeEventListener('focus', wake); document.removeEventListener('visibilitychange', wake); document.removeEventListener('visibilitychange', hide); removeEventListener('pagehide', remember); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
   });
   $effect(() => { document.body.classList.toggle('is-popup-open', !!model?.selected); document.body.classList.toggle('is-panel-open', !!model?.panelOpen); document.body.classList.toggle('is-sidebar-collapsed', !!model?.sidebarCollapsed); document.body.classList.toggle('is-data-unavailable', !model); });
   $effect(() => {

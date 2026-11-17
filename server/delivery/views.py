@@ -4,9 +4,9 @@ import re
 from django.conf import settings
 from django.http import HttpResponse, FileResponse, JsonResponse
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_safe
 from django.db.models import Exists, OuterRef, Subquery
-from .models import ActivePublication, PublishedMedia, MediaGrant
+from .models import ActivePublication, Publication, PublishedMedia, MediaGrant
 from . import storage
 from .media_cache import MAX_MEDIA_BYTES, cache_path, open_cached
 
@@ -15,20 +15,23 @@ def readiness(request):
     ready = ActivePublication.objects.filter(id=1, publication__isnull=False).exists()
     return HttpResponse(status=200 if ready else 503)
 
-@require_GET
+@require_safe
 def points(request):
-    active = ActivePublication.objects.select_related('publication').filter(id=1).first()
-    if not active or not active.publication_id:
+    active = ActivePublication.objects.filter(id=1).values('publication_id', 'publication__checksum').first()
+    if not active or not active['publication_id']:
         return JsonResponse({'error': 'Belum ada data yang diterbitkan.'}, status=503)
-    publication = active.publication
-    etag = f'"{publication.checksum}"'
+    publication_id = active['publication_id']
+    etag = f'"{active["publication__checksum"]}"'
     if request.headers.get('If-None-Match') == etag:
         response = HttpResponse(status=304)
+    elif request.method == 'HEAD':
+        response = HttpResponse(status=200, content_type='application/geo+json')
     else:
-        response = HttpResponse(json.dumps(publication.geojson, ensure_ascii=False, separators=(',', ':')), content_type='application/geo+json')
+        geojson = Publication.objects.values_list('geojson', flat=True).get(pk=publication_id)
+        response = HttpResponse(json.dumps(geojson, ensure_ascii=False, separators=(',', ':')), content_type='application/geo+json')
     response['ETag'] = etag
     response['Cache-Control'] = 'public, max-age=0, must-revalidate'
-    response['X-Publication-ID'] = str(publication.id)
+    response['X-Publication-ID'] = str(publication_id)
     return response
 
 def cached_path(record):

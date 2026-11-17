@@ -207,3 +207,29 @@ class SshMediaStorageTests(SimpleTestCase):
             with self.assertRaises(ValueError):
                 storage.get('display/x; rm -rf /')
         run.assert_not_called()
+
+
+class PointsDeliveryTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.publication = Publication.objects.create(
+            geojson={'type': 'FeatureCollection', 'features': []},
+            checksum='c' * 64,
+        )
+        ActivePublication.objects.update_or_create(id=1, defaults={'publication': self.publication})
+
+    def test_head_returns_etag_and_publication_id_with_empty_body(self):
+        response = views.points(self.factory.head('/data/points.geojson'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'')
+        self.assertEqual(response['ETag'], f'"{"c" * 64}"')
+        self.assertEqual(response['X-Publication-ID'], str(self.publication.id))
+        self.assertEqual(response['Cache-Control'], 'public, max-age=0, must-revalidate')
+
+    def test_if_none_match_returns_304_and_mismatch_returns_geojson(self):
+        not_modified = views.points(self.factory.get('/data/points.geojson', HTTP_IF_NONE_MATCH=f'"{"c" * 64}"'))
+        self.assertEqual(not_modified.status_code, 304)
+        fresh = views.points(self.factory.get('/data/points.geojson', HTTP_IF_NONE_MATCH='"stale"'))
+        self.assertEqual(fresh.status_code, 200)
+        self.assertEqual(fresh['X-Publication-ID'], str(self.publication.id))
+        self.assertIn(b'FeatureCollection', fresh.content)

@@ -1,5 +1,5 @@
 import { it, expect, vi } from 'vitest';
-import { loadSurveyDataset } from '../src/public/data/load';
+import { checkPointsVersion, loadSurveyDataset, loadSurveyPoints } from '../src/public/data/load';
 it('turns a stalled request into a retryable error and cancels its other requests', async () => {
   vi.useFakeTimers(); const parent = new AbortController(); let failure: unknown; let aborted = 0;
   vi.stubGlobal('fetch', vi.fn((_url: string, options: { signal: AbortSignal }) => new Promise((_resolve, reject) => { options.signal.addEventListener('abort', () => { aborted++; reject(options.signal.reason); }, { once: true }); })));
@@ -52,4 +52,49 @@ it('ships an outline ring in full when the kabupaten edges cannot reproduce it',
   const collection = (ring: number[][]) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring] } }] });
   expect(encodeRegionCollection(collection(square), collection(square)).features[0].geometry.coordinates[0]).toEqual({ runs: [[0, 0, 0, 4]] });
   expect(encodeRegionCollection(collection([...square].reverse()), collection(square)).features[0].geometry.coordinates[0]).toHaveLength(10);
+});
+it('checks points version via HEAD and normalizes weak ETags or publication IDs', async () => {
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(new Response(null, { status: 200, headers: { 'x-publication-id': 'pub-1', etag: '"abc"' } }))
+    .mockResolvedValueOnce(new Response(null, { status: 200, headers: { 'x-publication-id': 'pub-2', etag: '"def"' } }))
+    .mockResolvedValueOnce(new Response(null, { status: 200, headers: { etag: 'W/"abc"' } }))
+    .mockResolvedValueOnce(new Response(null, { status: 200, headers: {} }))
+    .mockResolvedValueOnce(new Response(null, { status: 503 }));
+  vi.stubGlobal('fetch', fetchMock);
+  try {
+    const signal = new AbortController().signal;
+    expect(await checkPointsVersion('pub:pub-1', signal)).toBe('unchanged');
+    expect(fetchMock).toHaveBeenLastCalledWith('/data/points.geojson', expect.objectContaining({ method: 'HEAD', cache: 'no-store' }));
+    expect(await checkPointsVersion('pub:pub-1', signal)).toBe('changed');
+    expect(await checkPointsVersion('etag:"abc"', signal)).toBe('unchanged');
+    expect(await checkPointsVersion('pub:pub-1', signal)).toBe('unsupported');
+    expect(await checkPointsVersion('pub:pub-1', signal)).toBe('error');
+  } finally { vi.unstubAllGlobals(); }
+});
+it('refreshes only points.geojson while reusing decoded region boundaries', async () => {
+  const empty = { type: 'FeatureCollection', features: [] };
+  const regions = { encoding: (await import('../scripts/region-codec.mjs')).REGION_ENCODING, kabupaten: empty, dissolved: empty };
+  const firstPoints = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [103.5, -1.5] }, properties: { Nomor: 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-001' } }] };
+  const movedPoints = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [103.6, -1.55] }, properties: { Nomor: 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-001' } }] };
+  const fetchMock = vi.fn(async (url: string) => {
+    if (url.endsWith('regions.json')) return new Response(JSON.stringify(regions));
+    const firstCall = fetchMock.mock.calls.filter(call => call[0] === '/data/points.geojson').length === 1;
+    return new Response(JSON.stringify(firstCall ? firstPoints : movedPoints), {
+      headers: { 'x-publication-id': firstCall ? 'pub-1' : 'pub-2', etag: firstCall ? '"e1"' : '"e2"' },
+    });
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  try {
+    const signal = new AbortController().signal;
+    const initial = await loadSurveyDataset(signal);
+    expect(initial.versionTag).toBe('pub:pub-1');
+    const callsBeforeRefresh = fetchMock.mock.calls.length;
+    const updated = await loadSurveyPoints(initial, signal);
+    expect(fetchMock.mock.calls.slice(callsBeforeRefresh)).toEqual([['/data/points.geojson', expect.objectContaining({ cache: 'no-cache' })]]);
+    expect(updated.boundaries).toBe(initial.boundaries);
+    expect(updated.dissolved).toBe(initial.dissolved);
+    expect(updated.points[0].lonNum).toBe(103.6);
+    expect(updated.versionTag).toBe('pub:pub-2');
+    expect(updated.signature).not.toBe(initial.signature);
+  } finally { vi.unstubAllGlobals(); }
 });
