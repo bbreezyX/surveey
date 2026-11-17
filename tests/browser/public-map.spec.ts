@@ -266,12 +266,20 @@ test('keeps a slim bottom bar during detail and restores the list at half-height
   expect(itemBox.y + itemBox.height).toBeLessThanOrEqual(645);
   expect(await scroller.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
 
-  // Tapping the slim bar while viewing a second point also switches straight to the half-sheet list.
+  // Tapping the slim bar while viewing a second point opens the full list; closing the sheet and tapping
+  // "Lihat Daftar Titik" again inside the selected kabupaten also opens full rather than half-height.
   await recentItem.click();
   await expect(page.locator('#popup')).toBeVisible();
   await page.locator('#sheet-handle').click();
   await expect(page.locator('#popup')).toBeHidden();
-  await expect(page.locator('body')).toHaveClass(/is-panel-half/);
+  await expect(page.locator('body')).toHaveClass(/is-panel-open/);
+  await expect(page.locator('body')).not.toHaveClass(/is-panel-half/);
+
+  await page.locator('#sheet-handle').click();
+  await expect(page.locator('body')).not.toHaveClass(/is-panel-open/);
+  await page.locator('#sheet-handle').click();
+  await expect(page.locator('body')).toHaveClass(/is-panel-open/);
+  await expect(page.locator('body')).not.toHaveClass(/is-panel-half/);
 });
 test('preserves counts, point search, photo evidence and route coordinates', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));

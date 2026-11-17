@@ -756,7 +756,6 @@ body.is-sidebar-collapsed .map-legend {
     body.is-popup-open:not(.is-panel-open) #sidebar {
         transform: translate3d(0, calc(100% - var(--sheet-bar)), 0);
         pointer-events: auto;
-        border-radius: 20px 20px 0 0;
         box-shadow: 0 -2px 6px rgba(20, 38, 53, 0.1), 0 -8px 24px rgba(20, 38, 53, 0.18);
         transition-duration: 0.28s;
     }
@@ -777,13 +776,19 @@ body.is-sidebar-collapsed .map-legend {
         visibility: hidden;
     }
 
+    #sidebar > :not(#sheet-handle) {
+        transition: opacity 0.2s var(--popup-ease) 0.04s;
+    }
+
     /* Keep off-screen content out of keyboard Tab order while collapsed or in bar mode. */
     body:not(.is-panel-open):not(.is-sheet-dragging) .sidebar-scroll {
         visibility: hidden;
     }
 
     body.is-popup-open:not(.is-panel-open):not(.is-sheet-dragging) #sidebar > :not(#sheet-handle) {
+        opacity: 0;
         visibility: hidden;
+        transition: none;
     }
 
     /* The drag handle is the standard bottom-sheet grabber with a small plain
@@ -844,11 +849,6 @@ body.is-sidebar-collapsed .map-legend {
 
     body.is-panel-half .panel-search-row {
         margin-bottom: 8px;
-    }
-
-    body.is-panel-half .panel-search,
-    body.is-panel-half .locate-btn {
-        height: 40px;
     }
 
     body.is-panel-half .atlas-pills {

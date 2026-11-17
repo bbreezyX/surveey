@@ -241,12 +241,15 @@
 }
 
 /* The cell's progress as one list: terpasang, then one row per stage still needed. Badge, words, count
-   flush right, so every number lines up down the cell. */
+   flush right, so every number lines up down the cell. The rows sit 10px in from the kabupaten name so
+   they read as that name's breakdown; flush with it, name and stages read as one undivided column. The
+   counts stay at the cell's right edge, so the indent costs the labels width only, and "Menunggu
+   diperiksa" still fits a phone's 187px cell before its ellipsis. */
 .progress-next {
     display: grid;
     gap: 3px;
     margin: 2px 0 0;
-    padding: 0;
+    padding: 0 0 0 10px;
     list-style: none;
 }
 
@@ -605,11 +608,6 @@
 
     body.is-panel-half .list-mode {
         margin: 0 16px 8px;
-    }
-
-    body.is-panel-half .list-mode button {
-        height: 30px;
-        font-size: 13px;
     }
 }
 

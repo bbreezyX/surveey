@@ -33,7 +33,6 @@
     },
     () => document.body.classList.remove('is-sheet-hinting', 'is-sheet-nudging'),
     () => !!state.selected,
-    () => !state.activeRegion && !state.selected,
   );
   const regionPoints = $derived(state.points.filter(point => point.kabupaten === state.activeRegion));
   const filterFlags = $derived((['duplikat', 'belum'] as const).filter(key => regionPoints.some(point => point[key] && !point.cadangan)));

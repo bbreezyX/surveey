@@ -8,7 +8,6 @@ export function createSheetGesture(
   setSnap: (next: SheetSnap) => void,
   stopHints: () => void,
   popupOpen: () => boolean = () => false,
-  preferFullOnTap: () => boolean = () => true,
 ) {
   let drag: { id: number; startY: number; lastY: number; lastT: number; velocity: number; restY: number; halfY: number; wasSnap: SheetSnap; from: number; y: number; moved: boolean } | null = null;
   let suppressClick = false;
@@ -59,7 +58,7 @@ export function createSheetGesture(
     click() {
       if (suppressClick) { suppressClick = false; return; }
       stopHints();
-      setSnap(snap() === 'closed' ? (preferFullOnTap() ? 'full' : 'half') : 'closed');
+      setSnap(snap() === 'closed' ? 'full' : 'closed');
     },
     dispose() { drag = null; document.body.classList.remove('is-sheet-dragging'); sheet().style.transform = ''; },
   };
