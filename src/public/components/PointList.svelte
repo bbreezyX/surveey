@@ -2,7 +2,7 @@
   import type { SurveyState } from '../state/survey.svelte';
   import { desaGroups, groupHead, landmarkFor } from '../state/list-model';
   import { STATUS_LABEL } from '../../shared/survey/status';
-  import { pendingLabel, pendingSummary, stageBadgeSvg, stageSummary } from '../../shared/survey/progress';
+  import { PENDING_CLOCK_SVG, pendingLabel, pendingSummary, stageBadgeSvg, stageSummary } from '../../shared/survey/progress';
   // A unit's accepted stage is the pin's badge on its number box, not a pill in words: the stages in words are
   // the Progres view's job, and a green "Terpasang" on nearly every card made this list read as a second copy
   // of it. The words stay in the button's label for screen readers, and in the popup.
@@ -40,7 +40,7 @@
                   {#if !shared && landmarks[index]}<span class="atlas-pt__note">{landmarks[index]}</span>{/if}
                   {#if point.belum}<span class="atlas-pt__coord atlas-pt__coord--none">Belum ada koordinat</span>
                   {:else}<span class="atlas-pt__coord">{point.koordinat.split(', ')[0]}<br/>{point.koordinat.split(', ')[1]}</span>{/if}
-                  {#if pending}<span class="atlas-pt__stages" aria-hidden="true"><span class="atlas-pt__stage is-pending" title={pendingSummary(pending)}><svg width="12" height="12" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{pendingLabel(pending)}</span></span>{/if}
+                  {#if pending}<span class="atlas-pt__stages" aria-hidden="true"><span class="atlas-pt__stage is-pending" title={pendingSummary(pending)}>{@html PENDING_CLOCK_SVG}{pendingLabel(pending)}</span></span>{/if}
                 </span>
               </button>
             {/each}

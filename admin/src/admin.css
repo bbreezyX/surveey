@@ -133,9 +133,19 @@ tbody th { width: 1%; overflow-wrap: normal; }
    330px wing a column is ~137px, and beside the 46px unit the widest chip ("Galian Selesai",
    ~101px) overran into the next column and past the wing's padding. */
 /* Rows keep their tops level when only one unit of a pair has a chip, and get room to breathe. */
-.atlas-units:has(.atlas-pt__stage) { align-items: start; row-gap: 10px; }
-.atlas-pt:has(> .atlas-pt__stage) { display: grid; grid-template-columns: auto minmax(0, 1fr); row-gap: 5px; }
-.atlas-pt__stage { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-deep); font-size: 11.5px; font-weight: 700; line-height: 1.35; white-space: nowrap; }
+.atlas-units:has(.atlas-pt__stages) { align-items: start; row-gap: 10px; }
+.atlas-pt:has(> .atlas-pt__stages) { display: grid; grid-template-columns: auto minmax(0, 1fr); row-gap: 5px; }
+/* The accepted stage and an open report each get a chip; side by side they are wider than a column, so they wrap. */
+.atlas-pt__stages { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.atlas-pt__stage { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-deep); font-size: 11.5px; font-weight: 700; line-height: 1.35; white-space: nowrap; }
+/* A report sent from esdm.cloud/lapangan that nobody has accepted yet, drawn as on the public list: neutral with
+   a clock and a hairline, not orange (orange already means Perlu Verifikasi on the tile) and not filled (it is no
+   finished stage). "Galian Menunggu" is the long end; anything longer trims instead of leaving the column. */
+.atlas-pt__stage.is-pending, .badge--pending { box-shadow: inset 0 0 0 1px var(--hairline-strong); background: #fff; color: var(--muted); }
+.atlas-pt__stage.is-pending { padding-left: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.badge--pending { gap: 4px; padding-left: 5px; }
+.badge--pending::before { content: none; }
+.atlas-pt__stage.is-pending svg, .badge--pending svg { flex: none; width: 12px; height: 12px; }
 
 /* ---------- Wings ----------
    White panels like the public map's #sidebar. Only the centre sheet's

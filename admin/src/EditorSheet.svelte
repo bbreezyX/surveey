@@ -2,10 +2,11 @@
   import { distance, formatDistance, pasteCoordinates, type PointState } from './api';
   import { badgeOf, type PointEditor } from './editor.svelte';
   import { formatPointFieldValue, pointFieldLabel } from './labels';
-  import { stageBadgeSvg, stageDone, stageSummary } from '../../src/shared/survey/progress';
+  import { PENDING_CLOCK_SVG, pendingSummary, stageBadgeSvg, stageDone, stageSummary } from '../../src/shared/survey/progress';
   import Select from './Select.svelte';
   import AddressPicker from './AddressPicker.svelte';
-  let { editor, canPublish = false, stage = 0, onReload }: { editor: PointEditor; canPublish?: boolean; stage?: number; onReload: () => void } = $props();
+  // pending: stages reported from esdm.cloud/lapangan and not yet accepted there.
+  let { editor, canPublish = false, stage = 0, pending = null, onReload }: { editor: PointEditor; canPublish?: boolean; stage?: number; pending?: readonly number[] | null; onReload: () => void } = $props();
   let detail = $derived(editor.detail);
   let edit = $derived(editor.edit);
   let badge = $derived(badgeOf(detail.state));
@@ -29,7 +30,7 @@
   <div class="edit-title">
     <h2>{detail.state.lokasi_rekapan || detail.state.nomor}</h2>
     <p class="edit-id">{detail.state.nomor}</p>
-    <p class="edit-meta"><span class="badge badge--{badge.kind}">{badge.label}</span>{#if stage}<span class="badge badge--stage" class:is-done={stageDone(stage)}>{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}{#if detail.drafts}<span class="badge badge--draf">{detail.drafts > 1 ? `${detail.drafts} Draf Menunggu` : 'Draf Menunggu'}</span>{/if}<span>Revisi {detail.revision}</span></p>
+    <p class="edit-meta"><span class="badge badge--{badge.kind}">{badge.label}</span>{#if stage}<span class="badge badge--stage" class:is-done={stageDone(stage)}>{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}{#if pending}<span class="badge badge--pending">{@html PENDING_CLOCK_SVG}{pendingSummary(pending)}</span>{/if}{#if detail.drafts}<span class="badge badge--draf">{detail.drafts > 1 ? `${detail.drafts} Draf Menunggu` : 'Draf Menunggu'}</span>{/if}<span>Revisi {detail.revision}</span></p>
   </div>
   <button class="btn-ghost" type="button" onclick={() => { editor.forget(); onReload(); }} disabled={editor.busy}>Muat Ulang</button>
 </div>

@@ -49,6 +49,9 @@ export function pendingSummary(stages: readonly number[]): string {
 export function pendingLabel(stages: readonly number[]): string {
   return `${BUILD_STAGES[stages[stages.length - 1] - 1]} Menunggu`;
 }
+// A clock beside either wording: an open report is a wait, not a problem. One drawing for the public lists and
+// the admin's (raw SVG).
+export const PENDING_CLOCK_SVG = '<svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 // A crew back from esdm.cloud/lapangan names the stage it reported; the address alone proves nothing, so the
 // tick is drawn only once the feed holds that report: waiting for review, or already accepted.
 export type ReportReceipt = 'pending' | 'accepted';

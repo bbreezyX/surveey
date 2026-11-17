@@ -3,7 +3,7 @@
   import type { SurveyPoint } from '../../shared/survey/types';
   import { desaGroups, groupHead } from '../state/list-model';
   import { progressReportUrl } from '../../shared/survey/report';
-  import { BUILD_STAGES, NEXT_REPORT, pendingLabel, pendingSummary, reportReceipt, tallyStages, WORK_DONE, workBadgeSvg, workGroups, type SurveyProgress } from '../../shared/survey/progress';
+  import { BUILD_STAGES, NEXT_REPORT, PENDING_CLOCK_SVG, pendingLabel, pendingSummary, reportReceipt, tallyStages, WORK_DONE, workBadgeSvg, workGroups, type SurveyProgress } from '../../shared/survey/progress';
   import { STATUS_LABEL } from '../../shared/survey/status';
   import StageBar from './StageBar.svelte';
   import StageLegend from './StageLegend.svelte';
@@ -39,7 +39,7 @@
         <button class="work-row__main" class:is-recent={state.recentNomor === point.nomor} type="button" data-item-id={point.nomor} aria-pressed={state.selectedNomor === point.nomor} aria-label={[`Titik ${point.display.code}`, ...flags, point.display.primary, waiting?.length ? pendingSummary(waiting) : '', state.recentNomor === point.nomor ? 'Terakhir dilihat' : '', 'lihat di peta'].filter(Boolean).join('. ')} onclick={event => state.select(point.nomor, event.currentTarget)}>
           <span class="atlas-unit" class:is-active={state.selectedNomor === point.nomor} class:is-duplikat={point.duplikat} class:is-belum={point.belum}>{point.display.code}</span>
           <span class="work-row__text">
-            {#if waiting?.length}<span class="atlas-pt__stage is-pending" title={pendingSummary(waiting)}><svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{pendingLabel(waiting)}</span>{/if}
+            {#if waiting?.length}<span class="atlas-pt__stage is-pending" title={pendingSummary(waiting)}>{@html PENDING_CLOCK_SVG}{pendingLabel(waiting)}</span>{/if}
             <span class="work-row__coord" class:is-none={point.belum}>{point.belum ? 'Belum ada koordinat' : point.koordinat}</span>
           </span>
         </button>

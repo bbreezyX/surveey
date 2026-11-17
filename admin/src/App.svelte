@@ -13,7 +13,7 @@
   import AddressPicker from './AddressPicker.svelte';
   import { listSections, type ListPoint } from './list-points';
   import { auditActionLabel } from './labels';
-  import { PROGRESS_URL, parseProgress, stageBadgeSvg, stageDone, stageSummary, type SurveyProgress } from '../../src/shared/survey/progress';
+  import { PENDING_CLOCK_SVG, PROGRESS_URL, parsePending, parseProgress, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary, type SurveyPending, type SurveyProgress } from '../../src/shared/survey/progress';
   let account = $state<Account>(); let csrf = $state(''); let error = $state(''); let message = $state(''); let busy = $state(false);
   let page = $state<'points' | 'drafts' | 'publications' | 'accounts' | 'audit' | 'password' | 'evidence'>('points');
   let points = $state<PointRow[]>([]); let detail = $state<Detail>(); let q = $state(''); let status = $state(''); let archived = $state(false);
@@ -58,6 +58,11 @@
   // a slow or failed esdm.cloud leaves the list as it was. Cadangan units are not built.
   let progress = $state.raw<SurveyProgress>(new Map());
   const stageOf = (nomor: string, cadangan: boolean) => cadangan ? 0 : progress.get(nomor) ?? 0;
+  // Reports a crew sent from esdm.cloud/lapangan that nobody has accepted there yet. They are the ones worth
+  // a look here: a crew may have found the unit somewhere else than its pin, so its coordinates or its
+  // Perlu Verifikasi flag may need a correction. The public list shows the same "… Menunggu" pill.
+  let pending = $state.raw<SurveyPending>(new Map());
+  const pendingOf = (nomor: string, cadangan: boolean) => cadangan ? null : pending.get(nomor) ?? null;
   // badgeOf reads only these fields; the list point carries them under public names.
   function editorState(point: ListPoint) { return { archived: point.archived, status: point.cadangan ? 'Cadangan' : point.belum ? 'Belum Ditetapkan' : '', duplikat: point.duplikat } as PointState; }
   // Search runs as the user types, like the public map's; the server does the matching.
@@ -153,7 +158,7 @@
   onMount(() => {
     backdrop = createBackdrop(backdropEl, { onSelect: id => { if (page === 'points') select(id); } });
     // no-cache: esdm.cloud allows a 60 s browser copy, which hid a stage just accepted there.
-    fetch(PROGRESS_URL, { credentials: 'omit', cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(v => { if (v) progress = parseProgress(v); }).catch(() => {});
+    fetch(PROGRESS_URL, { credentials: 'omit', cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(v => { if (v) { progress = parseProgress(v); pending = parsePending(v); } }).catch(() => {});
     (async () => {
       try {
         const result = await api<{account: Account; csrf: string; points: {items: PointRow[]; total: number; pages: number; counts: Counts; gaps: Record<string, number[]>}; regions: typeof regions; map: {items: MapPoint[]}}>('bootstrap');
@@ -197,7 +202,7 @@
   {#if !account}<p class="sheet-body loading">Memuat Sesi…</p>
   {:else if page === 'points'}
     <section class="editor sheet-body">
-      {#if editor}{#key editor}<EditorSheet {editor} {canPublish} stage={stageOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} onReload={() => select(editor!.detail.id)}/>{/key}
+      {#if editor}{#key editor}<EditorSheet {editor} {canPublish} stage={stageOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} pending={pendingOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} onReload={() => select(editor!.detail.id)}/>{/key}
       {:else if creating}<div class="edit-head"><div class="edit-title"><h2>Titik Baru</h2><p class="edit-id">Titik baru dimulai sebagai arsip. Setelah data dan bukti lengkap, aktivasi diajukan melalui draf.</p></div></div>
         <form class="edit-form" onsubmit={create}><div class="edit-scroll"><fieldset disabled={busy}><legend>Identitas & Lokasi</legend>
           <label class="field">Nomor<input bind:value={newPoint.nomor} placeholder="KABUPATEN-KECAMATAN-DESA-001" required maxlength="250"></label>
@@ -307,7 +312,8 @@
                 <div class="atlas-units">
                   {#each group.items as point, index (point.id)}
                     {@const stage = stageOf(point.nomor, point.cadangan)}
-                    <button class="atlas-pt" type="button" aria-pressed={detail?.id === point.id} aria-label={[`Titik ${point.display.code}`, badgeOf(editorState(point)).label, point.drafts ? 'Ada Draf Menunggu' : '', point.display.primary, stage ? stageSummary(stage) : ''].filter(Boolean).join('. ')} onclick={() => select(point.id)}>
+                    {@const waiting = pendingOf(point.nomor, point.cadangan)}
+                    <button class="atlas-pt" type="button" aria-pressed={detail?.id === point.id} aria-label={[`Titik ${point.display.code}`, badgeOf(editorState(point)).label, point.drafts ? 'Ada Draf Menunggu' : '', point.display.primary, stage ? stageSummary(stage) : '', waiting ? pendingSummary(waiting) : ''].filter(Boolean).join('. ')} onclick={() => select(point.id)}>
                       <span class="atlas-unit" class:is-active={detail?.id === point.id} class:is-cadangan={point.cadangan} class:is-duplikat={point.duplikat} class:is-belum={point.belum} class:is-arsip={point.archived}>{point.display.code}</span>
                       <span class="atlas-pt__info">
                         {#if !group.shared && group.landmarks[index]}<span class="atlas-pt__note">{group.landmarks[index]}</span>{/if}
@@ -316,7 +322,10 @@
                         {:else}<span class="atlas-pt__coord">{point.koordinat.split(', ')[0]}<br/>{point.koordinat.split(', ')[1]}</span>{/if}
                         {#if point.drafts}<span class="atlas-pt__draft">{point.drafts > 1 ? `${point.drafts} Draf` : 'Ada Draf'}</span>{/if}
                       </span>
-                      {#if stage}<span class="atlas-pt__stage" class:is-done={stageDone(stage)} aria-hidden="true">{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}
+                      {#if stage || waiting}<span class="atlas-pt__stages" aria-hidden="true">
+                        {#if stage}<span class="atlas-pt__stage" class:is-done={stageDone(stage)}>{@html stageBadgeSvg(stage)}{stageSummary(stage)}</span>{/if}
+                        {#if waiting}<span class="atlas-pt__stage is-pending" title={pendingSummary(waiting)}>{@html PENDING_CLOCK_SVG}{pendingLabel(waiting)}</span>{/if}
+                      </span>{/if}
                     </button>
                   {/each}
                 </div>
