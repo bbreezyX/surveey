@@ -11,19 +11,19 @@
   import { containsCoordinate } from 'ol/extent';
   import { Style, Circle, Fill, Stroke } from 'ol/style';
   import { satelliteLayers } from '../../src/public/map/google-tiles';
-  import { recallWorkMemory, rememberBasemap, type Basemap } from '../../src/public/state/work-memory';
+  import type { Basemap } from '../../src/public/state/work-memory';
   import { distance, formatDistance } from './api';
   let { lat = $bindable(), lon = $bindable(), original }: { lat: number; lon: number; original?: { lat: number; lon: number } } = $props();
   let moved = $derived(original && [lat, lon, original.lat, original.lon].every(Number.isFinite) ? distance(original, { lat, lon }) : null);
   let target: HTMLDivElement;
   let map = $state<Map>();
-  let basemap = $state<Basemap>(recallWorkMemory().basemap ?? 'esri');
+  let basemap = $state<Basemap>('esri');
   let layers = $state.raw<ReturnType<typeof satelliteLayers>>();
   let source: VectorSource;
   let pin: Feature<Point> | undefined;
   const style = new Style({ image: new Circle({ radius: 8, fill: new Fill({ color: '#fee50f' }), stroke: new Stroke({ color: '#293d50', width: 3 }) }) });
   const oldStyle = new Style({ image: new Circle({ radius: 6, fill: new Fill({ color: '#66717c' }), stroke: new Stroke({ color: '#fff', width: 2 }) }) });
-  function pickBasemap(next: Basemap) { basemap = next; rememberBasemap(next); }
+  function pickBasemap(next: Basemap) { basemap = next; }
   onMount(() => {
     source = new VectorSource();
     const old = original && Number.isFinite(original.lon) && Number.isFinite(original.lat) ? new Feature(new Point(fromLonLat([original.lon, original.lat]))) : undefined;
