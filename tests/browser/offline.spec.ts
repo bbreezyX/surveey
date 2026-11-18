@@ -37,6 +37,7 @@ test('loads by itself once the connection comes back after a failed first load',
   fail = false; await page.evaluate(() => dispatchEvent(new Event('online')));
   await expect(page.locator('.atlas-total__num')).toHaveText('500');
 });
+// The first-load notice lives in the sheet's peek; the map chip stays away unless the link itself is weak.
 test('keeps the loading notice when the data server is slow but connection samples are fast', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   let release: () => void = () => {};
@@ -45,10 +46,12 @@ test('keeps the loading notice when the data server is slow but connection sampl
   let probes = 0;
   page.on('requestfinished', request => { if (request.url().includes('/favicon.ico?online=')) probes++; });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('.connection-chip')).toHaveText('Memuat data titik…');
+  const sheetNotice = page.locator('#sidebar .data-loading');
+  await expect(sheetNotice).toBeVisible(); await expect(sheetNotice).toHaveText('Memuat data titik…');
+  await expect(page.locator('.connection-chip')).toHaveCount(0);
   try {
     await expect.poll(() => probes, { timeout: 18_000 }).toBeGreaterThanOrEqual(3);
-    await expect(page.locator('.connection-chip')).toHaveText('Memuat data titik…');
+    await expect(sheetNotice).toBeVisible(); await expect(page.locator('.connection-chip')).toHaveCount(0);
   } finally { release(); }
   await expect(page.locator('.atlas-total__num')).toHaveText('500');
   await expect(page.locator('.connection-chip')).toHaveCount(0);

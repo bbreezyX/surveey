@@ -123,11 +123,6 @@ body {
     .connection-chip__spinner { animation-duration: 2.4s; }
 }
 
-/* On wide screens the open sidebar already says "Memuat data titik…". */
-@media (min-width: 960px) {
-    body:not(.is-sidebar-collapsed) .connection-chip--loading { display: none; }
-}
-
 body.is-sidebar-collapsed .connection-chip {
     left: 84px;
     max-width: calc(100vw - 168px);
