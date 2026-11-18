@@ -66,18 +66,6 @@
     color: var(--green);
 }
 
-.progress-share {
-    flex: none;
-    color: var(--muted-2);
-    font-size: 13px;
-    font-weight: 650;
-    font-variant-numeric: tabular-nums;
-}
-
-.progress-share b {
-    font-size: 15px;
-}
-
 /* Stage bar: one segment per stage, sized by its units. */
 .stage-bar {
     display: flex;
@@ -649,12 +637,6 @@
     border-radius: 8px;
 }
 
-.skel--share {
-    flex: none;
-    width: 76px;
-    height: 13px;
-}
-
 .skel--bar {
     height: 8px;
 }
@@ -748,7 +730,7 @@
 /* ---------- Hari ini (mockups/survey/e-hari-ini-angka.html) ---------- */
 
 /* Units that moved a step today: ink-blue on a pale tint with an up arrow, never green, which on this map
-   means terpasang. The chip sits under the province share and opens the list; the legend and the kabupaten
+   means terpasang. The chip sits right of the province total and opens the list; the legend and the kabupaten
    cells repeat the count where it applies. */
 .progress-side {
     display: grid;
