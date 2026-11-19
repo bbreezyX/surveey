@@ -3,8 +3,8 @@
    dotted in, read like the region pages of an atlas. The header stays quiet
    so the shapes carry the page. One white panel, top to bottom: the header
    (identity, or the open kabupaten with its locator), the search, a line of
-   counts or filters, the list, and the footer. custom.js writes the header,
-   the counts line and the list (renderTop, renderMeta, renderList). */
+   counts or filters, the list, and the footer. Sidebar.svelte renders the
+   header, the counts line and the list. */
 
 #sidebar {
     position: absolute;
@@ -74,7 +74,7 @@ body.is-sidebar-collapsed #sidebar {
 }
 
 /* Screen changes answer a click: the new content slides in from the side
-   the reader is travelling toward (custom.js sets data-enter). Nothing
+   the reader is travelling toward (Sidebar.svelte sets data-enter). Nothing
    animates on its own. */
 #sidebar[data-enter="fwd"] :is(.panel-meta, .sidebar-scroll) {
     animation: panel-in-fwd 260ms var(--ease-out);
@@ -480,7 +480,26 @@ body.is-sidebar-collapsed #sidebar {
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
-    scrollbar-color: #c3cfda transparent;
+    /* 3:1 against the white panel (WCAG 1.4.11), the thumb "Progres hari ini" already uses; ink where more
+       contrast is asked for. */
+    scrollbar-color: #8696a5 transparent;
+}
+
+@media (prefers-contrast: more) {
+    .sidebar-scroll {
+        scrollbar-color: var(--ink) transparent;
+    }
+}
+
+/* A row reached with Tab stops below the sticky band over it (WCAG 2.4.11), not under it: the kecamatan band is
+   about 43px, an open work group's head about 61px. Only lists that have them; the atlas grids snap, and a
+   padding there would move their snap line. The half sheet's bottom padding (responsive.css) is kept. */
+.sidebar-scroll:has(.atlas-group > .atlas-section) {
+    scroll-padding-top: 48px;
+}
+
+.sidebar-scroll:has(.work-group[open]) {
+    scroll-padding-top: 64px;
 }
 
 /* While "Progres hari ini" is open, its bar is the one in use; the list's bar a few pixels to its right read as a
@@ -670,6 +689,14 @@ body.is-sidebar-collapsed #sidebar {
     margin-top: 12px;
 }
 
+/* The list's bands and heads are real h2/h3 elements; this takes off the browser's heading margins and sizes
+   at zero specificity, so each class below still sets its own type. */
+:where(h2, h3):where(.atlas-section, .atlas-desa__head, .work-desa) {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
 .atlas-section {
     position: sticky;
     z-index: 1;
@@ -693,7 +720,7 @@ body.is-sidebar-collapsed #sidebar {
         color 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* The head of the kecamatan in view (custom.js, syncStuck) turns navy: it is
+/* The head of the kecamatan in view (Sidebar.svelte, syncScroll) turns navy: it is
    the only dark bar in the list, where navy on every head gave each the same
    weight. */
 .atlas-section.is-stuck {
@@ -718,11 +745,10 @@ body.is-sidebar-collapsed #sidebar {
 
 .atlas-desa {
     padding: 12px 18px 14px;
-    border-bottom: 1px solid var(--divider);
 }
 
-.atlas-desa:last-child {
-    border-bottom: 0;
+.atlas-desa:not(:last-child) {
+    border-bottom: 1px solid var(--divider);
 }
 
 .atlas-desa__head {
@@ -879,6 +905,7 @@ body.is-sidebar-collapsed #sidebar {
     font-weight: 600;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow-wrap: anywhere;
     /* No word left alone on the last line. */
     text-wrap: pretty;
@@ -1161,7 +1188,7 @@ body.is-data-unavailable .atlas-summary {
     cursor: pointer;
 }
 
-.sidebar-footer__stored button:disabled {
+.sidebar-footer__stored button[aria-disabled="true"] {
     text-decoration: none;
     cursor: progress;
 }
@@ -1374,7 +1401,6 @@ body.is-data-unavailable .atlas-summary {
     margin: 0;
     padding: 7px 6px;
     border: 0;
-    border-top: 1px solid #d3e5f4;
     border-radius: 0;
     background: none;
     color: var(--ink);
@@ -1383,8 +1409,8 @@ body.is-data-unavailable .atlas-summary {
     transition: background-color var(--dur);
 }
 
-.nearby__row:first-child {
-    border-top: 0;
+.nearby__row:not(:first-child) {
+    border-top: 1px solid #d3e5f4;
 }
 
 .nearby__row:hover {

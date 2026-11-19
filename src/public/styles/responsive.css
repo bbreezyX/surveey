@@ -825,7 +825,7 @@ body.is-sidebar-collapsed .map-legend {
         border-radius: 3px;
         background: #aab6c1;
         transition: background-color var(--dur) var(--ease-out),
-            width var(--dur) var(--ease-out);
+            scale var(--dur) var(--ease-out);
     }
 
     .sheet-handle__text {
@@ -878,8 +878,14 @@ body.is-sidebar-collapsed .map-legend {
         font-size: 26px;
     }
 
+    body.is-panel-half .atlas-summary--total .progress-total__pct,
+    body.is-panel-half .atlas-summary--progress .atlas-total__num {
+        font-size: 24px;
+    }
+
+    /* 40px to 48px on press, as scale so the handle is never laid out again. */
     #sheet-handle:active .sheet-handle__grabber {
-        width: 48px;
+        scale: 1.2 1;
         background: var(--muted-2);
     }
 
@@ -948,13 +954,15 @@ body.is-sidebar-collapsed .map-legend {
         }
     }
 
-    /* After that, a quiet reminder: every few seconds the bar and caption
-       hop twice, then rest. Enough to catch a wandering eye, never enough
-       to nag. */
-    body:not(.is-panel-open):not(.is-popup-open):not(.is-sheet-hinting)
+    /* After that, a quiet reminder: the bar and caption hop twice, rest,
+       and do it once more, then stay still. It never comes back once the
+       reader has opened the sheet (has-opened-sheet, App.svelte): motion
+       that starts by itself must end, and a reader who found the list
+       needs no reminder. */
+    body:not(.is-panel-open):not(.is-popup-open):not(.is-sheet-hinting):not(.has-opened-sheet)
         #sheet-handle:not(:active)
         > span {
-        animation: sheet-handle-hop 6s var(--ease-out) 1s infinite;
+        animation: sheet-handle-hop 6s var(--ease-out) 1s 2;
     }
 
     @keyframes sheet-handle-hop {
@@ -2168,22 +2176,151 @@ body.is-sidebar-collapsed .map-legend {
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        transition: none !important;
-        animation: none !important;
+/* ---------- Touch: 44px to tap, same look ----------
+   The sidebar's small controls keep their drawn size; on a touch screen an
+   empty ::after centred on each grows what a finger can hit to at least
+   44px (wider controls keep their own width). The sheet handle is left as
+   it is: it spans the full width, the panel clips anything above it, and
+   anything below would cover the back button. */
+@media (pointer: coarse) {
+    /* The clear button is already absolutely placed, which anchors its ::after. */
+    .atlas-pill,
+    .list-mode button,
+    .atlas-back,
+    .nearby__off {
+        position: relative;
+    }
+
+    .panel-search__clear::after,
+    .atlas-pill::after,
+    .list-mode button::after,
+    .atlas-back::after,
+    .nearby__off::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: max(100%, 44px);
+        height: max(100%, 44px);
+        translate: -50% -50%;
     }
 }
 
-/* ---------- Quiet script focus ----------
-   custom.js tags nodes it focuses after a mouse or touch press (the back
-   button, a status pill, a kabupaten cell) with .is-quiet-focus, because
-   browsers paint that script focus as :focus-visible. Kept last so it
-   outranks each control's own ring. */
-.is-quiet-focus:focus-visible {
-    outline: none;
+/* ---------- Forced colours ----------
+   States drawn in colour or a box-shadow alone vanish when the system
+   repaints the page: the chosen switch half, filter pill, location toggle
+   and the tile shown on the map take the system highlight, the search
+   field's focus (a border and tint) becomes an outline, and the "you are
+   here" ring an outline too. */
+@media (forced-colors: active) {
+    .list-mode button[aria-pressed="true"],
+    .atlas-pill[aria-pressed="true"],
+    .locate-btn[aria-pressed="true"],
+    .locate-btn[aria-pressed="true"]:hover,
+    .atlas-unit.is-active {
+        forced-color-adjust: none;
+        border-color: Highlight;
+        background: Highlight;
+        color: HighlightText;
+    }
+
+    :is(.list-mode button, .atlas-pill, .locate-btn)[aria-pressed="true"] :is(b, span) {
+        color: inherit;
+    }
+
+    .panel-search:focus-within {
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
+    }
+
+    .nearby__row.is-here .atlas-unit:not(.is-active) {
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
+    }
+}
+
+/* ---------- Reduced motion ----------
+   Element by element, not a reset on everything: what slides, scales or
+   hops becomes instant (the sidebar's screen change crossfades instead),
+   while colour, border, shadow and opacity changes keep their short fades.
+   The two spinners keep the slower turn they set themselves (layout.css,
+   modern.css). Already handled where they are defined: the popup's route
+   and report buttons and its "terkirim" mark, the nearby card, the locate
+   ring, the GPS dot, the sheet hints and the handle hop. */
+@media (prefers-reduced-motion: reduce) {
+    #sidebar {
+        transition: opacity 240ms var(--ease-out);
+    }
+
+    #sidebar[data-enter] :is(.panel-meta, .sidebar-scroll) {
+        animation: panel-fade 220ms var(--ease-out);
+    }
+
+    .ol-zoom,
+    .layer-switcher > button,
+    .panel-toggle {
+        transition: background-color var(--dur) var(--ease-out),
+            border-color var(--dur) var(--ease-out),
+            box-shadow var(--dur) var(--ease-out);
+    }
+
+    [data-tooltip]::after,
+    .pin-tip {
+        transition: opacity var(--dur) var(--ease-out);
+    }
+
+    .feature-popup__media-badge {
+        transition: background-color var(--dur) var(--ease-out);
+    }
+
+    .feature-popup__hatch {
+        transition: background-color 0.16s ease, border-color 0.16s ease,
+            color 0.16s ease;
+    }
+
+    .locate-btn {
+        transition: background-color var(--dur) var(--ease-out),
+            border-color var(--dur) var(--ease-out),
+            color var(--dur) var(--ease-out);
+    }
+
+    .list-mode button {
+        transition: background-color var(--dur), border-color var(--dur),
+            color var(--dur);
+    }
+
+    .work-row__lapor {
+        transition: background-color var(--dur), border-color var(--dur);
+    }
+
+    .sheet-handle__grabber {
+        transition: background-color var(--dur) var(--ease-out);
+    }
+
+    .ctl-switch__thumb {
+        transition: background-color 240ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .work-group summary::after,
+    .map-legend,
+    .ctl-glyph,
+    .ctl-layers-slot,
+    .ctl-layers path,
+    .gesture-hint > * {
+        transition: none;
+    }
+
+    .ctl-ripple__wave,
+    .ctl-switch__thumb.is-bumping,
+    .panel-skel {
+        animation: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 959px) {
+    .ol-popup {
+        transition: opacity 0.32s var(--popup-ease);
+    }
 }
 
 /* Phones: under the masthead, clear of the layer button, above the sheet. */

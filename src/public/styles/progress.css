@@ -6,9 +6,11 @@
    terpasang only; stages under way are blue, not started is grey. */
 
 /* View switch: two pressed-state buttons in one frosted track, like the search
-   field above it. A border, not only the white fill, marks the chosen half, so
-   it still reads in forced colours. Neither label changes weight when chosen,
-   so the halves never shift. */
+   field above it. A border, not only the white fill, marks the chosen half;
+   forced colours repaint both halves alike, so there the chosen one takes the
+   system highlight (responsive.css). Neither label changes weight when chosen,
+   so the halves never shift. A press settles the half to 0.97, as the other
+   buttons give, in the press time. */
 .list-mode {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -37,11 +39,17 @@
     transition:
         background-color var(--dur),
         border-color var(--dur),
-        color var(--dur);
+        color var(--dur),
+        scale var(--dur) var(--ease-out);
 }
 
 .list-mode button:hover {
     color: var(--ink);
+}
+
+.list-mode button:active {
+    scale: 0.97;
+    transition-duration: var(--dur-press);
 }
 
 .list-mode button[aria-pressed="true"] {
@@ -64,6 +72,85 @@
 /* The headline number turns green: in this view it counts terpasang units. */
 .atlas-total--progress .atlas-total__num {
     color: var(--green);
+}
+
+/* The province total (mockups/survey/k-total-progres.html, B): "Titik Terpasang" with the "hari ini" chip
+   at its right end, then the count over its whole and the share, equally large at the row's two ends, then
+   the stage bar under them. One full-width track: .atlas-summary's space-between would shrink an auto
+   track to its content and stop the bar halfway. Both figures keep proportional digits; tabular-nums only
+   aligns columns, and spreads "182" loose at this size. */
+.atlas-summary--progress {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+}
+
+.progress-total__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 22px;
+    color: var(--ink);
+    font-size: 13.5px;
+    font-weight: 650;
+}
+
+.atlas-total--progress {
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.progress-total__count {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+}
+
+/* Kept below the Sebaran total's 34px: two figures side by side already read as the headline. */
+.atlas-summary .atlas-total--progress .atlas-total__num,
+.atlas-summary .progress-total__pct {
+    font-size: 28px;
+    font-weight: 800;
+    font-variant-numeric: normal;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.progress-total__of {
+    margin-left: 2px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.progress-total__pct small {
+    margin-left: 1px;
+    font-size: 0.55em;
+    font-weight: 750;
+    letter-spacing: 0;
+}
+
+.atlas-summary--progress .stage-bar,
+.atlas-summary--progress .skel--bar {
+    margin-top: 4px;
+}
+
+/* The placeholders at the figures' smaller size. */
+.atlas-summary--progress .skel--total {
+    width: 52px;
+    height: 24px;
+}
+
+.atlas-summary--progress .skel--pct {
+    width: 48px;
+    height: 24px;
+}
+
+/* The bar moved up to the total, so the legend opens the summary. */
+.progress-sum > .stage-legend:first-child {
+    margin-top: 0;
 }
 
 /* Stage bar: one segment per stage, sized by its units. */
@@ -637,6 +724,11 @@
     border-radius: 8px;
 }
 
+.skel--pct {
+    flex: none;
+    border-radius: 8px;
+}
+
 .skel--bar {
     height: 8px;
 }
@@ -730,15 +822,8 @@
 /* ---------- Hari ini (mockups/survey/e-hari-ini-angka.html) ---------- */
 
 /* Units that moved a step today: ink-blue on a pale tint with an up arrow, never green, which on this map
-   means terpasang. The chip sits right of the province total and opens the list; the legend and the kabupaten
-   cells repeat the count where it applies. */
-.progress-side {
-    display: grid;
-    flex: none;
-    justify-items: end;
-    gap: 4px;
-}
-
+   means terpasang. The chip sits at the right end of the province total's label and opens the list; the legend
+   and the kabupaten cells repeat the count where it applies. */
 .today-chip {
     display: inline-flex;
     flex: none;

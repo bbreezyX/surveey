@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { SurveyState } from '../state/survey.svelte';
   import { desaGroups, groupHead, landmarkFor } from '../state/list-model';
   import { STATUS_LABEL } from '../../shared/survey/status';
@@ -6,6 +7,8 @@
   // A unit's accepted stage is the pin's badge on its number box, not a pill in words: the stages in words are
   // the Progres view's job, and a green "Terpasang" on nearly every card made this list read as a second copy
   // of it. The words stay in the button's label for screen readers, and in the popup.
+  // Real headings under the kabupaten's h1: a kecamatan band is h2 and its desa heads h3; where there is no band
+  // (one kecamatan, or a search across all kabupaten) the desa heads are the h2s.
   let { state }: { state: SurveyState } = $props();
   const sections = $derived.by(() => {
     const groups = new Map<string, typeof state.visiblePoints>();
@@ -15,18 +18,18 @@
 </script>
 {#if !state.visiblePoints.length}
   <div class="panel-empty"><p>{state.query ? state.activeRegion ? `Tidak ada titik yang cocok di dalam ${state.activeRegion}.` : 'Tidak ada titik yang cocok dengan pencarian. Coba nomor titik, nama kabupaten, patokan lokasi, nama desa, atau koordinat.' : 'Belum ada titik untuk ditampilkan.'}</p>
-    {#if state.query}<div class="panel-empty__actions">{#if state.activeRegion}<button type="button" onclick={() => state.openRegion(null, null, true)}>Cari di semua titik</button>{/if}<button type="button" onclick={() => { state.query = ''; document.getElementById('list-search')?.focus({ preventScroll: true }); }}>Hapus pencarian</button></div>{/if}
+    {#if state.query}<div class="panel-empty__actions">{#if state.activeRegion}<button type="button" onclick={() => { state.openRegion(null, null, true); void tick().then(() => document.getElementById('list-search')?.focus({ preventScroll: true })); }}>Cari di semua titik</button>{/if}<button type="button" onclick={() => { state.query = ''; document.getElementById('list-search')?.focus({ preventScroll: true }); }}>Hapus pencarian</button></div>{/if}
   </div>
 {:else}
   {#each sections as section (section.title)}
     <div class="atlas-group">
-      {#if section.title}<div class="atlas-section" role="heading" aria-level="3">{section.title}<span>{section.items.filter(point => !point.cadangan).length} titik</span></div>{/if}
+      {#if section.title}<h2 class="atlas-section">{section.title}<span>{section.items.filter(point => !point.cadangan).length} titik</span></h2>{/if}
       {#each desaGroups(section.items) as group (group.label + group.items[0].display.desa)}
         {@const head = groupHead(group, section.title)}
         {@const landmarks = group.items.map(point => landmarkFor(point, `${head.title} ${head.line} ${section.title}`))}
         {@const shared = landmarks.every(mark => mark && mark === landmarks[0]) ? landmarks[0] : ''}
         <div class="atlas-desa">
-          <div class="atlas-desa__head"><span class="atlas-desa__title">{head.title}</span><span class="atlas-desa__count">{group.items.filter(point => !point.cadangan).length} titik</span></div>
+          <svelte:element this={section.title ? 'h3' : 'h2'} class="atlas-desa__head"><span class="atlas-desa__title">{head.title}</span><span class="atlas-desa__count">{group.items.filter(point => !point.cadangan).length} titik</span></svelte:element>
           {#if head.line}<p class="atlas-desa__note">Rekapan: {head.line}</p>{/if}
           {#if shared}<p class="atlas-desa__note">{shared}</p>{/if}
           <div class="atlas-units">

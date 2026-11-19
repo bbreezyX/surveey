@@ -1,0 +1,165 @@
+/* Mockup K: three designs for the province total in Progres. The live stylesheets draw the rest;
+   kabupaten.css brings the strip, the toast and the map backdrop. Big standalone figures use proportional
+   digits (tabular-nums only aligns columns, and makes "182" look loose at this size). */
+
+.tot-fig {
+  font-variant-numeric: normal;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.tot-fig small {
+  margin-left: 1px;
+  font-size: 0.55em;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+/* ---------- A · Persen di depan: the share is the headline, the count reads as its sentence ---------- */
+.atlas-summary .tot-a .atlas-total__num {
+  font-size: 44px;
+}
+
+.tot-a .atlas-total__label { font-size: 13.5px; }
+.tot-a .atlas-total__label > span:first-child { font-size: 15px; }
+
+/* ---------- B · Angka + persen sejajar, bar menyatu ---------- */
+/* The stage bar leaves the summary below and sits under the two figures, so the green run reads as the
+   36% beside it. The legend stays where it was. */
+/* One full-width track: .atlas-summary's justify-content would otherwise shrink an auto track to its
+   content and stop the bar halfway. */
+.tot-b {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.tot-b__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.tot-b__label {
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.tot-b__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.atlas-summary .tot-b__count b {
+  color: var(--green);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.tot-b__count > span {
+  margin-left: 3px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.atlas-summary .tot-b__pct {
+  color: var(--ink);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.tot-b .stage-bar {
+  margin-top: 4px;
+}
+
+.progress-sum.is-legend-only .stage-legend { margin-top: 0; }
+
+/* ---------- C · Kartu capaian: a tinted card, the share large, one meter of terpasang against 500 ---------- */
+.tot-c__card {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 12px;
+  border: 1px solid #cfe7d8;
+  border-radius: var(--radius-md);
+  background: var(--green-tint);
+}
+
+.tot-c__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tot-c__label {
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.tot-c__fig {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.atlas-summary .tot-c__fig b.tot-fig {
+  color: var(--green);
+  font-size: 44px;
+  font-weight: 800;
+}
+
+.tot-c__fig > span {
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+/* Native <progress>, fully custom: appearance none, the track on the element, the fill per engine in
+   separate rules (a grouped -webkit-/-moz- selector is dropped whole). */
+.tot-c__meter {
+  --meter-radius: 999px;
+  display: block;
+  width: 100%;
+  height: 10px;
+  appearance: none;
+  border: 0 solid;
+  border-radius: var(--meter-radius);
+  overflow: clip;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #cfe7d8;
+}
+
+.tot-c__meter::-webkit-progress-bar { background: transparent; }
+
+.tot-c__meter::-webkit-progress-value {
+  background: var(--green);
+  border-radius: var(--meter-radius);
+}
+
+.tot-c__meter::-moz-progress-bar {
+  background: var(--green);
+  border-radius: var(--meter-radius);
+}
+
+.tot-c__ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: -4px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.atlas-summary .tot-c__ends b { color: var(--ink); }
+
+/* The chip sits in each design's top-right corner, as it does beside the live total. */
+.tot-chip { flex: none; }

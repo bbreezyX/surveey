@@ -123,7 +123,7 @@
     addEventListener('online', wake); addEventListener('focus', wake); document.addEventListener('visibilitychange', wake); document.addEventListener('visibilitychange', hide); addEventListener('pagehide', remember); navigator.serviceWorker?.addEventListener('message', fromWorker);
     return () => { disposed = true; stopConnection(); clearInterval(poll); removeEventListener('online', wake); removeEventListener('focus', wake); document.removeEventListener('visibilitychange', wake); document.removeEventListener('visibilitychange', hide); removeEventListener('pagehide', remember); navigator.serviceWorker?.removeEventListener('message', fromWorker); locator.dispose(); controller?.abort(); cancelAnimationFrame(fitFrame); clearTimeout(fitTimer); for (const name of ['is-popup-open', 'is-panel-open', 'is-panel-half', 'is-sidebar-collapsed', 'is-data-unavailable']) document.body.classList.remove(name); };
   });
-  $effect(() => { document.body.classList.toggle('is-popup-open', !!model?.selected); document.body.classList.toggle('is-panel-open', !!model?.panelOpen); document.body.classList.toggle('is-panel-half', model?.sheetSnap === 'half'); document.body.classList.toggle('is-sidebar-collapsed', !!model?.sidebarCollapsed); document.body.classList.toggle('is-data-unavailable', !model); });
+  $effect(() => { document.body.classList.toggle('is-popup-open', !!model?.selected); document.body.classList.toggle('is-panel-open', !!model?.panelOpen); if (model?.panelOpen) document.body.classList.add('has-opened-sheet'); document.body.classList.toggle('is-panel-half', model?.sheetSnap === 'half'); document.body.classList.toggle('is-sidebar-collapsed', !!model?.sidebarCollapsed); document.body.classList.toggle('is-data-unavailable', !model); });
   $effect(() => {
     if (!model || !adapter) return;
     const revision = model.fitRevision; if (revision === appliedFit) return; appliedFit = revision;
@@ -138,7 +138,7 @@
   function fitAll() { if (model) { clearTimeout(fitTimer); cancelAnimationFrame(fitFrame); model.select(null); adapter?.fitToPoints(model.visibleIds); } }
   async function expandSidebar() { if (model) { model.sidebarCollapsed = false; await tick(); adapter?.updateSize(); document.getElementById('list-search')?.focus({ preventScroll: true }); } }
 </script>
-<svelte:window onresize={() => { if (model) { if (innerWidth >= 960) model.panelOpen = false; else model.sidebarCollapsed = false; } }} onkeydown={event => { if (event.key === 'Escape' && model) { if (document.activeElement?.id === 'list-search' && model.query) model.query = ''; else { model.select(null); model.panelOpen = false; } } }} />
+<svelte:window onresize={() => { if (model) { if (innerWidth >= 960) model.panelOpen = false; else model.sidebarCollapsed = false; } }} onkeydown={event => { if (event.key === 'Escape' && model) { if (document.activeElement?.id === 'list-search' && model.query) model.query = ''; else { if (innerWidth < 960 && document.activeElement?.closest('#sidebar .sidebar-scroll, #sidebar .sidebar-footer')) document.getElementById('sheet-handle')?.focus({ preventScroll: true }); model.select(null); model.panelOpen = false; } } }} />
 <div class="app-shell">
   <header class="masthead"><img class="masthead-lambang" src={lambang} srcset={lambangSrcset} sizes="30px" alt="Lambang Provinsi Jambi" width="36" height="38"/><div class="masthead-copy"><p class="masthead-kicker">Dinas ESDM Provinsi Jambi</p><h1 class="masthead-title">Sebaran PUTS 2026</h1></div></header>
   {#if model}

@@ -31,7 +31,7 @@
 </script>
 {#snippet rows(items: SurveyPoint[], done: boolean)}
   {#each heads(items) as head (head.key)}
-    <div class="work-desa"><span class="work-desa__title">{head.title}</span><span class="work-desa__kec">{head.section}</span></div>
+    <h2 class="work-desa"><span class="work-desa__title">{head.title}</span><span class="work-desa__kec">{head.section}</span></h2>
     {#each head.items as point (point.nomor)}
       {@const waiting = state.pending?.get(point.nomor)}
       {@const flags = [point.duplikat ? STATUS_LABEL.duplikat.tag : '', point.belum ? STATUS_LABEL.belum.tag : ''].filter(Boolean)}
@@ -49,10 +49,10 @@
     {/each}
   {/each}
 {/snippet}
-<section class="work-sum" aria-label={`Progres ${state.activeRegion}`}>
+<div class="work-sum">
   <StageBar {tally}/>
   <StageLegend {tally} tight/>
-</section>
+</div>
 {#if mine}
   <p class="work-mine" class:is-waiting={mine.receipt === 'pending'} role="status">
     {#if mine.receipt === 'pending'}<svg width="22" height="22" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>

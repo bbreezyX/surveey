@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { SurveyState } from '../state/survey.svelte';
   import type { Locator } from '../state/locate.svelte';
   import type { SurveyPoint } from '../../shared/survey/types';
@@ -13,13 +14,17 @@
     if (!state.visibleIds.has(point.nomor)) state.openRegion(point.kabupaten);
     state.select(point.nomor, origin);
   }
+  // Both buttons remove themselves (the card closes, or the retry gives way to "Mencari…"), so focus moves to what
+  // stays: the location toggle by the search, or the card's close button.
+  async function turnOff() { locator.toggle(); await tick(); document.querySelector<HTMLButtonElement>('.locate-btn')?.focus({ preventScroll: true }); }
+  async function retry() { locator.start(); await tick(); document.querySelector<HTMLButtonElement>('.nearby__off')?.focus({ preventScroll: true }); }
 </script>
 {#if locator.status !== 'off'}
   <section class="nearby" class:is-live={locator.status === 'on'} aria-labelledby="nearby-title">
     <div class="nearby__head">
       <h2 class="nearby__title" id="nearby-title"><span class="nearby__live" aria-hidden="true"></span>Di dekatmu</h2>
       {#if fix}<span class="nearby__acc" title="Akurasi GPS">±{formatDistance(fix.accuracy)}</span>{/if}
-      <button class="nearby__off" type="button" aria-label="Matikan lokasi" onclick={locator.toggle}><Icon name="close" size={16}/></button>
+      <button class="nearby__off" type="button" aria-label="Matikan lokasi" onclick={turnOff}><Icon name="close" size={16}/></button>
     </div>
     <div role="status">
       {#if locator.status === 'seeking'}<p class="nearby__note">Mencari lokasimu…</p>
@@ -27,7 +32,7 @@
       {:else if locator.status === 'error'}<p class="nearby__note">Lokasi belum didapat. Pastikan GPS aktif.</p>
       {:else if fix && fix.accuracy > WEAK_ACCURACY}<p class="nearby__note">Sinyal GPS lemah, jarak bisa meleset.</p>{/if}
     </div>
-    {#if locator.status === 'denied' || locator.status === 'error'}<button class="nearby__retry" type="button" onclick={locator.start}>Coba lagi</button>{/if}
+    {#if locator.status === 'denied' || locator.status === 'error'}<button class="nearby__retry" type="button" onclick={retry}>Coba lagi</button>{/if}
     {#if fix && rows.length}
       <div class="nearby__rows">
         {#each rows as { point, meters } (point.nomor)}

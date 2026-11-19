@@ -11,13 +11,14 @@
 <div class="progress-loading" aria-busy="true">
   {#if state.activeRegion}<p class="visually-hidden" role="status">Memuat progres dari esdm.cloud…</p>{/if}
   <div class={state.activeRegion ? 'work-sum' : 'progress-sum'} aria-hidden="true">
-    <span class="skel skel--bar"></span>
+    <!-- The province's bar waits under its total in the panel above; a kabupaten's sits here. -->
+    {#if state.activeRegion}<span class="skel skel--bar"></span>{/if}
     <ul class="stage-legend">{#each [0, 1, 2, 3] as item (item)}<li><span class="skel skel--dot"></span><span class="skel skel--label"></span><span class="skel skel--count"></span></li>{/each}</ul>
   </div>
   {#if state.activeRegion}
     {#each [0, 1, 2] as row (row)}<div class="work-group-skel" aria-hidden="true"><span class="skel skel--dot"></span><span class="work-group-skel__text"><span class="skel skel--title"></span><span class="skel skel--note"></span></span><span class="skel skel--pill"></span></div>{/each}
   {:else}
-    <div class="atlas-section progress-grid-head" role="heading" aria-level="2">Semua Wilayah<span>{state.regionNames.length} kabupaten/kota</span></div>
+    <h2 class="atlas-section progress-grid-head">Semua Wilayah<span>{state.regionNames.length} kabupaten/kota</span></h2>
     <div class="atlas-grid" aria-hidden="true">
       {#each state.regionNames as name (name)}
         <div class="atlas-cell progress-cell is-loading">

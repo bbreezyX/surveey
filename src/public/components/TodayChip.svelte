@@ -16,13 +16,21 @@
   const clock = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const WIDTH = 340, GUTTER = 12;
   // Under the chip, right edges lined up, kept inside the window. Placed before it shows (beforetoggle), so it never
-  // flashes at the corner; the width is the CSS one, since a closed popover has none to measure.
+  // flashes at the corner; the width is the CSS one, since a closed popover has none to measure. Where the room
+  // below is short of the CSS height (a phone held sideways) and more is above, it opens upward, anchored by its
+  // bottom edge so its own height needs no measuring; either way it is capped to the room it has. Placed again
+  // on resize while open.
   function place() {
     if (!button || !panel) return;
     const rect = button.getBoundingClientRect(), width = Math.min(WIDTH, innerWidth - GUTTER * 2);
-    panel.style.top = `${Math.round(rect.bottom + 8)}px`;
+    const below = innerHeight - rect.bottom - 8 - GUTTER, above = rect.top - 8 - GUTTER, tall = Math.min(420, innerHeight * 0.7);
+    const up = below < tall && above > below;
+    panel.style.top = up ? 'auto' : `${Math.round(rect.bottom + 8)}px`;
+    panel.style.bottom = up ? `${Math.round(innerHeight - rect.top + 8)}px` : 'auto';
+    panel.style.maxHeight = `${Math.round(Math.min(tall, up ? above : below))}px`;
     panel.style.left = `${Math.round(Math.max(GUTTER, Math.min(rect.right - width, innerWidth - width - GUTTER)))}px`;
   }
+  const isOpen = () => !!panel && (native ? panel.matches(':popover-open') : open);
   function close() { if (native) panel?.hidePopover(); else open = false; }
   async function toggleByHand() { open = !open; if (open) { await tick(); place(); } }
   function openPoint(nomor: string) { close(); survey.select(nomor, button ?? null); }
@@ -34,10 +42,11 @@
     return () => { document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', escape); };
   });
 </script>
+<svelte:window onresize={() => { if (isOpen()) place(); }}/>
 {#if native}
-  <button class="today-chip" type="button" bind:this={button} popovertarget="today-pop" aria-label={`${list.length} progres hari ini, lihat daftar`}>{@html TODAY_ARROW}{list.length} hari ini</button>
+  <button class="today-chip" type="button" bind:this={button} popovertarget="today-pop" aria-label={`${list.length} hari ini, lihat daftar progres`}>{@html TODAY_ARROW}{list.length} hari ini</button>
 {:else}
-  <button class="today-chip" type="button" bind:this={button} aria-expanded={open} aria-controls="today-pop" aria-label={`${list.length} progres hari ini, lihat daftar`} onclick={toggleByHand}>{@html TODAY_ARROW}{list.length} hari ini</button>
+  <button class="today-chip" type="button" bind:this={button} aria-expanded={open} aria-controls="today-pop" aria-label={`${list.length} hari ini, lihat daftar progres`} onclick={toggleByHand}>{@html TODAY_ARROW}{list.length} hari ini</button>
 {/if}
 <div class="today-pop" id="today-pop" bind:this={panel} {...(native ? { popover: 'auto' } : { hidden: !open })} onbeforetoggle={(event: ToggleEvent) => { if (event.newState === 'open') place(); }}>
   <p class="today-pop__title">Progres hari ini</p>

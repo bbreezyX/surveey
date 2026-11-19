@@ -12,10 +12,12 @@
   import Icon from './Icon.svelte';
   import NearbyList from './NearbyList.svelte';
   import ProgressSummary from './ProgressSummary.svelte';
+  import StageBar from './StageBar.svelte';
   import ProgressGrid from './ProgressGrid.svelte';
   import WorkList from './WorkList.svelte';
   import ProgressSkeleton from './ProgressSkeleton.svelte';
   import TodayChip from './TodayChip.svelte';
+  import LiveStatus from './LiveStatus.svelte';
   import { doneShare, tallyStages, todayTally, WORK_DONE } from '../../shared/survey/progress';
   import type { ListMode } from '../state/work-memory';
   import type { Locator as GpsLocator } from '../state/locate.svelte';
@@ -48,6 +50,18 @@
   // "Hari ini" (mockup E): a chip by the province total, "+n" in the legend, a chip on each kabupaten that moved.
   // Nothing at all on a day with no stage recorded yet, rather than a row of zeros.
   const today = $derived(state.progress && state.today?.size ? todayTally(state.points, state.today) : null);
+  // What the one live region (LiveStatus) says for whichever count line shows. The count lines themselves are not
+  // live, and neither is the list: it used to sit in an aria-live wrapper, so each keystroke queued every
+  // re-rendered row.
+  const liveText = $derived(
+    progressView
+      ? state.activeRegion
+        ? regionTally ? `${regionTally.stages[WORK_DONE]} dari ${regionTally.total} titik terpasang` : ''
+        : provinceTally ? `${provinceTally.stages[WORK_DONE]} dari ${provinceTally.total} titik terpasang, ${doneShare(provinceTally)}%` : state.progressFailed ? '' : 'Memuat progres dari esdm.cloud…'
+      : state.activeRegion
+        ? state.query || state.statusFilter ? summary : ''
+        : state.query ? `${state.count} titik cocok di ${new Set(state.visiblePoints.map(point => point.kabupaten)).size} kabupaten` : `${state.count} titik PUTS di ${state.regionNames.length} kabupaten/kota`,
+  );
   let enterTimer: ReturnType<typeof setTimeout> | undefined;
   const latest = $derived(latestDocumentationDate(state.points.map(point => point.tanggal)));
   // Set only when the service worker answered from its stored copy (no or too slow a connection).
@@ -60,8 +74,14 @@
     else [...sidebar.querySelectorAll<HTMLButtonElement>('[data-region]')].find(button => button.dataset.region === previous)?.focus({ preventScroll: true });
   }
   async function collapse() { state.sidebarCollapsed = true; await tick(); document.getElementById('panel-toggle')?.focus({ preventScroll: true }); }
-  // The skeleton comes back while the map asks esdm.cloud again; a second miss brings the message back.
-  function retryProgress() { state.progressFailed = false; onrefresh(); }
+  // The skeleton comes back while the map asks esdm.cloud again; a second miss brings the message back. The button
+  // leaves with its message, so focus moves to the Progres switch instead of falling to the page.
+  async function retryProgress() { state.progressFailed = false; onrefresh(); await tick(); if (document.activeElement === document.body) sidebar.querySelector<HTMLButtonElement>('.list-mode [aria-pressed="true"]')?.focus({ preventScroll: true }); }
+  // "Perbarui" stays focusable while it works (aria-disabled, not disabled, which would drop focus), and leaves
+  // with its line once fresh data arrives; focus then goes to the search rather than the page.
+  let storedHadFocus = false;
+  $effect.pre(() => { void storedLabel; storedHadFocus = !!document.activeElement?.closest('.sidebar-footer__stored'); });
+  $effect(() => { if (!storedLabel && storedHadFocus) { storedHadFocus = false; search?.focus({ preventScroll: true }); } });
   // The closed phone sheet peeks down to the nearest-unit card while it shows, else to the point count under
   // the search (all units, or the search's matches), so the total is on screen without opening the list. A
   // kabupaten keeps its count in the header above the search, so its peek still ends at the search. The count
@@ -133,7 +153,7 @@
   }
 </script>
 <aside id="sidebar" aria-label="Daftar titik PUTS" bind:this={sidebar} inert={state.sidebarCollapsed} data-screen={state.activeRegion ? 'items' : 'groups'}>
-  <button id="sheet-handle" type="button" aria-controls="sidebar" aria-expanded={state.panelOpen} aria-label={state.panelOpen ? 'Tutup daftar titik' : 'Lihat daftar titik'} onclick={gesture.click} onpointerdown={gesture.down} onpointermove={gesture.move} onpointerup={gesture.up} onpointercancel={gesture.cancel}>
+  <button id="sheet-handle" type="button" aria-controls="sidebar" aria-expanded={state.panelOpen} aria-label={state.panelOpen ? 'Tutup daftar titik' : 'Lihat daftar titik'} onclick={gesture.click} onkeydown={gesture.key} onpointerdown={gesture.down} onpointermove={gesture.move} onpointerup={gesture.up} onpointercancel={gesture.cancel} onlostpointercapture={gesture.cancel}>
     <span class="sheet-handle__grabber" aria-hidden="true"></span><span class="sheet-handle__text" aria-hidden="true">{state.panelOpen ? 'Tutup Daftar Titik' : state.selected && state.activeRegion ? `Lihat Daftar Titik · ${state.activeRegion}` : 'Lihat Daftar Titik'}</span>
   </button>
   <div class="panel-top" id="panel-top">
@@ -142,22 +162,24 @@
         <div class="atlas-detail__main"><div><h1>{state.activeRegion}</h1>{#if progressView && regionTally}<p><b>{regionTally.stages[WORK_DONE]}</b> dari <b>{regionTally.total}</b> titik terpasang</p>{:else}<p><b>{countOfficialPoints(regionPoints)}</b> titik<span class="atlas-detail__kec">{' '}di <b>{new Set(regionPoints.filter(p => !p.cadangan).map(p => p.display.kecamatan)).size}</b> kecamatan</span></p>{/if}</div><div class="atlas-locator" role="img" aria-label={`Letak ${state.activeRegion} di Provinsi Jambi`}><Locator regions={state.dataset.boundaries} active={state.activeRegion}/></div></div></div>
     {:else}<div class="atlas-head"><img src={lambang} srcset={lambangSrcset} sizes="38px" alt="Lambang Provinsi Jambi" width="38" height="39" decoding="async"/><div><p class="atlas-head__org">Dinas ESDM Provinsi Jambi</p><h1 class="atlas-head__title">Sebaran PUTS 2026</h1></div><button class="panel-collapse" type="button" aria-label="Sembunyikan daftar" onclick={collapse}><Icon name="collapse"/></button></div>{/if}
   </div>
-  <div class="panel-search-row"><div class="panel-search"><span class="panel-search__icon"><Icon name="search" size={18}/></span><input id="list-search" type="search" aria-label="Cari titik PUTS" placeholder={state.activeRegion ? `Cari dalam ${state.activeRegion}…` : "Cari lokasi atau kabupaten…"} title="Cari titik, lokasi, kabupaten, atau koordinat" autocomplete="off" bind:value={state.query} bind:this={search} onfocus={() => { if (innerWidth < 960) state.panelOpen = true; }}/>{#if state.query}<button class="panel-search__clear" id="list-search-clear" type="button" aria-label="Hapus pencarian" onclick={() => { state.query = ''; search.focus({ preventScroll: true }); }}><Icon name="close" size={16}/></button>{/if}</div><button class="locate-btn" class:is-seeking={locator.status === 'seeking'} type="button" aria-label="Titik di dekatku" title={locator.status === 'off' ? 'Tampilkan titik di dekat lokasiku' : 'Matikan lokasi'} aria-pressed={locator.status !== 'off'} onclick={locator.toggle}><Icon name="locate" size={22}/><span class="locate-btn__label">Terdekat</span></button></div>
+  <search class="panel-search-row"><div class="panel-search"><span class="panel-search__icon"><Icon name="search" size={18}/></span><input id="list-search" type="search" aria-label="Cari titik PUTS" placeholder={state.activeRegion ? `Cari dalam ${state.activeRegion}…` : "Cari lokasi atau kabupaten…"} title="Cari titik, lokasi, kabupaten, atau koordinat" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" bind:value={state.query} bind:this={search} onfocus={() => { if (innerWidth < 960) state.panelOpen = true; }}/>{#if state.query}<button class="panel-search__clear" id="list-search-clear" type="button" aria-label="Hapus pencarian" onclick={() => { state.query = ''; search.focus({ preventScroll: true }); }}><Icon name="close" size={16}/></button>{/if}</div><button class="locate-btn" class:is-seeking={locator.status === 'seeking'} type="button" aria-label="Terdekat, titik di dekatku" title={locator.status === 'off' ? 'Tampilkan titik di dekat lokasiku' : 'Matikan lokasi'} aria-pressed={locator.status !== 'off'} onclick={locator.toggle}><Icon name="locate" size={22}/><span class="locate-btn__label">Terdekat</span></button></search>
   <!-- Under the search so the phone sheet's peek carries the nearest unit, not just the search field. -->
   <div class="sheet-near" bind:this={near}><NearbyList {state} {locator}/></div>
   <div class="panel-meta" id="panel-meta">
     <!-- Two pressed-state buttons, as the status pills are: Sebaran is today's atlas and list, Progres the build
          stages and each kabupaten's work list. Hidden while a search answers, and on a closed phone sheet.
          The share on Progres invites a reader still on Sebaran; once Progres is open the same number sits
-         at the end of the total line, and showing it twice read as noise. That line reads as one sentence,
-         "182 Titik Terpasang dari 500 titik PUTS · 36%": a separate "% selesai" read as any stage, and
-         "% Terpasang" beside the count only repeated it. -->
+         in the total, and showing it twice read as noise. The total sets "182/500" and "36%" equally large
+         on one row under one "Titik Terpasang" (mockups/survey/k-total-progres.html, B): as the small end
+         of a sentence the share went unread, a separate "% selesai" read as any stage, and one label for
+         both figures keeps "terpasang" from repeating. The stage bar sits right under them, so its green
+         run is that share; the list below keeps only the legend. -->
     {#if !state.query}<div class="list-mode" role="group" aria-label="Tampilan daftar">
       <button type="button" aria-pressed={state.listMode === 'sebaran'} onclick={() => pickMode('sebaran')}>Sebaran</button>
       <button type="button" aria-pressed={state.listMode === 'progres'} onclick={() => pickMode('progres')}>Progres{#if provinceTally && state.listMode === 'sebaran'}<span class="list-mode__share">{doneShare(provinceTally)}%</span>{/if}</button>
     </div>{/if}
     {#if progressView}
-      {#if !state.activeRegion}<div class="atlas-summary atlas-summary--total"><p class="atlas-total atlas-total--progress" role="status">{#if provinceTally}<b class="atlas-total__num">{provinceTally.stages[WORK_DONE]}</b><span class="atlas-total__label"><span>Titik Terpasang</span><span>dari <b>{provinceTally.total}</b> titik PUTS · <b>{doneShare(provinceTally)}%</b></span></span>{:else if state.progressFailed}<b class="atlas-total__num is-none" aria-hidden="true">–</b><span class="atlas-total__label" aria-hidden="true"><span>Titik Terpasang</span><span>dari <b>{countOfficialPoints(state.points)}</b> titik PUTS</span></span>{:else}<span class="visually-hidden">Memuat progres dari esdm.cloud…</span><span class="skel skel--total" aria-hidden="true"></span><span class="atlas-total__label" aria-hidden="true"><span>Titik Terpasang</span><span>dari <b>{countOfficialPoints(state.points)}</b> titik PUTS</span></span>{/if}</p>{#if today?.list.length}<span class="progress-side"><TodayChip {state} list={today.list}/></span>{/if}</div>{/if}
+      {#if !state.activeRegion}<div class="atlas-summary atlas-summary--total atlas-summary--progress"><div class="progress-total__top"><span aria-hidden="true">Titik Terpasang</span>{#if today?.list.length}<TodayChip {state} list={today.list}/>{/if}</div><p class="atlas-total atlas-total--progress">{#if provinceTally}<span class="visually-hidden">{provinceTally.stages[WORK_DONE]} dari {provinceTally.total} titik terpasang, {doneShare(provinceTally)}%</span><span class="progress-total__count" aria-hidden="true"><b class="atlas-total__num">{provinceTally.stages[WORK_DONE]}</b><span class="progress-total__of">/{provinceTally.total}</span></span><b class="progress-total__pct" aria-hidden="true">{doneShare(provinceTally)}<small>%</small></b>{:else if state.progressFailed}<span class="progress-total__count" aria-hidden="true"><b class="atlas-total__num is-none">–</b><span class="progress-total__of">/{countOfficialPoints(state.points)}</span></span>{:else}<span class="visually-hidden">Memuat progres dari esdm.cloud…</span><span class="progress-total__count" aria-hidden="true"><span class="skel skel--total"></span><span class="progress-total__of">/{countOfficialPoints(state.points)}</span></span><span class="skel skel--pct" aria-hidden="true"></span>{/if}</p>{#if provinceTally}<StageBar tally={provinceTally}/>{:else if !state.progressFailed}<span class="skel skel--bar" aria-hidden="true"></span>{/if}</div>{/if}
     {:else if state.activeRegion}
       {#if filterFlags.length}<div class="atlas-pills" role="group" aria-label="Saring menurut status">
         <button class="atlas-pill" aria-pressed={state.statusFilter === null} onclick={() => state.setFilter(null)}>Semua <b>{countOfficialPoints(regionPoints)}</b></button>
@@ -166,10 +188,11 @@
             <button class="atlas-pill" aria-pressed={state.statusFilter === key} onclick={() => state.setFilter(state.statusFilter === key ? null : key)}><span class={`atlas-pill__swatch atlas-pill__swatch--${key}`} aria-hidden="true"></span>{STATUS_LABEL[key === 'duplikat' ? 'duplikat' : 'belum'].short} <b>{regionPoints.filter(point => point[key] && !point.cadangan).length}</b></button>
           {/if}
         {/each}
-      </div>{/if}<p class="atlas-hint" class:is-generic={!state.query && !state.statusFilter} role="status">{state.query || state.statusFilter ? summary : 'Pilih nomor titik untuk melihatnya di peta.'}</p>
-    {:else if state.query}<p class="atlas-summary" role="status">{state.count} titik cocok di {new Set(state.visiblePoints.map(point => point.kabupaten)).size} kabupaten</p>
-    {:else}<div class="atlas-summary atlas-summary--total"><p class="atlas-total" role="status"><b class="atlas-total__num">{state.count}</b><span class="atlas-total__label"><span>Titik PUTS</span><span>di <b>{state.regionNames.length}</b> kabupaten/kota</span></span></p><button id="fit-map" type="button" class="atlas-fit" aria-label="Lihat semua" title="Tampilkan semua titik di peta" onclick={onfit}><Icon name="fit" size={16}/><span>Lihat Semua</span></button></div>{/if}
+      </div>{/if}<p class="atlas-hint" class:is-generic={!state.query && !state.statusFilter}>{state.query || state.statusFilter ? summary : 'Pilih nomor titik untuk melihatnya di peta.'}</p>
+    {:else if state.query}<p class="atlas-summary">{state.count} titik cocok di {new Set(state.visiblePoints.map(point => point.kabupaten)).size} kabupaten</p>
+    {:else}<div class="atlas-summary atlas-summary--total"><p class="atlas-total"><b class="atlas-total__num">{state.count}</b><span class="atlas-total__label"><span>Titik PUTS</span><span>di <b>{state.regionNames.length}</b> kabupaten/kota</span></span></p><button id="fit-map" type="button" class="atlas-fit" aria-label="Lihat semua" title="Tampilkan semua titik di peta" onclick={onfit}><Icon name="fit" size={16}/><span>Lihat Semua</span></button></div>{/if}
   </div>
-  <div class="sidebar-scroll" bind:this={scroller} onscroll={syncScroll}><div id="list-data" aria-live="polite">{#if !state.points.length}<p class="list-empty">Belum ada titik untuk ditampilkan.</p>{:else if progressView}{#if !state.progress}{#if state.progressFailed}<div class="panel-empty progress-failed" role="status"><p class="panel-empty__title">Gagal memuat progres</p><p>esdm.cloud tidak merespons. Peta tetap berjalan dan mencoba lagi otomatis.</p><div class="panel-empty__actions"><button type="button" onclick={retryProgress}>Coba lagi</button></div></div>{:else}<ProgressSkeleton {state}/>{/if}{:else if state.activeRegion}<WorkList {state} progress={state.progress} openWaiting={state.waitingFirst}/>{:else}<ProgressSummary {state} progress={state.progress} onopen={(name, waiting) => openRegion(name, null, waiting)} todaySteps={today?.steps}/><ProgressGrid {state} progress={state.progress} onopen={name => openRegion(name)} todayIn={today?.byRegion}/>{/if}{:else if !state.activeRegion && !state.query}<RegionGrid {state} onopen={openRegion}/>{:else}<PointList {state}/>{/if}</div></div>
-  <p class="sidebar-footer"><span class="sidebar-footer__title">Survey Lapangan &amp; Pelaksanaan</span><span class="sidebar-footer__meta">s.d. {dateLabel} · Dinas ESDM Jambi</span>{#if storedLabel}<span class="sidebar-footer__stored" role="status">Data tersimpan {storedLabel} — koneksi lemah atau terputus. <button type="button" onclick={onrefresh} disabled={refreshing}>{refreshing ? 'Memperbarui…' : 'Perbarui'}</button></span>{/if}</p>
+  <LiveStatus text={liveText}/>
+  <div class="sidebar-scroll" bind:this={scroller} onscroll={syncScroll}><div id="list-data">{#if !state.points.length}<p class="list-empty">Belum ada titik untuk ditampilkan.</p>{:else if progressView}{#if !state.progress}{#if state.progressFailed}<div class="panel-empty progress-failed" role="status"><p class="panel-empty__title">Gagal memuat progres</p><p>esdm.cloud tidak merespons. Peta tetap berjalan dan mencoba lagi otomatis.</p><div class="panel-empty__actions"><button type="button" onclick={retryProgress}>Coba lagi</button></div></div>{:else}<ProgressSkeleton {state}/>{/if}{:else if state.activeRegion}<WorkList {state} progress={state.progress} openWaiting={state.waitingFirst}/>{:else}<ProgressSummary {state} progress={state.progress} onopen={(name, waiting) => openRegion(name, null, waiting)} todaySteps={today?.steps}/><ProgressGrid {state} progress={state.progress} onopen={name => openRegion(name)} todayIn={today?.byRegion}/>{/if}{:else if !state.activeRegion && !state.query}<RegionGrid {state} onopen={openRegion}/>{:else}<PointList {state}/>{/if}</div></div>
+  <p class="sidebar-footer"><span class="sidebar-footer__title">Survey Lapangan &amp; Pelaksanaan</span><span class="sidebar-footer__meta">s.d. {dateLabel} · Dinas ESDM Jambi</span>{#if storedLabel}<span class="sidebar-footer__stored" role="status">Data tersimpan {storedLabel} — koneksi lemah atau terputus. <button type="button" onclick={() => { if (!refreshing) onrefresh(); }} aria-disabled={refreshing}>{refreshing ? 'Memperbarui…' : 'Perbarui'}</button></span>{/if}</p>
 </aside>

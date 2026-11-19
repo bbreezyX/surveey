@@ -29,13 +29,17 @@ export function createSheetGesture(
   }
   return {
     down(event: PointerEvent) {
-      if (!event.isPrimary) return;
+      // Main button only: a right or middle press would otherwise start a drag the context menu then strands.
+      if (!event.isPrimary || event.button !== 0) return;
       stopHints();
       const styles = getComputedStyle(document.documentElement), isPopup = popupOpen();
       const rest = parseFloat(styles.getPropertyValue(isPopup ? '--sheet-bar' : '--sheet-peek')) || (isPopup ? 52 : 192);
       const half = parseFloat(styles.getPropertyValue('--sheet-half')) || Math.round(window.innerHeight * 0.46);
       const h = sheet().offsetHeight, restY = Math.max(h - rest, 1), halfY = Math.max(0, Math.min(h - half, restY - 40));
-      const wasSnap = snap(), from = wasSnap === 'full' ? 0 : wasSnap === 'half' ? halfY : restY;
+      // Start from where the sheet is now, not from its snap point: caught mid-settle, it would otherwise jump to
+      // the snap the moment dragging switches its transition off.
+      const transform = getComputedStyle(sheet()).transform, live = transform && transform !== 'none' ? new DOMMatrixReadOnly(transform).m42 : 0;
+      const wasSnap = snap(), from = Math.min(Math.max(live, 0), restY);
       drag = { id: event.pointerId, startY: event.clientY, lastY: event.clientY, lastT: event.timeStamp, velocity: 0, restY, halfY, wasSnap, from, y: from, moved: false };
       if (event.currentTarget instanceof HTMLElement) event.currentTarget.setPointerCapture(event.pointerId);
     },
@@ -56,6 +60,14 @@ export function createSheetGesture(
       if (suppressClick) { suppressClick = false; return; }
       stopHints();
       setSnap(snap() === 'closed' ? 'full' : 'closed');
+    },
+    // The keyboard's way through the three stops: Enter/Space toggle (click), the arrows step up or down one.
+    key(event: KeyboardEvent) {
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+      event.preventDefault(); stopHints();
+      const stops: SheetSnap[] = ['closed', 'half', 'full'], at = stops.indexOf(snap());
+      const next = stops[Math.min(Math.max(at + (event.key === 'ArrowUp' ? 1 : -1), 0), stops.length - 1)];
+      if (next !== snap()) setSnap(next);
     },
     dispose() { drag = null; document.body.classList.remove('is-sheet-dragging'); sheet().style.transform = ''; },
   };
