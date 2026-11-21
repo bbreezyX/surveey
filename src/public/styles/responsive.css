@@ -1733,6 +1733,31 @@ body.is-sidebar-collapsed .map-legend {
         right: 12px;
     }
 
+    /* A phone keeps only the four build stages in the row: the status marks
+       pushed it past the screen width and made crews pan to read it. With no
+       stage in view, the row would be empty, so the legend goes too. */
+    .map-legend__group:not(.map-legend__group--scale),
+    .map-legend:not(:has(.map-legend__group--scale)) {
+        display: none;
+    }
+
+    /* White labels lose contrast over bright imagery (cloud, sand, zinc
+       roofs), so a soft dark ellipse sits behind the row (mockups/survey/
+       l-legenda-mobile.html, B). It fades out on every side, so no card edge
+       appears, and it lives on the legend so it hides with the row. */
+    .map-legend {
+        isolation: isolate;
+    }
+
+    .map-legend::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        inset: -12px -8px;
+        pointer-events: none;
+        background: radial-gradient(closest-side, rgba(10, 20, 32, 0.5), rgba(10, 20, 32, 0.28) 60%, rgba(10, 20, 32, 0));
+    }
+
     .map-legend__pill {
         padding: 3px 4px;
         border: 0;
@@ -1805,6 +1830,11 @@ body.is-sidebar-collapsed .map-legend {
 
     body:has(#map.is-imagery-offline) .map-legend__swatch {
         filter: none;
+    }
+
+    /* Dark ink on the pale basemap needs no scrim behind it. */
+    body:has(#map.is-imagery-offline) .map-legend::before {
+        display: none;
     }
 
     body:has(#map.is-imagery-offline) .map-legend__group + .map-legend__group,

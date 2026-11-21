@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup L: Legenda mobile</title>
+<!-- L: the phone legend (four build stages only, since the status marks were dropped) drawn two ways over the
+     live app at 375px:
+       A · Tanpa kartu     the shipped row: white labels with a dark halo straight on the imagery
+       B · Gradasi tipis   the same row over a soft dark ellipse with no edge, for bright imagery
+     Each frame is the real app from the dev server; B only adds its style into the frame. "Citra terang"
+     brightens the map in both frames to stand in for cloud, sand or concrete roofs behind the row. -->
+<style>
+  :root { color-scheme: light; --ink: #1d2a38; --muted: #5b6b7c; --edge: #d5dde5; }
+  body { margin: 0; padding: 16px; background: #eef3f7; color: var(--ink); font: 14px/1.4 Figtree, system-ui, sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 18px; }
+  p { margin: 0 0 12px; color: var(--muted); }
+  .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
+  .bar label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .frames { display: flex; flex-wrap: wrap; gap: 24px; }
+  figure { margin: 0; }
+  figcaption { margin-bottom: 6px; font-weight: 600; }
+  figcaption small { display: block; font-weight: 400; color: var(--muted); }
+  iframe { display: block; width: 375px; height: 420px; max-width: calc(100vw - 32px); border: 1px solid var(--edge); border-radius: 12px; background: #0e1a24; }
+</style>
+</head>
+<body>
+<h1>Legenda mobile: tanpa kartu atau gradasi tipis</h1>
+<p>Aplikasi asli pada lebar 375px. Hanya baris legenda di bawah masthead yang dibandingkan.</p>
+<div class="bar">
+  <label><input type="checkbox" id="bright"> Citra terang (simulasi awan, pasir, atap seng)</label>
+</div>
+<div class="frames">
+  <figure><figcaption>A · Tanpa kartu<small>Sekarang di produksi</small></figcaption><iframe id="a" src="/" title="Legenda A, tanpa kartu"></iframe></figure>
+  <figure><figcaption>B · Gradasi tipis<small>Elips gelap lembut tanpa tepi di belakang baris</small></figcaption><iframe id="b" src="/" title="Legenda B, gradasi tipis"></iframe></figure>
+</div>
+<script>
+  // B's scrim sits on the legend itself, so it moves and hides with the row (popup, sheet, no stage in view).
+  // A radial ellipse fades to nothing on every side, so no box edge appears over the imagery.
+  var SCRIM = ".map-legend{isolation:isolate}" +
+    ".map-legend::before{content:'';position:absolute;z-index:-1;inset:-12px -8px;pointer-events:none;" +
+    "background:radial-gradient(closest-side,rgba(10,20,32,.5),rgba(10,20,32,.28) 60%,rgba(10,20,32,0))}" +
+    "body:has(#map.is-imagery-offline) .map-legend::before{display:none}";
+  // Brightened imagery stands in for the worst case behind white text.
+  var BRIGHT = "#map .ol-layer{filter:brightness(2.4) saturate(.35)}";
+  function addStyle(frame, id, css) {
+    var doc = frame.contentDocument; if (!doc || doc.getElementById(id)) return;
+    var s = doc.createElement("style"); s.id = id; s.textContent = css; doc.head.append(s);
+  }
+  function setBright(frame, on) {
+    var doc = frame.contentDocument, s = doc && doc.getElementById("mock-bright");
+    if (on) addStyle(frame, "mock-bright", BRIGHT); else if (s) s.remove();
+  }
+  var a = document.getElementById("a"), b = document.getElementById("b"), bright = document.getElementById("bright");
+  a.addEventListener("load", function () { setBright(a, bright.checked); });
+  b.addEventListener("load", function () { addStyle(b, "mock-scrim", SCRIM); setBright(b, bright.checked); });
+  bright.addEventListener("change", function () { setBright(a, bright.checked); setBright(b, bright.checked); });
+</script>
+</body>
+</html>
