@@ -59,7 +59,9 @@ export function createSheetGesture(
     click() {
       if (suppressClick) { suppressClick = false; return; }
       stopHints();
-      setSnap(snap() === 'closed' ? 'full' : 'closed');
+      // Half is the list a closed detail leaves behind, with "Lihat Daftar Lengkap" on the handle: a tap there
+      // opens the full list, as the nudge suggests. Only the full sheet closes on a tap.
+      setSnap(snap() === 'full' ? 'closed' : 'full');
     },
     // The keyboard's way through the three stops: Enter/Space toggle (click), the arrows step up or down one.
     key(event: KeyboardEvent) {

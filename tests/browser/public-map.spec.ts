@@ -280,6 +280,7 @@ test('keeps a slim bottom bar during detail and restores the list at half-height
   await expect(page.locator('#popup')).toBeHidden();
   await expect(page.locator('#sheet-handle')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('body')).toHaveClass(/is-panel-half/);
+  await expect(page.getByRole('button', { name: 'Lihat daftar lengkap', exact: true })).toBeVisible();
 
   // Half-sheet leaves the upper map open while keeping the just-closed point visible in the list.
   const sheetTop = await page.locator('#sidebar').evaluate(el => el.getBoundingClientRect().top);

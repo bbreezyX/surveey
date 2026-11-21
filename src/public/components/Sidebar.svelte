@@ -155,8 +155,8 @@
   }
 </script>
 <aside id="sidebar" aria-label="Daftar titik PUTS" bind:this={sidebar} inert={state.sidebarCollapsed} data-screen={state.activeRegion ? 'items' : 'groups'}>
-  <button id="sheet-handle" type="button" aria-controls="sidebar" aria-expanded={state.panelOpen} aria-label={state.panelOpen ? 'Tutup daftar titik' : 'Lihat daftar titik'} onclick={gesture.click} onkeydown={gesture.key} onpointerdown={gesture.down} onpointermove={gesture.move} onpointerup={gesture.up} onpointercancel={gesture.cancel} onlostpointercapture={gesture.cancel}>
-    <span class="sheet-handle__grabber" aria-hidden="true"></span><span class="sheet-handle__text" aria-hidden="true">{state.panelOpen ? 'Tutup Daftar Titik' : state.selected && state.activeRegion ? `Lihat Daftar Titik · ${state.activeRegion}` : 'Lihat Daftar Titik'}</span>
+  <button id="sheet-handle" type="button" aria-controls="sidebar" aria-expanded={state.panelOpen} aria-label={state.sheetSnap === 'full' ? 'Tutup daftar titik' : state.sheetSnap === 'half' ? 'Lihat daftar lengkap' : 'Lihat daftar titik'} onclick={gesture.click} onkeydown={gesture.key} onpointerdown={gesture.down} onpointermove={gesture.move} onpointerup={gesture.up} onpointercancel={gesture.cancel} onlostpointercapture={gesture.cancel}>
+    <span class="sheet-handle__grabber" aria-hidden="true"></span><span class="sheet-handle__text" aria-hidden="true">{state.sheetSnap === 'full' ? 'Tutup Daftar Titik' : state.sheetSnap === 'half' ? 'Lihat Daftar Lengkap' : state.selected && state.activeRegion ? `Lihat Daftar Titik · ${state.activeRegion}` : 'Lihat Daftar Titik'}</span>
   </button>
   <div class="panel-top" id="panel-top">
     {#if state.activeRegion}
