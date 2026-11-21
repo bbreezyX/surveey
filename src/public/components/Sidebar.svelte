@@ -49,7 +49,7 @@
   const regionTally = $derived(state.progress ? tallyStages(regionPoints, state.progress, state.pending) : null);
   // "Hari ini" (mockup E): a chip by the province total, "+n" in the legend, a chip on each kabupaten that moved.
   // Nothing at all on a day with no stage recorded yet, rather than a row of zeros.
-  const today = $derived(state.progress && state.today?.size ? todayTally(state.points, state.today) : null);
+  const today = $derived(state.progress && state.today?.length ? todayTally(state.points, state.today, state.stageFilter) : null);
   // What the one live region (LiveStatus) says for whichever count line shows. The count lines themselves are not
   // live, and neither is the list: it used to sit in an aria-live wrapper, so each keystroke queued every
   // re-rendered row.

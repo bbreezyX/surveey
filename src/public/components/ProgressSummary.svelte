@@ -4,7 +4,7 @@
   import StageLegend from './StageLegend.svelte';
   // The progress view's province screen, above the kabupaten atlas: the counts per stage (clickable to filter
   // the map and cards), and the units still waiting for review. Their bar sits under the province total in the
-  // panel above, beside the share it draws. todaySteps: units per step that reached it today, for the legend's "+n".
+  // panel above, beside the share it draws. todaySteps: steps recorded today per stage, for the legend's "+n".
   // When only one kabupaten has waiting units, one tap opens its waiting group directly; when several do, a
   // native disclosure lists each kabupaten so the reader picks the one they need instead of landing on an
   // arbitrary first region.

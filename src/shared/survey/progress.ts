@@ -24,19 +24,22 @@ export function parsePending(value: unknown): SurveyPending {
   }
   return pending;
 }
-// Units esdm.cloud recorded a stage for since midnight WIB: the furthest stage reached today and when (ms since
-// epoch). The day is cut on esdm.cloud, so every reader shares one calendar; a feed without `today` reads empty.
-export interface SurveyTodayEntry { stage: number; at: number }
-export type SurveyToday = ReadonlyMap<string, SurveyTodayEntry>;
+// Steps esdm.cloud recorded since midnight WIB, one row per action (ms since epoch), as its field history counts
+// reports: a point dug and poured on one day is two rows, so "hari ini" matches the "6 laporan" staff see there.
+// `todayStages` lists them; a feed from before it has only `today`, one furthest stage per unit, read as one row each.
+// The day is cut on esdm.cloud, so every reader shares one calendar; a feed with neither reads empty.
+export interface SurveyTodayEntry { nomor: string; stage: number; at: number }
+export type SurveyToday = readonly SurveyTodayEntry[];
 export function parseToday(value: unknown): SurveyToday {
-  const today = new Map<string, SurveyTodayEntry>();
-  const raw = value && typeof value === 'object' ? (value as { today?: unknown }).today : null;
-  if (!raw || typeof raw !== 'object') return today;
-  for (const [nomor, entry] of Object.entries(raw)) {
+  const today: SurveyTodayEntry[] = [];
+  const feed = (value && typeof value === 'object' ? value : {}) as { today?: unknown; todayStages?: unknown };
+  const read = (nomor: unknown, entry: unknown) => {
     const { stage, at } = (entry && typeof entry === 'object' ? entry : {}) as { stage?: unknown; at?: unknown };
     const time = typeof at === 'string' ? Date.parse(at) : NaN;
-    if (Number.isInteger(stage) && (stage as number) >= 1 && (stage as number) <= 4 && Number.isFinite(time)) today.set(nomor, { stage: stage as number, at: time });
-  }
+    if (typeof nomor === 'string' && nomor && Number.isInteger(stage) && (stage as number) >= 1 && (stage as number) <= 4 && Number.isFinite(time)) today.push({ nomor, stage: stage as number, at: time });
+  };
+  if (Array.isArray(feed.todayStages)) for (const entry of feed.todayStages) read((entry as { nomor?: unknown } | null)?.nomor, entry);
+  else if (feed.today && typeof feed.today === 'object') for (const [nomor, entry] of Object.entries(feed.today)) read(nomor, entry);
   return today;
 }
 // The same words /lapangan shows a crew for its own open report, so both sides name it alike. Read aloud
@@ -149,18 +152,19 @@ export function waitingByRegion(units: readonly (ProgressUnit & { kabupaten: str
   for (const name of counts.keys()) if (!names.includes(name)) names.push(name);
   return names.map(kabupaten => ({ kabupaten, count: counts.get(kabupaten)! }));
 }
-// "Hari ini" in the progress view: official units that reached a step today, newest first, with counts per step
-// and per kabupaten.
+// "Hari ini" in the progress view: every step recorded today on an official unit, newest first, with counts per step
+// and per kabupaten. While a stage filter is on, the kabupaten counts keep that stage's steps only, as the cells do.
 export interface TodayUnit<T> { unit: T; step: number; at: number }
-export function todayTally<T extends ProgressUnit & { kabupaten: string }>(units: readonly T[], today: SurveyToday | null) {
+export function todayTally<T extends ProgressUnit & { kabupaten: string }>(units: readonly T[], today: SurveyToday | null, filter: StageFilter | null = null) {
   const list: TodayUnit<T>[] = [], steps = [0, 0, 0, 0, 0], byRegion = new Map<string, number>();
-  if (!today?.size) return { list, steps, byRegion };
-  for (const unit of units) {
-    const entry = unit.cadangan ? undefined : today.get(unit.nomor);
-    if (!entry) continue;
+  if (!today?.length) return { list, steps, byRegion };
+  const byNomor = new Map(units.map(unit => [unit.nomor, unit]));
+  for (const entry of today) {
+    const unit = byNomor.get(entry.nomor);
+    if (!unit || unit.cadangan) continue;
     const step = workStep(entry.stage);
     list.push({ unit, step, at: entry.at }); steps[step]++;
-    byRegion.set(unit.kabupaten, (byRegion.get(unit.kabupaten) ?? 0) + 1);
+    if (filter === null || filter === step) byRegion.set(unit.kabupaten, (byRegion.get(unit.kabupaten) ?? 0) + 1);
   }
   list.sort((a, b) => b.at - a.at);
   return { list, steps, byRegion };

@@ -124,26 +124,45 @@ describe('progress summary and work list', () => {
     expect(workBadgeSvg(3)).toBe(stageBadgeSvg(3));
     expect(workBadgeSvg(WORK_DONE)).toBe(stageBadgeSvg(4));
   });
-  it('reads today\'s stages from the feed and drops anything malformed', () => {
+  it('reads every step recorded today from the feed and drops anything malformed', () => {
+    const at = '2026-11-21T01:49:33.033Z';
+    const today = parseToday({ todayStages: [
+      { nomor: 'A-001', stage: 2, at: '2026-11-21T03:47:56.099Z' },
+      { nomor: 'A-001', stage: 1, at },
+      { nomor: 'A-002', stage: 7, at },
+      { nomor: 'A-003', stage: 2, at: 'kemarin' },
+      { stage: 1, at },
+      null,
+    ], today: { 'A-001': { stage: 2, at } } });
+    expect(today).toEqual([{ nomor: 'A-001', stage: 2, at: Date.parse('2026-11-21T03:47:56.099Z') }, { nomor: 'A-001', stage: 1, at: Date.parse(at) }]);
+    expect(parseToday({ stages: {} })).toEqual([]);
+  });
+  it('reads a feed from before todayStages as one step per unit', () => {
     const today = parseToday({ today: {
       'A-001': { stage: 4, at: '2026-11-14T02:10:00.000Z' },
       'A-002': { stage: 7, at: '2026-11-14T02:10:00.000Z' },
       'A-003': { stage: 2, at: 'kemarin' },
       'A-004': null,
     } });
-    expect([...today]).toEqual([['A-001', { stage: 4, at: Date.parse('2026-11-14T02:10:00.000Z') }]]);
-    expect(parseToday({ stages: {} }).size).toBe(0);
+    expect(today).toEqual([{ nomor: 'A-001', stage: 4, at: Date.parse('2026-11-14T02:10:00.000Z') }]);
   });
-  it('counts today\'s official units per step and kabupaten, newest first', () => {
+  it('counts every step recorded today on official units, per step and kabupaten, newest first', () => {
     const units = [
       { nomor: 'A-001', cadangan: false, kabupaten: 'Bungo' }, { nomor: 'A-002', cadangan: false, kabupaten: 'Bungo' },
       { nomor: 'A-003', cadangan: false, kabupaten: 'Kerinci' }, { nomor: 'A-004', cadangan: true, kabupaten: 'Kerinci' },
     ];
-    const today = new Map([['A-001', { stage: 1, at: 100 }], ['A-002', { stage: 3, at: 300 }], ['A-003', { stage: 4, at: 200 }], ['A-004', { stage: 2, at: 400 }]]);
+    const today = [
+      { nomor: 'A-001', stage: 1, at: 100 }, { nomor: 'A-001', stage: 2, at: 250 }, { nomor: 'A-002', stage: 3, at: 300 },
+      { nomor: 'A-003', stage: 4, at: 200 }, { nomor: 'A-004', stage: 2, at: 400 }, { nomor: 'X-404', stage: 1, at: 500 },
+    ];
     const tally = todayTally(units, today);
-    expect(tally.list.map(item => [item.unit.nomor, item.step])).toEqual([['A-002', 3], ['A-003', WORK_DONE], ['A-001', 1]]);
-    expect(tally.steps).toEqual([0, 1, 0, 1, 1]);
-    expect([...tally.byRegion]).toEqual([['Bungo', 2], ['Kerinci', 1]]);
+    expect(tally.list.map(item => [item.unit.nomor, item.step])).toEqual([['A-002', 3], ['A-001', 2], ['A-003', WORK_DONE], ['A-001', 1]]);
+    expect(tally.steps).toEqual([0, 1, 1, 1, 1]);
+    expect([...tally.byRegion]).toEqual([['Bungo', 3], ['Kerinci', 1]]);
+    // A stage filter narrows the kabupaten counts to that stage; the list and the legend's counts stay whole.
+    const galian = todayTally(units, today, 1);
+    expect([...galian.byRegion]).toEqual([['Bungo', 1]]);
+    expect(galian.steps).toEqual(tally.steps);
     expect(todayTally(units, null).list).toEqual([]);
   });
 });

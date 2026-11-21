@@ -3,7 +3,8 @@
   import type { SurveyState } from '../state/survey.svelte';
   import type { SurveyPoint } from '../../shared/survey/types';
   import { STAGE_COUNT_LABEL, TODAY_ARROW, workBadgeSvg, type TodayUnit } from '../../shared/survey/progress';
-  // "Hari ini" under the province total: how many units moved a step today and, on tap, which ones, newest first.
+  // "Hari ini" under the province total: how many steps were recorded today and, on tap, each of them, newest first.
+  // A unit dug and poured on one day takes two rows, so the rows are keyed by unit and time, not unit alone.
   // A row opens its unit on the map, as a list row does. Sidebar renders this only when the feed names any.
   // `state` is renamed here: a prop called state would shadow the $state rune this component needs.
   let { state: survey, list }: { state: SurveyState; list: readonly TodayUnit<SurveyPoint>[] } = $props();
@@ -52,7 +53,7 @@
   <p class="today-pop__title">Progres hari ini</p>
   <p class="today-pop__day">{day} · WIB</p>
   <ul class="today-pop__list">
-    {#each list as item (item.unit.nomor)}
+    {#each list as item (`${item.unit.nomor}|${item.at}`)}
       <li><button class="today-row" type="button" onclick={() => openPoint(item.unit.nomor)}>
         <time>{clock.format(item.at)}</time>
         <span class="today-row__badge" aria-hidden="true">{@html workBadgeSvg(item.step)}</span>

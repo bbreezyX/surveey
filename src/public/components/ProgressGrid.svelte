@@ -10,7 +10,8 @@
   // reports apart), each row with the badge of the stage already accepted. "Perlu", not the work list's
   // "Lapor": the cell says what the units need, not what to tap.
   // No stage bar here: the counts already give the split it drew. The province bar keeps the whole.
-  // todayIn: units per kabupaten that reached a step today, shown as a chip in the top-right corner.
+  // todayIn: steps recorded today per kabupaten (the filtered stage's only, while a filter is on), shown as a chip
+  // in the top-right corner.
   let { state, progress, onopen, todayIn = null }: { state: SurveyState; progress: SurveyProgress; onopen: (name: string) => void; todayIn?: ReadonlyMap<string, number> | null } = $props();
   // p0..p2 sort in draw order, so terpasang dots land on top of the rest.
   const dotKind = (nomor: string) => { const step = workStep(progress.get(nomor) ?? 0); return step === WORK_DONE ? 'p2' : step ? 'p1' : 'p0'; };

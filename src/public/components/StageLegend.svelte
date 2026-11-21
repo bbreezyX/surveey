@@ -1,7 +1,7 @@
 <script lang="ts">
   import { STAGE_COUNT_LABEL, workBadgeSvg, type StageFilter, type StageTally } from '../../shared/survey/progress';
   // The pin badges with their counts under the stage bar, so a stage is read by its drawing and number,
-  // never by the shade of blue alone. today: units per step that reached it today, shown as "+n" after the count.
+  // never by the shade of blue alone. today: steps recorded today per stage, shown as "+n" after the count.
   // Stage 3 (Tiang selesai, awaiting night photo for Lampu) only takes a row when any unit sits there or moved
   // there today, keeping the two-column legend balanced when poles and lamps are accepted together.
   // When onselect is supplied, each legend row doubles as a map/list stage filter with zero extra vertical height.
