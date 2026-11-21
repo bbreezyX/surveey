@@ -209,13 +209,14 @@
 }
 
 .stage-legend.is-interactive {
-    gap: 4px 8px;
+    gap: 4px;
+    margin-inline: -6px;
 }
 
 .stage-legend li {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
     min-width: 0;
     color: var(--muted);
 }
@@ -227,10 +228,10 @@
 .stage-legend__btn {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 5px;
     width: 100%;
     min-block-size: 28px;
-    padding: 3px 7px;
+    padding: 3px 6px;
     border: 1px solid transparent;
     border-radius: 8px;
     background: transparent;
@@ -243,6 +244,21 @@
         border-color var(--dur),
         color var(--dur),
         opacity var(--dur);
+}
+
+.stage-legend__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stage-legend__num {
+    display: inline-flex;
+    flex: none;
+    align-items: baseline;
+    gap: 3px;
+    margin-left: auto;
 }
 
 .stage-legend__btn:disabled {
@@ -280,7 +296,6 @@
 }
 
 .stage-legend b {
-    margin-left: auto;
     color: var(--ink);
     font-weight: 750;
     font-variant-numeric: tabular-nums;
@@ -288,6 +303,12 @@
 
 .stage-legend--tight {
     font-size: 12.5px;
+}
+
+@media (max-width: 390px) {
+    .stage-legend {
+        font-size: 12.5px;
+    }
 }
 
 .stage-legend__badge,
@@ -1059,9 +1080,8 @@ button.today-chip {
 
 .stage-legend__today {
     flex: none;
-    margin-left: 4px;
     color: var(--blue-deep);
-    font-size: 11.5px;
+    font-size: 11px;
     font-style: normal;
     font-weight: 750;
     font-variant-numeric: tabular-nums;

@@ -15,10 +15,10 @@
     <li>
       {#if onselect}
         <button class="stage-legend__btn" type="button" aria-pressed={pressed} disabled={empty} title={pressed ? `Tampilkan semua tahap` : `Saring peta: ${STAGE_COUNT_LABEL[stage]}`} onclick={() => onselect(stage)}>
-          <span class="stage-legend__badge" aria-hidden="true">{@html workBadgeSvg(stage)}</span><span>{STAGE_COUNT_LABEL[stage]}</span><b>{tally.stages[stage]}</b>{#if today?.[stage]}<em class="stage-legend__today">+{today[stage]}<span class="visually-hidden">{' '}hari ini</span></em>{/if}
+          <span class="stage-legend__badge" aria-hidden="true">{@html workBadgeSvg(stage)}</span><span class="stage-legend__label">{STAGE_COUNT_LABEL[stage]}</span><span class="stage-legend__num"><b>{tally.stages[stage]}</b>{#if today?.[stage]}<em class="stage-legend__today">+{today[stage]}<span class="visually-hidden">{' '}hari ini</span></em>{/if}</span>
         </button>
       {:else}
-        <span class="stage-legend__badge" aria-hidden="true">{@html workBadgeSvg(stage)}</span><span>{STAGE_COUNT_LABEL[stage]}</span><b>{tally.stages[stage]}</b>{#if today?.[stage]}<em class="stage-legend__today">+{today[stage]}<span class="visually-hidden">{' '}hari ini</span></em>{/if}
+        <span class="stage-legend__badge" aria-hidden="true">{@html workBadgeSvg(stage)}</span><span class="stage-legend__label">{STAGE_COUNT_LABEL[stage]}</span><span class="stage-legend__num"><b>{tally.stages[stage]}</b>{#if today?.[stage]}<em class="stage-legend__today">+{today[stage]}<span class="visually-hidden">{' '}hari ini</span></em>{/if}</span>
       {/if}
     </li>
   {/each}
