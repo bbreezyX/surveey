@@ -146,7 +146,10 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     view.cancelAnimations(); const resolution = view.getResolutionForZoom(zoom);
     const [, right, , left] = padding();
     const bar = innerWidth < 960 ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-bar')) || 52) : 0;
-    const pinY = innerWidth < 960 ? Math.min(options.popup.getBoundingClientRect().bottom + 56, innerHeight - bar - 16) : Math.min(options.popup.offsetHeight + 72, innerHeight - 56);
+    // Desktop centres the card and its pin together: the card ends 48px above the pin (popup.css), so the
+    // pair is card + 48 tall. On a short window it falls back to a 24px gap above the card, as before.
+    const card = options.popup.offsetHeight;
+    const pinY = innerWidth < 960 ? Math.min(options.popup.getBoundingClientRect().bottom + 56, innerHeight - bar - 16) : Math.min(Math.max(card + 72, (innerHeight + card + 48) / 2), innerHeight - 56);
     const center = [coordinate[0] - (left - right) * resolution / 2, coordinate[1] + (pinY - innerHeight / 2) * resolution];
     if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { view.setZoom(zoom); view.setCenter(center); return; }
     const currentZoom = view.getZoom() ?? 0, delta = Math.abs(zoom - currentZoom), current = view.getCenter();
