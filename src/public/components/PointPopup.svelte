@@ -3,15 +3,17 @@
   import { legacyPhotoUrl } from '../../shared/survey/media';
   import { googleMapsUrl } from '../../shared/survey/coordinates';
   import { progressReportUrl } from '../../shared/survey/report';
-  import { BUILD_STAGES, lampAwaitsNight, stageDone, stageSummary, type ReportReceipt } from '../../shared/survey/progress';
+  import { BUILD_STAGES, PENDING_CLOCK_SVG, lampAwaitsNight, openPendingStages, pendingSummary, stageDone, stageSummary, type ReportReceipt } from '../../shared/survey/progress';
   import { STATUS_LABEL } from '../../shared/survey/status';
   import { regionKey } from '../data/regions';
   import Shape from './Shape.svelte';
   import Icon from './Icon.svelte';
   // stage is null until esdm.cloud has answered, so a slow or failed fetch shows nothing rather than "Belum Dimulai".
+  // pending: open stages reported on esdm.cloud/lapangan awaiting review, so crews see reports already in flight.
   // reported: the stage a crew just sent from esdm.cloud/lapangan, set only once the feed holds that report.
   // points: the state's points, not dataset.points, so the inset's dots drop a verification mark the pins dropped.
-  let { point, points, dataset, stage = null, reported = null }: { point: SurveyPoint; points: readonly SurveyPoint[]; dataset: SurveyDataset; stage?: number | null; reported?: { stage: number; receipt: ReportReceipt } | null } = $props();
+  let { point, points, dataset, stage = null, pending = null, reported = null }: { point: SurveyPoint; points: readonly SurveyPoint[]; dataset: SurveyDataset; stage?: number | null; pending?: readonly number[] | null; reported?: { stage: number; receipt: ReportReceipt } | null } = $props();
+  const openPending = $derived(stage !== null ? openPendingStages(stage, pending) : []);
   const photo = $derived(legacyPhotoUrl(point.photo));
   const kind = $derived(point.belum ? 'belum' : point.duplikat ? 'duplikat' : point.cadangan ? 'cadangan' : null);
   const sharedCoordinateCount = $derived(points.filter(p => p.latNum.toFixed(6) === point.latNum.toFixed(6) && p.lonNum.toFixed(6) === point.lonNum.toFixed(6)).length);
@@ -52,9 +54,11 @@
         <!-- One bar segment per stage with its name beneath: the fill reads at a glance, the label says which step it is. -->
         <ol class="feature-popup__stages">
           {#each BUILD_STAGES as name, index (name)}
-            <li class:is-done={index < stage} class:is-next={index === stage} class:is-partial={index === stage && lampAwaitsNight(stage)}>{name}<span class="visually-hidden">{index < stage ? ' selesai' : index === stage && lampAwaitsNight(stage) ? ' terpasang, menunggu foto malam' : ' belum'}</span></li>
+            {@const waiting = openPending.includes(index + 1)}
+            <li class:is-done={index < stage} class:is-pending={waiting} class:is-next={index === stage && !waiting} class:is-partial={index === stage && lampAwaitsNight(stage) && !waiting}>{name}<span class="visually-hidden">{index < stage ? ' selesai' : waiting ? ' menunggu diperiksa' : index === stage && lampAwaitsNight(stage) ? ' terpasang, menunggu foto malam' : ' belum'}</span></li>
           {/each}
         </ol>
+        {#if openPending.length}<p class="feature-popup__pending">{@html PENDING_CLOCK_SVG}<span>{pendingSummary(openPending)}</span></p>{/if}
       </a>
     {/if}
     <div class="feature-popup__rule"></div>

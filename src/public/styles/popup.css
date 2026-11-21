@@ -878,3 +878,27 @@
 .feature-popup__stages li.is-partial::before {
     background: repeating-linear-gradient(90deg, var(--blue) 0 4px, transparent 4px 7px);
 }
+
+/* Stage reported on esdm.cloud/lapangan and awaiting review: neutral dashed segment + clock line below,
+   matching the list's pending pill (a wait, not an error or accepted stage). */
+.feature-popup__stages li.is-pending {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.feature-popup__stages li.is-pending::before {
+    background: repeating-linear-gradient(90deg, var(--muted-2) 0 4px, transparent 4px 7px);
+}
+
+.feature-popup__pending {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 7px 0 0;
+    color: var(--muted);
+    font: 600 11.5px/1.3 var(--font-ui);
+}
+
+.feature-popup__pending svg {
+    flex: none;
+}

@@ -18,7 +18,7 @@
   import ProgressSkeleton from './ProgressSkeleton.svelte';
   import TodayChip from './TodayChip.svelte';
   import LiveStatus from './LiveStatus.svelte';
-  import { doneShare, tallyStages, todayTally, WORK_DONE } from '../../shared/survey/progress';
+  import { doneShare, STAGE_COUNT_LABEL, tallyStages, todayTally, WORK_DONE } from '../../shared/survey/progress';
   import type { ListMode } from '../state/work-memory';
   import type { Locator as GpsLocator } from '../state/locate.svelte';
   let { state, onfit, onrefresh, refreshing = false, locator }: { state: SurveyState; onfit: () => void; onrefresh: () => void; refreshing?: boolean; locator: GpsLocator } = $props();
@@ -55,9 +55,11 @@
   // re-rendered row.
   const liveText = $derived(
     progressView
-      ? state.activeRegion
-        ? regionTally ? `${regionTally.stages[WORK_DONE]} dari ${regionTally.total} titik terpasang` : ''
-        : provinceTally ? `${provinceTally.stages[WORK_DONE]} dari ${provinceTally.total} titik terpasang, ${doneShare(provinceTally)}%` : state.progressFailed ? '' : 'Memuat progres dari esdm.cloud…'
+      ? state.stageFilter !== null && state.progress
+        ? `${state.count} titik ${STAGE_COUNT_LABEL[state.stageFilter].toLowerCase()}`
+        : state.activeRegion
+          ? regionTally ? `${regionTally.stages[WORK_DONE]} dari ${regionTally.total} titik terpasang` : ''
+          : provinceTally ? `${provinceTally.stages[WORK_DONE]} dari ${provinceTally.total} titik terpasang, ${doneShare(provinceTally)}%` : state.progressFailed ? '' : 'Memuat progres dari esdm.cloud…'
       : state.activeRegion
         ? state.query || state.statusFilter ? summary : ''
         : state.query ? `${state.count} titik cocok di ${new Set(state.visiblePoints.map(point => point.kabupaten)).size} kabupaten` : `${state.count} titik PUTS di ${state.regionNames.length} kabupaten/kota`,
@@ -118,7 +120,7 @@
   onMount(() => { const observer = new ResizeObserver(measurePeek); observer.observe(sidebar); observer.observe(sidebar.querySelector('#sheet-handle')!); observer.observe(sidebar.querySelector('#panel-top')!); observer.observe(sidebar.querySelector('#panel-meta')!); observer.observe(near); window.addEventListener('resize', measurePeek); return () => { clearTimeout(enterTimer); gesture.dispose(); observer.disconnect(); window.removeEventListener('resize', measurePeek); document.documentElement.style.removeProperty('--sheet-peek'); document.documentElement.style.removeProperty('--sheet-half'); document.documentElement.style.removeProperty('--sheet-bar'); }; });
   let scrollInitialized = false;
   $effect(() => {
-    state.activeRegion; state.statusFilter; state.query; state.listMode;
+    state.activeRegion; state.statusFilter; state.stageFilter; state.query; state.listMode;
     // A new scroller already starts at zero. Writing scrollTop on its first
     // effect forced a full layout while the rest of the map was still mounting.
     if (scroller && scrollInitialized) scroller.scrollTop = 0;
@@ -174,9 +176,10 @@
          of a sentence the share went unread, a separate "% selesai" read as any stage, and one label for
          both figures keeps "terpasang" from repeating. The stage bar sits right under them, so its green
          run is that share; the list below keeps only the legend. -->
-    {#if !state.query}<div class="list-mode" role="group" aria-label="Tampilan daftar">
-      <button type="button" aria-pressed={state.listMode === 'sebaran'} onclick={() => pickMode('sebaran')}>Sebaran</button>
-      <button type="button" aria-pressed={state.listMode === 'progres'} onclick={() => pickMode('progres')}>Progres{#if provinceTally && state.listMode === 'sebaran'}<span class="list-mode__share">{doneShare(provinceTally)}%</span>{/if}</button>
+    {#if !state.query}<div class="list-mode" data-mode={state.listMode} role="group" aria-label="Tampilan daftar">
+      <span class="list-mode__thumb" aria-hidden="true"></span>
+      <button type="button" aria-pressed={state.listMode === 'sebaran'} onclick={() => pickMode('sebaran')}><span>Sebaran</span></button>
+      <button type="button" aria-pressed={state.listMode === 'progres'} onclick={() => pickMode('progres')}><span>Progres</span>{#if provinceTally && state.listMode === 'sebaran'}<span class="list-mode__share">{doneShare(provinceTally)}%</span>{/if}</button>
     </div>{/if}
     {#if progressView}
       {#if !state.activeRegion}<div class="atlas-summary atlas-summary--total atlas-summary--progress"><div class="progress-total__top"><span aria-hidden="true">Titik Terpasang</span>{#if today?.list.length}<TodayChip {state} list={today.list}/>{/if}</div><p class="atlas-total atlas-total--progress">{#if provinceTally}<span class="visually-hidden">{provinceTally.stages[WORK_DONE]} dari {provinceTally.total} titik terpasang, {doneShare(provinceTally)}%</span><span class="progress-total__count" aria-hidden="true"><b class="atlas-total__num">{provinceTally.stages[WORK_DONE]}</b><span class="progress-total__of">/{provinceTally.total}</span></span><b class="progress-total__pct" aria-hidden="true">{doneShare(provinceTally)}<small>%</small></b>{:else if state.progressFailed}<span class="progress-total__count" aria-hidden="true"><b class="atlas-total__num is-none">–</b><span class="progress-total__of">/{countOfficialPoints(state.points)}</span></span>{:else}<span class="visually-hidden">Memuat progres dari esdm.cloud…</span><span class="progress-total__count" aria-hidden="true"><span class="skel skel--total"></span><span class="progress-total__of">/{countOfficialPoints(state.points)}</span></span><span class="skel skel--pct" aria-hidden="true"></span>{/if}</p>{#if provinceTally}<StageBar tally={provinceTally}/>{:else if !state.progressFailed}<span class="skel skel--bar" aria-hidden="true"></span>{/if}</div>{/if}

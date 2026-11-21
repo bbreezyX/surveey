@@ -85,6 +85,38 @@ it('starts on Sebaran and drops a status filter the progress view cannot show', 
   expect(state.statusFilter).toBeNull();
 });
 
+it('filters map visiblePoints by stage in Progres and clears stageFilter when returning to Sebaran', () => {
+  const state = createSurveyState(dataset());
+  const [p1, p2, p3] = state.points;
+  state.progress = new Map([[p1.nomor, 1], [p2.nomor, 4]]);
+  state.pending = new Map([[p3.nomor, [1]]]);
+  state.listMode = 'progres';
+  state.setStageFilter(1);
+  expect(state.visiblePoints.map(point => point.nomor)).toEqual([p1.nomor]);
+  state.setStageFilter(0);
+  expect(state.visiblePoints.map(point => point.nomor)).toEqual([p3.nomor]);
+  state.setStageFilter(4);
+  expect(state.visiblePoints.map(point => point.nomor)).toEqual([p2.nomor]);
+  // Searching overrides stageFilter so any unit remains searchable.
+  state.query = p1.nomor;
+  expect(state.visiblePoints.map(point => point.nomor)).toEqual([p1.nomor]);
+  state.query = '';
+  // Returning from a region and re-enabling a stage filter must recompute visibleIds for the map.
+  state.listMode = 'progres';
+  state.setStageFilter(1);
+  state.openRegion(p1.kabupaten);
+  state.setStageFilter(0);
+  state.setStageFilter(null);
+  state.openRegion(null);
+  expect(state.visibleIds.size).toBe(3);
+  state.setStageFilter(1);
+  expect([...state.visibleIds]).toEqual([p1.nomor]);
+  // Leaving Progres clears stageFilter so Sebaran shows all pins again.
+  state.listMode = 'sebaran';
+  expect(state.stageFilter).toBeNull();
+  expect(state.visiblePoints).toHaveLength(3);
+});
+
 it('opens on the basemap this phone chose, Esri by default', () => {
   expect(createSurveyState(dataset()).layers).toMatchObject({ google: false, esri: true });
   expect(createSurveyState(dataset(), { basemap: 'google' }).layers).toMatchObject({ google: true, esri: false });

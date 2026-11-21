@@ -77,56 +77,83 @@ export function stageBadgeSvg(stage: number): string {
 export function stageSummary(stage: number): string {
   return stage >= 4 ? 'Terpasang' : stage >= 1 ? `${BUILD_STAGES[stage - 1]} Selesai` : 'Belum Dimulai';
 }
-// The progress view counts Galian, Cor and terpasang, folding esdm.cloud's Tiang into terpasang: the lamp
-// head goes up with the pole and no unit has been accepted at Tiang without Lampu, so to the field a standing
-// pole is terpasang. Pins, popup and the map legend keep all four stages, as /lapangan reports them; while no
-// unit sits at Tiang alone, this view's terpasang and the green pins agree.
-export const WORK_DONE = 3;
-export const workStep = (stage: number) => Math.min(stage, WORK_DONE);
+// The progress view tracks every build stage from esdm.cloud, including stage 3 (Tiang standing, awaiting a
+// night photo for Lampu), so pins, popups, legends and the work list always agree on what counts as terpasang.
+export const WORK_DONE = BUILD_STAGES.length;
+export const workStep = (stage: number) => Math.max(0, Math.min(stage, WORK_DONE));
 // Its counts sit beside the badges, so they read as a sentence would: "81 galian selesai".
-export const STAGE_COUNT_LABEL = ['Belum dimulai', 'Galian selesai', 'Cor selesai', 'Terpasang'] as const;
+export const STAGE_COUNT_LABEL = ['Belum dimulai', 'Galian selesai', 'Cor selesai', 'Tiang selesai', 'Terpasang'] as const;
 // Only the progress view needs a mark for "nothing accepted yet": a hollow grey ring, so it reads as empty
 // beside the blue pies without claiming any stage. Never drawn on a pin.
 export const NOT_STARTED_BADGE = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.4" fill="#fff" stroke="#8a99a9" stroke-width="1.4"/></svg>';
-// A step's badge: the pin's pie for Galian and Cor, its green check for terpasang.
-export const workBadgeSvg = (step: number) => step >= WORK_DONE ? stageBadgeSvg(BUILD_STAGES.length) : step ? stageBadgeSvg(step) : NOT_STARTED_BADGE;
+// A step's badge: the hollow ring when untouched, the pin's pie for Galian/Cor/Tiang, and its green check for terpasang.
+export const workBadgeSvg = (step: number) => step > 0 ? stageBadgeSvg(step) : NOT_STARTED_BADGE;
+// Open reports still ahead of the unit's accepted stage; an already-accepted stage left in the feed is ignored.
+export function openPendingStages(stage: number, pending: readonly number[] | undefined | null): readonly number[] {
+  if (!pending?.length || stage >= WORK_DONE) return [];
+  const open = pending.filter(item => item > stage);
+  return open.length === pending.length ? pending : open;
+}
 interface ProgressUnit { nomor: string; cadangan: boolean }
-// Units per step (stages[0]: none yet, stages[WORK_DONE]: terpasang) plus those with a report waiting for
+// Units per step (stages[0]: none yet, stages[WORK_DONE]: terpasang) plus those with an open report waiting for
 // review. Official units only: Cadangan sits outside the allocation and every other count leaves it out.
 export interface StageTally { total: number; stages: number[]; waiting: number }
 export function tallyStages(units: readonly ProgressUnit[], progress: SurveyProgress, pending: SurveyPending | null): StageTally {
-  const stages = [0, 0, 0, 0]; let total = 0, waiting = 0;
+  const stages = [0, 0, 0, 0, 0]; let total = 0, waiting = 0;
   for (const unit of units) {
     if (unit.cadangan) continue;
-    total++; stages[workStep(progress.get(unit.nomor) ?? 0)]++;
-    if (pending?.get(unit.nomor)?.length) waiting++;
+    const step = workStep(progress.get(unit.nomor) ?? 0);
+    total++; stages[step]++;
+    if (openPendingStages(step, pending?.get(unit.nomor)).length) waiting++;
   }
   return { total, stages, waiting };
 }
 export const doneShare = (tally: StageTally) => tally.total ? Math.round((tally.stages[WORK_DONE] / tally.total) * 100) : 0;
-// A crew's work list, by the report each unit needs next. A unit whose report is still waiting for review
+// A crew's work list, by the report each unit needs next. A unit whose next report is still waiting for review
 // sits apart: sending that stage again does not help, the office has to look first.
 export const NEXT_REPORT = [
   { title: 'Lapor Galian', note: 'Belum ada tahap diterima' },
   { title: 'Lapor Cor', note: 'Galian sudah diterima' },
   { title: 'Lapor Tiang', note: 'Cor sudah diterima' },
+  { title: 'Lapor Lampu', note: 'Tiang berdiri, menunggu foto malam' },
 ] as const;
 export function workGroups<T extends ProgressUnit>(units: readonly T[], progress: SurveyProgress, pending: SurveyPending | null) {
-  const due: T[][] = [[], [], []], waiting: T[] = [], done: T[] = [];
+  const due: T[][] = [[], [], [], []], waiting: T[] = [], done: T[] = [];
   for (const unit of units) {
     if (unit.cadangan) continue;
     const step = workStep(progress.get(unit.nomor) ?? 0);
-    if (pending?.get(unit.nomor)?.length) waiting.push(unit);
-    else if (step === WORK_DONE) done.push(unit);
+    if (step === WORK_DONE) done.push(unit);
+    else if (openPendingStages(step, pending?.get(unit.nomor)).length) waiting.push(unit);
     else due[step].push(unit);
   }
   return { due, waiting, done };
 }
+// Stage filter values match tallyStages indices (0..WORK_DONE), so clicking a legend entry filters the map
+// and lists to the exact count shown on that entry.
+export type StageFilter = 0 | 1 | 2 | 3 | 4;
+export function matchesStageFilter(unit: ProgressUnit, filter: StageFilter, progress: SurveyProgress): boolean {
+  return !unit.cadangan && workStep(progress.get(unit.nomor) ?? 0) === filter;
+}
+// Official units with open reports waiting for review, counted per kabupaten in the caller's region order.
+export interface WaitingRegion { kabupaten: string; count: number }
+export function waitingByRegion(units: readonly (ProgressUnit & { kabupaten: string })[], progress: SurveyProgress, pending: SurveyPending | null, regionOrder?: readonly string[]): WaitingRegion[] {
+  const counts = new Map<string, number>();
+  for (const unit of units) {
+    if (unit.cadangan) continue;
+    const step = workStep(progress.get(unit.nomor) ?? 0);
+    if (!openPendingStages(step, pending?.get(unit.nomor)).length) continue;
+    counts.set(unit.kabupaten, (counts.get(unit.kabupaten) ?? 0) + 1);
+  }
+  if (!counts.size) return [];
+  const names = regionOrder ? regionOrder.filter(name => counts.has(name)) : [...counts.keys()];
+  for (const name of counts.keys()) if (!names.includes(name)) names.push(name);
+  return names.map(kabupaten => ({ kabupaten, count: counts.get(kabupaten)! }));
+}
 // "Hari ini" in the progress view: official units that reached a step today, newest first, with counts per step
-// (Tiang folds into terpasang, as everywhere in this view) and per kabupaten.
+// and per kabupaten.
 export interface TodayUnit<T> { unit: T; step: number; at: number }
 export function todayTally<T extends ProgressUnit & { kabupaten: string }>(units: readonly T[], today: SurveyToday | null) {
-  const list: TodayUnit<T>[] = [], steps = [0, 0, 0, 0], byRegion = new Map<string, number>();
+  const list: TodayUnit<T>[] = [], steps = [0, 0, 0, 0, 0], byRegion = new Map<string, number>();
   if (!today?.size) return { list, steps, byRegion };
   for (const unit of units) {
     const entry = unit.cadangan ? undefined : today.get(unit.nomor);

@@ -23,7 +23,7 @@
   let fitFrame = 0;
   let fitTimer: ReturnType<typeof setTimeout> | undefined, appliedFit = -1;
   // When the points last came from the network rather than the service worker's stored copy.
-  let freshAt = 0, lastCheckAt = 0, checking = false, refreshing = $state(false);
+  let freshAt = 0, lastCheckAt = 0, progressAt = 0, checking = false, refreshing = $state(false), refreshingProgress = false;
   // Only a phone or tablet gets its detail back: a desktop keeps its tab, so a reload there starts from the
   // province view, even in a narrowed window. Asked once here, because the same query measured false on a
   // touch device while the page was unloading, which is exactly when the detail is saved or cleared.
@@ -42,7 +42,7 @@
   function applyProgress(state: SurveyState, feed: ProgressFeed) { state.progress = feed.stages; state.pending = feed.pending; state.today = feed.today; }
   // A miss before any answer turns the progress view's skeleton into a short message; the state ignores
   // it once stages are shown, so a later miss keeps them.
-  function settleProgress(state: SurveyState, feed: ProgressFeed | null) { if (feed) applyProgress(state, feed); else state.progressFailed = true; }
+  function settleProgress(state: SurveyState, feed: ProgressFeed | null) { progressAt = Date.now(); if (feed) applyProgress(state, feed); else state.progressFailed = true; }
   // The feed can answer a moment before the report a crew just sent is in it: ask a few more times, then
   // leave the card without its tick rather than claim a report esdm.cloud does not show.
   async function confirmReport(state: SurveyState, attempt: AbortController) {
@@ -50,14 +50,14 @@
       await new Promise(resolve => setTimeout(resolve, 3000));
       if (disposed || attempt.signal.aborted || model !== state || !state.reportAwaited) return;
       const feed = await loadProgress(attempt.signal, true);
-      if (feed && !disposed && !attempt.signal.aborted && model === state) applyProgress(state, feed);
+      if (feed && !disposed && !attempt.signal.aborted && model === state) { progressAt = Date.now(); applyProgress(state, feed); }
     }
   }
   async function load() {
     controller?.abort(); const attempt = new AbortController(); controller = attempt;
-    error = ''; model = null;
+    error = ''; model = null; progressAt = 0; refreshingProgress = true;
     // Build progress comes from esdm.cloud and never holds up the map; it lands on the pins when it arrives.
-    const progress = loadProgress(attempt.signal, linkedReport(location.search) !== null);
+    const progress = loadProgress(attempt.signal, linkedReport(location.search) !== null).finally(() => { if (controller === attempt) refreshingProgress = false; });
     connection.loading(true);
     try { const dataset = await loadSurveyDataset(attempt.signal); if (!disposed && !attempt.signal.aborted) { if (!dataset.storedAt) freshAt = Date.now(); const state = createSurveyState(dataset, recallWorkMemory()); openLinkedPoint(state); model = state; void progress.then(value => { if (disposed || attempt.signal.aborted) return; settleProgress(state, value); void confirmReport(state, attempt); }); } }
     catch (problem) { if (!disposed && !attempt.signal.aborted) { error = problem instanceof Error ? problem.message : 'Data titik gagal dimuat.'; connection.suspect(); } }
@@ -79,16 +79,20 @@
     } finally { refreshing = false; }
   }
   // Build stages move while the points do not: a crew reports on esdm.cloud/lapangan in another tab and
-  // comes back here. The stage list is small, so every return fetches it, not only after STALE_MS.
+  // comes back here. The stage list is small, so every return fetches it, and an open tab refreshes it
+  // every STALE_MS without re-downloading points.geojson.
   async function refreshProgress() {
-    const state = model, attempt = controller; if (!state || !attempt || refreshing) return;
-    const progress = await loadProgress(attempt.signal);
-    if (!disposed && !attempt.signal.aborted && model === state) settleProgress(state, progress);
+    const state = model, attempt = controller; if (!state || !attempt || refreshing || refreshingProgress) return;
+    refreshingProgress = true;
+    try {
+      const progress = await loadProgress(attempt.signal);
+      if (!disposed && !attempt.signal.aborted && model === state) settleProgress(state, progress);
+    } finally { if (controller === attempt) refreshingProgress = false; }
   }
   // Data stays current without the reader doing anything: a failed first load retries, a stored copy is
   // swapped for fresh data, and an active map checks via lightweight HEAD (ETag / X-Publication-ID) on
   // tab/window return and every 15 s so published admin changes appear silently without a manual reload.
-  const POLL_MS = 15_000, STALE_MS = 60_000, CHECK_COOLDOWN_MS = 2_000;
+  const POLL_MS = 15_000, STALE_MS = 60_000, PROGRESS_RETRY_MS = 30_000, CHECK_COOLDOWN_MS = 2_000;
   async function checkAndRefresh(withProgress: boolean) {
     const state = model, attempt = controller; if (!state || !attempt || refreshing || checking) return;
     checking = true; lastCheckAt = Date.now();
@@ -107,9 +111,11 @@
     // force: the reader pressed Perbarui, or the worker has news; otherwise a phone that knows it is offline waits.
     if (disposed || document.visibilityState !== 'visible' || (!force && navigator.onLine === false)) return;
     if (!model) { if (error) load(); return; }
-    if (force || model.storedAt || !model.progress) { void refresh(); return; }
+    if (force || model.storedAt) { void refresh(); return; }
     if (Date.now() - lastCheckAt < CHECK_COOLDOWN_MS) return;
-    void checkAndRefresh(!fromPoll);
+    const progressAge = progressAt ? Date.now() - progressAt : 0;
+    const progressDue = !fromPoll || (!model.progress && model.progressFailed && progressAge >= PROGRESS_RETRY_MS) || (!!model.progress && progressAge >= STALE_MS);
+    void checkAndRefresh(progressDue);
   }
   onMount(() => {
     const stopConnection = connection.start();

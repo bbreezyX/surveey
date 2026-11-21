@@ -1,7 +1,7 @@
 import type { SurveyDataset, SurveyPoint, StatusFilter } from '../../shared/survey/types';
 import { matchesQuery } from '../../shared/survey/search';
 import { countOfficialPoints, STATUS_LABEL } from '../../shared/survey/status';
-import { reportReceipt, type SurveyPending, type SurveyProgress, type SurveyToday } from '../../shared/survey/progress';
+import { matchesStageFilter, reportReceipt, type StageFilter, type SurveyPending, type SurveyProgress, type SurveyToday } from '../../shared/survey/progress';
 import type { LastReport, ListMode, WorkMemory } from './work-memory';
 import { distanceMeters } from './nearby';
 export type SheetSnap = 'closed' | 'half' | 'full';
@@ -25,7 +25,7 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
   // Replaced in place when a reconnect brings newer data, so the open region, search, filter, selected
   // point and layer switches all survive; only the points under them change.
   let dataset = $state.raw(initial), storedAt = $state(initial.storedAt ?? null);
-  let query = $state(''), activeRegion = $state<string | null>(null), statusFilter = $state<StatusFilter>(null), selectedNomor = $state<string | null>(null);
+  let query = $state(''), activeRegion = $state<string | null>(null), statusFilter = $state<StatusFilter>(null), stageFilter = $state<StageFilter | null>(null), selectedNomor = $state<string | null>(null);
   let selectionOrigin = $state.raw<HTMLElement | null>(null);
   // Null until esdm.cloud answers; the map, list and popup show no build status before then.
   let progress = $state.raw<SurveyProgress | null>(null);
@@ -83,17 +83,24 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     return previousPoints = next;
   });
   function revealPointInList(point: SurveyPoint) {
-    if (point.cadangan && listMode === 'progres') listMode = 'sebaran';
+    if (point.cadangan && listMode === 'progres') { listMode = 'sebaran'; stageFilter = null; }
     if (!visibleIds.has(point.nomor)) {
       if (activeRegion !== point.kabupaten) activeRegion = point.kabupaten;
       if (statusFilter && !point[statusFilter]) statusFilter = null;
+      if (stageFilter !== null && (!progress || !matchesStageFilter(point, stageFilter, progress))) stageFilter = null;
       if (query && !matchesQuery(point, query)) query = '';
     } else if (!activeRegion && !query) {
       activeRegion = point.kabupaten;
     }
   }
   const regionNames = $derived([...new Set(points.map(point => point.kabupaten))].sort((a, b) => Number(/^Kota\s/i.test(b)) - Number(/^Kota\s/i.test(a)) || collator.compare(a, b)));
-  const visiblePoints = $derived(points.filter(point => (!activeRegion || point.kabupaten === activeRegion) && (!statusFilter || point[statusFilter]) && matchesQuery(point, query)));
+  const stageFiltered = $derived(listMode === 'progres' && !query && stageFilter !== null && !!progress);
+  const visiblePoints = $derived(points.filter(point =>
+    (!activeRegion || point.kabupaten === activeRegion) &&
+    (!statusFilter || point[statusFilter]) &&
+    (!stageFiltered || matchesStageFilter(point, stageFilter!, progress!)) &&
+    matchesQuery(point, query),
+  ));
   const visibleIds = $derived(new Set(visiblePoints.map(point => point.nomor)));
   const selected = $derived(points.find(point => point.nomor === selectedNomor) ?? null);
   return {
@@ -108,7 +115,7 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     },
     get query() { return query; }, set query(value: string) { if (value !== query) { query = value; markRecent(null); fitReason = 'search'; fitRevision++; } },
     get fitRevision() { return fitRevision; }, get fitReason() { return fitReason; },
-    get activeRegion() { return activeRegion; }, get statusFilter() { return statusFilter; },
+    get activeRegion() { return activeRegion; }, get statusFilter() { return statusFilter; }, get stageFilter() { return stageFilter; },
     get selectionOrigin() { return selectionOrigin; },
     get progress() { return progress; }, set progress(value: SurveyProgress | null) { progress = value; if (value) progressFailed = false; },
     get progressFailed() { return progressFailed; }, set progressFailed(value: boolean) { progressFailed = value && !progress; },
@@ -121,10 +128,16 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     markReported(nomor: string, stage: number) { reported = { nomor, stage }; lastReport = { at: Date.now(), nomor, stage }; },
     get lastReport() { return lastReport; },
     get listMode() { return listMode; },
-    // The progress view has no status pills, so a filter left on from the list would hide units from the map
-    // that the work list still shows.
-    set listMode(value: ListMode) { if (value === 'progres' && statusFilter) { statusFilter = null; fitReason = 'filter'; fitRevision++; } listMode = value; },
-    get waitingFirst() { return waitingFirst; }, showWaitingFirst() { waitingFirst = true; },
+    // Each mode owns its own filter pills: leaving Sebaran clears statusFilter, leaving Progres clears stageFilter,
+    // so hidden pins from the other mode never linger on the map.
+    set listMode(value: ListMode) {
+      let refit = false;
+      if (value === 'progres' && statusFilter) { statusFilter = null; refit = true; }
+      if (value === 'sebaran' && stageFilter !== null) { stageFilter = null; refit = true; }
+      listMode = value;
+      if (refit) { fitReason = 'filter'; fitRevision++; }
+    },
+    get waitingFirst() { return waitingFirst; }, showWaitingFirst() { waitingFirst = true; stageFilter = null; },
     get recentNomor() { return recentNomor; },
     get selectedNomor() { return selectedNomor; }, get selected() { return selected; },
     get visiblePoints() { return visiblePoints; }, get visibleIds() { return visibleIds; },
@@ -135,12 +148,20 @@ export function createSurveyState(initial: SurveyDataset, memory: WorkMemory = {
     openLinked(nomor: string) {
       const point = points.find(item => item.nomor === nomor);
       if (!point) return false;
-      markRecent(null); activeRegion = point.kabupaten; statusFilter = null; query = ''; sheetSnap = 'closed';
+      markRecent(null); activeRegion = point.kabupaten; statusFilter = null; stageFilter = null; query = ''; sheetSnap = 'closed';
       selectedNomor = point.nomor; return true;
     },
     get sidebarCollapsed() { return sidebarCollapsed; }, set sidebarCollapsed(value: boolean) { sidebarCollapsed = value; },
-    openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) { markRecent(null); waitingFirst = false; activeRegion = name; statusFilter = filter; selectedNomor = null; if (!preserveQuery) query = ''; fitReason = 'region'; fitRevision++; },
+    openRegion(name: string | null, filter: StatusFilter = null, preserveQuery = false) {
+      markRecent(null); waitingFirst = false; activeRegion = name; statusFilter = filter; selectedNomor = null;
+      if (name && stageFilter !== null && progress && !points.some(point => point.kabupaten === name && matchesStageFilter(point, stageFilter!, progress!))) {
+        stageFilter = null;
+      }
+      if (!preserveQuery) query = '';
+      fitReason = 'region'; fitRevision++;
+    },
     setFilter(filter: StatusFilter) { markRecent(null); statusFilter = filter; selectedNomor = null; fitReason = 'filter'; fitRevision++; },
+    setStageFilter(filter: StageFilter | null) { markRecent(null); waitingFirst = false; stageFilter = filter; selectedNomor = null; fitReason = 'filter'; fitRevision++; },
     select(nomor: string | null, origin: HTMLElement | null = null) {
       if (nomor) {
         markRecent(null);

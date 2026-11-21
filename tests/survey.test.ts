@@ -4,7 +4,7 @@ import { parseCoordinateQuery, formatCoordPair } from '../src/shared/survey/coor
 import { legacyPhotoUrl } from '../src/shared/survey/media';
 import { latestDocumentationDate } from '../src/shared/survey/dates';
 import { linkedNomor, linkedReport, progressReportUrl } from '../src/shared/survey/report';
-import { parsePending, parseProgress, parseToday, todayTally, reportReceipt, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary, tallyStages, doneShare, workGroups, workBadgeSvg, NEXT_REPORT, NOT_STARTED_BADGE, WORK_DONE } from '../src/shared/survey/progress';
+import { parsePending, parseProgress, parseToday, todayTally, reportReceipt, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary, tallyStages, doneShare, workGroups, workBadgeSvg, openPendingStages, waitingByRegion, matchesStageFilter, NEXT_REPORT, NOT_STARTED_BADGE, WORK_DONE } from '../src/shared/survey/progress';
 describe('survey evidence and counting', () => {
   it('ignores malformed and impossible optional dates without normalizing them', () => {
     expect(latestDocumentationDate(['32/13/2026', '31/02/9999', '29/02/2025', ''])).toBeNull();
@@ -78,29 +78,50 @@ describe('build progress from esdm.cloud', () => {
 
 describe('progress summary and work list', () => {
   const units = [
-    { nomor: 'A-001', cadangan: false }, { nomor: 'A-002', cadangan: false }, { nomor: 'A-003', cadangan: false },
-    { nomor: 'A-004', cadangan: false }, { nomor: 'A-005', cadangan: false }, { nomor: 'A-006', cadangan: true },
-    { nomor: 'A-007', cadangan: false },
+    { nomor: 'A-001', cadangan: false, kabupaten: 'Kota Jambi' }, { nomor: 'A-002', cadangan: false, kabupaten: 'Kota Jambi' },
+    { nomor: 'A-003', cadangan: false, kabupaten: 'Kota Jambi' }, { nomor: 'A-004', cadangan: false, kabupaten: 'Kab. Batanghari' },
+    { nomor: 'A-005', cadangan: false, kabupaten: 'Kab. Batanghari' }, { nomor: 'A-006', cadangan: true, kabupaten: 'Kab. Batanghari' },
+    { nomor: 'A-007', cadangan: false, kabupaten: 'Kab. Bungo' },
   ];
   const progress = new Map([['A-002', 1], ['A-003', 2], ['A-004', 4], ['A-005', 1], ['A-006', 4], ['A-007', 3]]);
-  const pending = new Map([['A-005', [2]], ['A-006', [1]]]);
-  it('counts official units by step, a pole accepted at Tiang as terpasang, and the ones waiting for review', () => {
+  // Include a stale pending entry on A-004 (already Terpasang) and an already-accepted stage on A-005 to verify filtering.
+  const pending = new Map([['A-004', [4]], ['A-005', [1, 2]], ['A-006', [1]]]);
+  it('keeps Tiang apart from terpasang and ignores stale pending stages', () => {
     const tally = tallyStages(units, progress, pending);
-    expect(tally).toEqual({ total: 6, stages: [1, 2, 1, 2], waiting: 1 });
-    expect(doneShare(tally)).toBe(33);
+    expect(tally).toEqual({ total: 6, stages: [1, 2, 1, 1, 1], waiting: 1 });
+    expect(doneShare(tally)).toBe(17);
     expect(doneShare(tallyStages([], progress, null))).toBe(0);
+    expect(openPendingStages(1, [1, 2])).toEqual([2]);
+    expect(openPendingStages(4, [4])).toEqual([]);
   });
-  it('sorts units by the report they need next and keeps open reports apart', () => {
+  it('sorts units by the report they need next, including Lapor Lampu for Tiang-only units, and keeps open reports apart', () => {
     const groups = workGroups(units, progress, pending);
-    expect(groups.due.map(list => list.map(unit => unit.nomor))).toEqual([['A-001'], ['A-002'], ['A-003']]);
+    expect(groups.due.map(list => list.map(unit => unit.nomor))).toEqual([['A-001'], ['A-002'], ['A-003'], ['A-007']]);
     expect(groups.waiting.map(unit => unit.nomor)).toEqual(['A-005']);
-    expect(groups.done.map(unit => unit.nomor)).toEqual(['A-004', 'A-007']);
-    expect(NEXT_REPORT.map(step => step.title)).toEqual(['Lapor Galian', 'Lapor Cor', 'Lapor Tiang']);
+    expect(groups.done.map(unit => unit.nomor)).toEqual(['A-004']);
+    expect(NEXT_REPORT.map(step => step.title)).toEqual(['Lapor Galian', 'Lapor Cor', 'Lapor Tiang', 'Lapor Lampu']);
+  });
+  it('counts waiting official units per kabupaten in region order', () => {
+    const multiPending = new Map([['A-001', [1]], ['A-002', [2]], ['A-005', [2]], ['A-004', [4]], ['A-006', [1]]]);
+    expect(waitingByRegion(units, progress, multiPending, ['Kab. Batanghari', 'Kota Jambi'])).toEqual([
+      { kabupaten: 'Kab. Batanghari', count: 1 },
+      { kabupaten: 'Kota Jambi', count: 2 },
+    ]);
+    expect(waitingByRegion(units, progress, null)).toEqual([]);
+  });
+  it('matches stage filters identically to tallyStages steps and excludes cadangan', () => {
+    const match = (filter: 0 | 1 | 2 | 3 | 4) => units.filter(unit => matchesStageFilter(unit, filter, progress)).map(unit => unit.nomor);
+    expect(match(0)).toEqual(['A-001']);
+    expect(match(1)).toEqual(['A-002', 'A-005']);
+    expect(match(2)).toEqual(['A-003']);
+    expect(match(3)).toEqual(['A-007']);
+    expect(match(4)).toEqual(['A-004']);
   });
   it('draws a not-started badge apart from every stage badge', () => {
     expect([1, 2, 3, 4].map(stageBadgeSvg)).not.toContain(NOT_STARTED_BADGE);
     expect(NOT_STARTED_BADGE).not.toContain('#0072bc');
     expect(workBadgeSvg(0)).toBe(NOT_STARTED_BADGE);
+    expect(workBadgeSvg(3)).toBe(stageBadgeSvg(3));
     expect(workBadgeSvg(WORK_DONE)).toBe(stageBadgeSvg(4));
   });
   it('reads today\'s stages from the feed and drops anything malformed', () => {
@@ -120,8 +141,8 @@ describe('progress summary and work list', () => {
     ];
     const today = new Map([['A-001', { stage: 1, at: 100 }], ['A-002', { stage: 3, at: 300 }], ['A-003', { stage: 4, at: 200 }], ['A-004', { stage: 2, at: 400 }]]);
     const tally = todayTally(units, today);
-    expect(tally.list.map(item => [item.unit.nomor, item.step])).toEqual([['A-002', WORK_DONE], ['A-003', WORK_DONE], ['A-001', 1]]);
-    expect(tally.steps).toEqual([0, 1, 0, 2]);
+    expect(tally.list.map(item => [item.unit.nomor, item.step])).toEqual([['A-002', 3], ['A-003', WORK_DONE], ['A-001', 1]]);
+    expect(tally.steps).toEqual([0, 1, 0, 1, 1]);
     expect([...tally.byRegion]).toEqual([['Bungo', 2], ['Kerinci', 1]]);
     expect(todayTally(units, null).list).toEqual([]);
   });

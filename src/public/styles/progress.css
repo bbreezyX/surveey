@@ -5,58 +5,79 @@
    pin badges, so nothing here needs a legend of its own. Green still means
    terpasang only; stages under way are blue, not started is grey. */
 
-/* View switch: two pressed-state buttons in one frosted track, like the search
-   field above it. A border, not only the white fill, marks the chosen half;
-   forced colours repaint both halves alike, so there the chosen one takes the
-   system highlight (responsive.css). Neither label changes weight when chosen,
-   so the halves never shift. A press settles the half to 0.97, as the other
-   buttons give, in the press time. */
+/* View switch: two pressed-state buttons over a recessed atlas-paper track with
+   a sliding white thumb. GPU-only translateX keeps the state change smooth and
+   interruptible; neither label changes weight when chosen so nothing shifts. */
 .list-mode {
+    position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2px;
     margin: 0 16px 12px;
     padding: 3px;
     border: 1px solid var(--hairline);
-    border-radius: 999px;
-    background: var(--frost);
+    border-radius: var(--radius-md);
+    background: var(--atlas-paper);
+    box-shadow: inset 0 1px 2px rgba(20, 38, 53, 0.06);
+}
+
+.list-mode__thumb {
+    position: absolute;
+    inset: 3px auto 3px 3px;
+    width: calc(50% - 3px);
+    border-radius: 9px;
+    background: #fff;
+    box-shadow:
+        0 0 0 1px rgba(41, 61, 80, 0.07),
+        0 1px 2px rgba(20, 38, 53, 0.09),
+        0 3px 8px rgba(20, 38, 53, 0.06);
+    pointer-events: none;
+    transform: translateX(0);
+    transition: transform 220ms var(--ease-out);
+}
+
+.list-mode[data-mode="progres"] .list-mode__thumb {
+    transform: translateX(100%);
 }
 
 .list-mode button {
+    position: relative;
+    z-index: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    height: 34px;
+    min-block-size: 36px;
     padding: 0 10px;
-    border: 1px solid transparent;
-    border-radius: 999px;
+    border: 0;
+    border-radius: 9px;
     background: transparent;
     color: var(--muted);
     font-size: 13.5px;
     font-weight: 650;
+    cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     transition:
-        background-color var(--dur),
-        border-color var(--dur),
-        color var(--dur),
-        scale var(--dur) var(--ease-out);
+        color var(--dur) ease,
+        transform var(--dur-press) var(--ease-out);
 }
 
-.list-mode button:hover {
-    color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+    .list-mode button:not([aria-pressed="true"]):hover {
+        color: var(--ink);
+    }
 }
 
 .list-mode button:active {
-    scale: 0.97;
-    transition-duration: var(--dur-press);
+    transform: scale(0.98);
+}
+
+.list-mode button:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: -2px;
 }
 
 .list-mode button[aria-pressed="true"] {
-    border-color: var(--hairline-strong);
-    background: #fff;
     color: var(--ink);
-    box-shadow: 0 1px 2px rgba(20, 38, 53, 0.08);
 }
 
 .list-mode__share {
@@ -64,7 +85,7 @@
     border-radius: 999px;
     background: var(--green-tint);
     color: var(--green);
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 750;
     font-variant-numeric: tabular-nums;
 }
@@ -171,7 +192,8 @@
 .stage-bar i:first-child { border-radius: 999px 0 0 999px; }
 .stage-bar i:last-child { border-radius: 0 999px 999px 0; }
 .stage-bar i:only-child { border-radius: 999px; }
-.stage-bar__s3 { background: var(--green); }
+.stage-bar__s4 { background: var(--green); }
+.stage-bar__s3 { background: var(--blue-deep); }
 .stage-bar__s2 { background: var(--blue); }
 .stage-bar__s1 { background: #7fb4e0; }
 .stage-bar__s0 { background: var(--divider); }
@@ -186,12 +208,75 @@
     font-size: 13px;
 }
 
+.stage-legend.is-interactive {
+    gap: 4px 8px;
+}
+
 .stage-legend li {
     display: flex;
     align-items: center;
     gap: 7px;
     min-width: 0;
     color: var(--muted);
+}
+
+.stage-legend.is-interactive li {
+    display: block;
+}
+
+.stage-legend__btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    min-block-size: 28px;
+    padding: 3px 7px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color var(--dur),
+        border-color var(--dur),
+        color var(--dur),
+        opacity var(--dur);
+}
+
+.stage-legend__btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.stage-legend.has-active .stage-legend__btn[aria-pressed="false"]:not(:disabled) {
+    opacity: 0.72;
+}
+
+.stage-legend__btn:not(:disabled):not([aria-pressed="true"]):hover {
+    border-color: var(--hairline-strong);
+    background: var(--row-hover);
+    opacity: 1;
+}
+
+.stage-legend__btn:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 1px;
+}
+
+.stage-legend__btn[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #fff;
+}
+
+.stage-legend__btn[aria-pressed="true"] b {
+    color: #fff;
+}
+
+.stage-legend__btn[aria-pressed="true"] .stage-legend__today {
+    color: #cfe3f6;
 }
 
 .stage-legend b {
@@ -217,6 +302,35 @@
 
 .progress-sum {
     padding: 4px 18px 14px;
+}
+
+.progress-grid-head__side {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-reset {
+    padding: 2px 8px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--blue-deep);
+    font: 700 11.5px/1.3 var(--font-ui);
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: pointer;
+    transition: border-color var(--dur), background-color var(--dur);
+}
+
+.progress-reset:hover {
+    border-color: var(--blue);
+    background: var(--row-hover);
+}
+
+.progress-reset:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
 }
 
 /* Open reports: neutral with a clock, as on the list's pending pill. */
@@ -263,6 +377,94 @@
     border-width: 1.6px 1.6px 0 0;
     color: var(--muted-2);
     transform: rotate(45deg);
+}
+
+.progress-waiting-group {
+    margin-top: 12px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    overflow: hidden;
+}
+
+.progress-waiting-group > summary.progress-waiting {
+    margin-top: 0;
+    border: 0;
+    border-radius: 0;
+    list-style: none;
+    cursor: pointer;
+}
+
+.progress-waiting-group > summary.progress-waiting::-webkit-details-marker {
+    display: none;
+}
+
+.progress-waiting-group > summary.progress-waiting:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: -2px;
+}
+
+.progress-waiting-group[open] > summary.progress-waiting {
+    border-bottom: 1px solid var(--divider);
+}
+
+.progress-waiting-group[open] > summary.progress-waiting::after {
+    transform: rotate(135deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .progress-waiting-group > summary.progress-waiting::after {
+        transition: transform var(--dur) var(--ease-out);
+    }
+}
+
+.progress-waiting__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.progress-waiting__list li + li {
+    border-top: 1px solid var(--divider);
+}
+
+.progress-waiting__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-block-size: 40px;
+    padding: 8px 12px 8px 35px;
+    border: 0;
+    background: #fff;
+    color: var(--ink);
+    font: 600 13px/1.3 var(--font-ui);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--dur);
+}
+
+.progress-waiting__row:hover {
+    background: var(--row-hover);
+}
+
+.progress-waiting__row:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: -2px;
+}
+
+.progress-waiting__row b {
+    flex: none;
+    min-width: 24px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--frost);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 750;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
 }
 
 /* The progress grid reuses the atlas cells, whose rows snap to their top edge (sidebar.css). Here the

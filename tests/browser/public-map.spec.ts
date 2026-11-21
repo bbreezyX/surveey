@@ -504,3 +504,63 @@ test.describe('high-density phone rendering', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 });
+
+test('shows pending stages in popup, keeps Tiang reportable as Lapor Lampu, and lets multi-region waiting choose a kabupaten', async ({ page }) => {
+  const jambi = 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-007';
+  const jambiTiang = 'KOTA JAMBI-ALAM BARAJO-KENALI BESAR-002';
+  const batanghari = 'BATANG HARI-PEMAYUNG-TURE-001';
+  await page.route('https://www.esdm.cloud/api/public/survey-progress', route => route.fulfill({
+    headers: { 'access-control-allow-origin': '*' },
+    json: {
+      stages: { [jambi]: 1, [jambiTiang]: 3 },
+      pending: { [jambi]: [2], [batanghari]: [1] },
+    },
+  }));
+  await page.goto('/');
+  await expect(page.locator('.atlas-total__num')).toHaveText('500');
+
+  // Popup displays open pending stage alongside accepted stage.
+  await page.getByRole('searchbox').fill('TANJUNG RADEN-007');
+  await page.locator(`.atlas-pt[data-item-id="${jambi}"]`).click();
+  await expect(page.locator('#popup .feature-popup__pending')).toHaveText('Cor menunggu diperiksa');
+  await expect(page.locator('#popup .feature-popup__stages li.is-pending')).toContainText('Cor');
+  await page.getByRole('button', { name: 'Tutup info titik' }).click();
+  await page.getByRole('button', { name: 'Hapus pencarian' }).click();
+
+  // Progres lists multi-region waiting disclosure and jumps to the picked kabupaten's waiting group.
+  await page.locator('.list-mode').getByRole('button', { name: /^Progres/ }).click();
+  const waitingSummary = page.locator('.progress-waiting-group > summary');
+  await expect(waitingSummary).toContainText('2 titik menunggu diperiksa di 2 wilayah');
+  await waitingSummary.click();
+  await page.locator('.progress-waiting__row', { hasText: 'Kab. Batanghari' }).click();
+  await expect(page.getByRole('heading', { name: 'Kab. Batanghari' })).toBeVisible();
+  await expect(page.locator('details.work-group[open] summary')).toContainText('Menunggu Diperiksa');
+  await expect(page.locator(`.work-row [data-item-id="${batanghari}"]`)).toBeVisible();
+
+  // Stage-3 (Tiang) unit stays actionable under Lapor Lampu with an active Lapor link.
+  await page.getByRole('button', { name: 'Kembali ke semua wilayah' }).click();
+  await page.locator('.progress-cell[data-region="Kota Jambi"]').click();
+  const lampGroup = page.locator('details.work-group', { hasText: 'Lapor Lampu' });
+  await expect(lampGroup).toBeVisible();
+  await lampGroup.locator('summary').click();
+  await expect(lampGroup.locator(`.work-row [data-item-id="${jambiTiang}"]`)).toBeVisible();
+  await expect(lampGroup.locator('.work-row__lapor').first()).toBeVisible();
+});
+
+test('does not re-download points.geojson during background polls when esdm.cloud progress fails', async ({ page }) => {
+  let pointGets = 0;
+  await page.route('https://www.esdm.cloud/api/public/survey-progress*', route => route.abort('failed'));
+  page.on('request', request => {
+    if (request.method() === 'GET' && new URL(request.url()).pathname === '/data/points.geojson') pointGets++;
+  });
+  await page.goto('/');
+  await expect(page.locator('.atlas-total__num')).toHaveText('500');
+  await page.locator('.list-mode').getByRole('button', { name: /^Progres/ }).click();
+  await expect(page.getByText('Gagal memuat progres')).toBeVisible();
+  const initialGets = pointGets;
+  // Trigger a reconnect check via visibilitychange after cooldown; points.geojson must stay untouched.
+  await page.waitForTimeout(2200);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForTimeout(500);
+  expect(pointGets).toBe(initialGets);
+});
