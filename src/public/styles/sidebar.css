@@ -290,6 +290,17 @@ body.is-sidebar-collapsed #sidebar {
     opacity: 1;
 }
 
+/* A long kabupaten in "Cari dalam …" ends in an ellipsis instead of a hard cut.
+   With nothing typed the clear button is hidden, so the placeholder may take
+   its 42px gutter. */
+.panel-search input {
+    text-overflow: ellipsis;
+}
+
+.panel-search input:placeholder-shown {
+    padding-right: 12px;
+}
+
 /* The native cancel button is WebKit-only and takes almost no styling; the
    panel has its own. */
 .panel-search input::-webkit-search-cancel-button {
@@ -1593,14 +1604,6 @@ body.is-data-unavailable .atlas-summary {
 
     .locate-btn__label {
         display: inline;
-    }
-
-    .panel-search input {
-        text-overflow: ellipsis;
-    }
-
-    .panel-search input:placeholder-shown {
-        padding-right: 12px;
     }
 
     /* Collapsed or half-open, keep only the nearest unit compactly above the list
