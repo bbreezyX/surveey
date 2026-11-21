@@ -14,7 +14,16 @@
   let target: HTMLDivElement, popup: HTMLDivElement, content: HTMLDivElement;
   function scrollHint() { const scroller = innerWidth < 960 ? popup : content; popup.classList.toggle("is-scrollable", scroller.scrollHeight - scroller.clientHeight > 4); popup.classList.toggle("is-scroll-end", scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4); }
   let returnFocus: HTMLElement | null = null;
-  async function closeDetail() { const nomor = state.selectedNomor; state.closeDetail(); await tick(); if (nomor) adapter?.centerAfterClose(nomor); }
+  let nudgeTimer: ReturnType<typeof setTimeout> | undefined;
+  async function closeDetail() {
+    const nomor = state.selectedNomor; state.closeDetail(); await tick(); if (nomor) adapter?.centerAfterClose(nomor);
+    // On phones the sheet stops at half height here. Nudge it upward once so the reader sees it can be pulled
+    // up to the full list; any touch removes the class (Sidebar stopHints, MobileHints), 2.3s covers delay + run.
+    if (nomor && state.sheetSnap === 'half') {
+      clearTimeout(nudgeTimer); document.body.classList.add('is-sheet-nudging');
+      nudgeTimer = setTimeout(() => document.body.classList.remove('is-sheet-nudging'), 2300);
+    }
+  }
   onMount(() => {
     let instance: SurveyMapAdapter | null = null, disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;

@@ -10,7 +10,8 @@
     if (busy || innerWidth >= 960 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     document.body.classList.add('is-sheet-hinting');
     timers.push(setTimeout(() => document.body.classList.remove('is-sheet-hinting'), 12000));
-    if (count('puts.sheetNudge') < 3) { bump('puts.sheetNudge'); document.body.classList.add('is-sheet-nudging'); timers.push(setTimeout(() => document.body.classList.remove('is-sheet-nudging'), 2000)); }
+    // Every visit, as the half sheet nudges after every closed detail: one lift and echo, then still.
+    document.body.classList.add('is-sheet-nudging'); timers.push(setTimeout(() => document.body.classList.remove('is-sheet-nudging'), 2000));
   }
   onMount(() => {
     if (innerWidth < 960 && !busy) {

@@ -38,8 +38,10 @@ export const belumSelectedSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="
         '<path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="none" stroke="%236b7a8c" stroke-width="1.6" stroke-dasharray="4 3"/>' +
         belumGlyph +
       "</svg>";
-export const normalPinSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 36 48">' +
-        '<filter id="p"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-opacity="0.4"/></filter>' +
+// The 48-unit pin still renders at 32px tall. Its tip is 36px from the top of the padded image.
+export const normalPinAnchorY = 36 / 42;
+export const normalPinSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="-6 -6 48 63">' +
+        '<filter id="p" filterUnits="userSpaceOnUse" x="-6" y="-6" width="48" height="63"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-opacity="0.4"/></filter>' +
         '<path filter="url(%23p)" d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 30 18 30s18-17.4 18-30C36 8.06 27.94 0 18 0z" fill="%23fee50f" stroke="%23293d50" stroke-width="2"/>' +
         '<circle cx="18" cy="18" r="6.5" fill="%23293d50"/>' +
     '</svg>';

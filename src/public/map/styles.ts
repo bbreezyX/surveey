@@ -27,7 +27,8 @@ export function pointStyle(point: SurveyPoint, resolution: number, selected = fa
   const fill = kind === 'cadangan' ? '#c5cdd6' : kind === 'belum' ? '#f4f6f8' : '#fee50f';
   const stroke = kind === 'duplikat' ? '#e8731a' : kind === 'belum' ? '#6b7a8c' : '#293d50';
   const svg = selected ? { sk: symbols.selectedPinSvg, duplikat: symbols.duplikatSelectedSvg, belum: symbols.belumSelectedSvg, cadangan: symbols.cadanganSelectedSvg }[kind] : { sk: symbols.normalPinSvg, duplikat: symbols.duplikatPinSvg, belum: symbols.belumPinSvg, cadangan: symbols.cadanganPinSvg }[kind];
-  const image = dot ? new CircleStyle({ radius: radius + (hovered ? 2 : 0), fill: new Fill({ color: fill }), stroke: new Stroke({ color: stroke, width: kind === 'duplikat' || kind === 'belum' ? 2.2 : kind === 'cadangan' ? 1.4 : 1.6 }) }) : new Icon({ src: `data:image/svg+xml,${svg}`, anchor: [0.5, 1], scale: (kind === 'cadangan' && !selected ? .86 : 1) * (hovered ? 1.12 : 1) });
+  const anchorY = kind === 'sk' && !selected ? symbols.normalPinAnchorY : 1;
+  const image = dot ? new CircleStyle({ radius: radius + (hovered ? 2 : 0), fill: new Fill({ color: fill }), stroke: new Stroke({ color: stroke, width: kind === 'duplikat' || kind === 'belum' ? 2.2 : kind === 'cadangan' ? 1.4 : 1.6 }) }) : new Icon({ src: `data:image/svg+xml,${svg}`, anchor: [0.5, anchorY], scale: (kind === 'cadangan' && !selected ? .86 : 1) * (hovered ? 1.12 : 1) });
   const styles = [new Style({ image, zIndex: selected ? 10 : hovered ? 5 : kind === 'duplikat' || kind === 'belum' ? 2 : 1 })];
   if (badge) {
     // Sits on the pin head's upper right (or the dot's edge) so the yellow pin and its status ring stay readable.
