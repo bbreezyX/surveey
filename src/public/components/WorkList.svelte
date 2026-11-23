@@ -17,6 +17,10 @@
   const groups = $derived(workGroups(points, progress, state.pending));
   const waitingRows = $derived(state.stageFilter === null ? groups.waiting : groups.waiting.filter(unit => matchesStageFilter(unit, state.stageFilter!, progress)));
   function toggleStage(stage: StageFilter) { state.setStageFilter(state.stageFilter === stage ? null : stage); }
+  function openMine(nomor: string, origin: HTMLElement) {
+    if (!state.visibleIds.has(nomor) && state.stageFilter !== null) state.setStageFilter(null);
+    state.select(nomor, origin);
+  }
   // The first step with work in it is marked, so the eye finds what to do next. Every group starts shut,
   // so opening a kabupaten shows all its steps at once; a crew taps the one it wants.
   const firstDue = $derived(openWaiting ? -1 : groups.due.findIndex(list => list.length));
@@ -56,11 +60,11 @@
   <StageLegend {tally} tight active={state.stageFilter} onselect={toggleStage}/>
 </div>
 {#if mine}
-  <p class="work-mine" class:is-waiting={mine.receipt === 'pending'} role="status">
+  <button class="work-mine" class:is-waiting={mine.receipt === 'pending'} type="button" aria-label={`Laporan ${BUILD_STAGES[mine.stage - 1]} titik ${mine.point.display.code}, ${mine.point.display.desa || mine.point.display.primary}. Dikirim dari HP ini, ${mine.receipt === 'accepted' ? 'sudah diterima' : 'menunggu diperiksa'}. Lihat di peta`} onclick={event => openMine(mine.point.nomor, event.currentTarget)}>
     {#if mine.receipt === 'pending'}<svg width="22" height="22" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     {:else}<svg width="24" height="24" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M8.8 14.4 12.4 17.9 19.4 10.6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{/if}
     <span><strong>Laporan {BUILD_STAGES[mine.stage - 1]} titik {mine.point.display.code} · {mine.point.display.desa || mine.point.display.primary}</strong>Dikirim dari HP ini · {mine.receipt === 'accepted' ? 'Sudah diterima' : 'Menunggu diperiksa'}</span>
-  </p>
+  </button>
 {/if}
 {#each groups.due as list, stage (stage)}
   {#if list.length && (state.stageFilter === null || state.stageFilter === stage)}

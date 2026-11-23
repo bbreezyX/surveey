@@ -34,7 +34,11 @@
   const isOpen = () => !!panel && (native ? panel.matches(':popover-open') : open);
   function close() { if (native) panel?.hidePopover(); else open = false; }
   async function toggleByHand() { open = !open; if (open) { await tick(); place(); } }
-  function openPoint(nomor: string) { close(); survey.select(nomor, button ?? null); }
+  function openPoint(nomor: string) {
+    close();
+    if (!survey.visibleIds.has(nomor) && survey.stageFilter !== null) survey.setStageFilter(null);
+    survey.select(nomor, button ?? null);
+  }
   $effect(() => {
     if (native || !open) return;
     const outside = (event: PointerEvent) => { if (!panel?.contains(event.target as Node) && !button?.contains(event.target as Node)) open = false; };

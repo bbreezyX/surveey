@@ -565,3 +565,42 @@ test('does not re-download points.geojson during background polls when esdm.clou
   await page.waitForTimeout(500);
   expect(pointGets).toBe(initialGets);
 });
+
+test('navigates to the reported unit when clicking today rows or the last-report banner under a stage filter', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const reported = 'KOTA JAMBI-DANAU TELUK-TANJUNG RADEN-007';
+  const installed = 'KOTA JAMBI-ALAM BARAJO-KENALI BESAR-002';
+  await page.route('https://www.esdm.cloud/api/public/survey-progress*', route => route.fulfill({
+    headers: { 'access-control-allow-origin': '*' },
+    json: {
+      stages: { [reported]: 1, [installed]: 4 },
+      pending: { [reported]: [2] },
+      todayStages: [{ nomor: reported, stage: 1, at: new Date().toISOString() }],
+    },
+  }));
+  await page.goto(`/?nomor=${encodeURIComponent(reported)}&lapor=2`);
+  await expect(page.locator('#popup')).toBeVisible();
+  await expect(page.locator('#popup .feature-popup__reported')).toBeVisible();
+  await page.getByRole('button', { name: 'Tutup info titik' }).click();
+
+  await page.locator('.list-mode').getByRole('button', { name: /^Progres/ }).click();
+  await page.getByRole('button', { name: 'Kembali ke semua wilayah' }).click();
+  await page.locator('.stage-legend__btn', { hasText: 'Terpasang' }).click();
+  await expect(page.locator('.stage-legend__btn', { hasText: 'Terpasang' })).toHaveAttribute('aria-pressed', 'true');
+
+  // Clicking a today item whose stage differs from the active filter still selects and opens it.
+  await page.locator('button.today-chip').click();
+  await page.locator('.today-row').first().click();
+  await expect(page.locator('#popup')).toBeVisible();
+  await expect(page.locator('#popup .feature-popup__id')).toContainText('Titik 007');
+  await page.getByRole('button', { name: 'Tutup info titik' }).click();
+
+  // Clicking the phone's last-report banner in the kabupaten work list also opens that unit on the map.
+  await page.locator('.progress-cell[data-region="Kota Jambi"]').click();
+  await page.locator('.work-sum .stage-legend__btn', { hasText: 'Terpasang' }).click();
+  const mine = page.locator('button.work-mine');
+  await expect(mine).toBeVisible();
+  await mine.click();
+  await expect(page.locator('#popup')).toBeVisible();
+  await expect(page.locator('#popup .feature-popup__id')).toContainText('Titik 007');
+});
