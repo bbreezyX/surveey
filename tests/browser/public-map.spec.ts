@@ -604,3 +604,55 @@ test('navigates to the reported unit when clicking today rows or the last-report
   await expect(page.locator('#popup')).toBeVisible();
   await expect(page.locator('#popup .feature-popup__id')).toContainText('Titik 007');
 });
+
+test('scrolls the mobile work list directly to Menunggu Diperiksa when opened from the waiting banner or summary', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 758 });
+  const waiting = 'TANJUNG JABUNG TIMUR-KUALA JAMBI-TELUK MAJELIS-006';
+  const galian = 'TANJUNG JABUNG TIMUR-KUALA JAMBI-TELUK MAJELIS-001';
+  const cor = 'TANJUNG JABUNG TIMUR-KUALA JAMBI-TELUK MAJELIS-002';
+  const tiang = 'TANJUNG JABUNG TIMUR-KUALA JAMBI-TELUK MAJELIS-003';
+  const done = 'TANJUNG JABUNG TIMUR-KUALA JAMBI-TELUK MAJELIS-004';
+  await page.route('https://www.esdm.cloud/api/public/survey-progress*', route => route.fulfill({
+    headers: { 'access-control-allow-origin': '*' },
+    json: {
+      stages: { [galian]: 1, [cor]: 2, [tiang]: 3, [done]: 4, [waiting]: 2 },
+      pending: { [waiting]: [3] },
+    },
+  }));
+  await page.goto('/');
+  await expect(page.locator('.atlas-total__num')).toHaveText('500');
+
+  // Opening the waiting banner from the province Progres screen scrolls Menunggu Diperiksa and its row into view.
+  await page.locator('.list-mode').getByRole('button', { name: /^Progres/ }).click();
+  const banner = page.locator('button.progress-waiting');
+  await expect(banner).toContainText('1 titik menunggu diperiksa');
+  await banner.click();
+  await expect(page.getByRole('heading', { name: 'Kab. Tanjung Jabung Timur' })).toBeVisible();
+  const waitingGroup = page.locator('details.work-group[data-waiting]');
+  await expect(waitingGroup).toHaveAttribute('open', '');
+
+  const scroller = page.locator('.sidebar-scroll');
+  const row = page.locator(`.work-row [data-item-id="${waiting}"]`);
+  await expect.poll(async () => {
+    const scrollerBox = await scroller.boundingBox();
+    const rowBox = await row.boundingBox();
+    if (!scrollerBox || !rowBox) return false;
+    return rowBox.y >= scrollerBox.y && rowBox.y + rowBox.height <= scrollerBox.y + scrollerBox.height;
+  }).toBe(true);
+  expect(await scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+
+  // Returning and opening the kabupaten card normally, then manually tapping Menunggu Diperiksa at the bottom,
+  // also scrolls its first revealed row into view.
+  await page.getByRole('button', { name: 'Kembali ke semua wilayah' }).click();
+  await page.locator('.progress-cell[data-region="Kab. Tanjung Jabung Timur"]').click();
+  await expect(waitingGroup).not.toHaveAttribute('open', '');
+  await waitingGroup.locator('summary').click();
+  await expect(waitingGroup).toHaveAttribute('open', '');
+  await expect.poll(async () => {
+    const scrollerBox = await scroller.boundingBox();
+    const rowBox = await row.boundingBox();
+    if (!scrollerBox || !rowBox) return false;
+    return rowBox.y >= scrollerBox.y && rowBox.y + rowBox.height <= scrollerBox.y + scrollerBox.height;
+  }).toBe(true);
+});

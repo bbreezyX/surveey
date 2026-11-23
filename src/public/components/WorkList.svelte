@@ -21,6 +21,28 @@
     if (!state.visibleIds.has(nomor) && state.stageFilter !== null) state.setStageFilter(null);
     state.select(nomor, origin);
   }
+  // Opening a disclosure near the foot of the mobile sheet otherwise expands its rows below the fold;
+  // scroll just enough to bring the first revealed row into view without moving groups that already fit.
+  function revealSummary(event: MouseEvent) {
+    const group = (event.currentTarget as HTMLElement).parentElement;
+    if (!(group instanceof HTMLDetailsElement) || group.open) return;
+    requestAnimationFrame(() => {
+      if (!group.open) return;
+      const scroller = group.closest<HTMLElement>('.sidebar-scroll'), sidebar = group.closest<HTMLElement>('#sidebar');
+      if (!scroller || !sidebar) return;
+      const scrollerRect = scroller.getBoundingClientRect(), groupRect = group.getBoundingClientRect();
+      const half = document.body.classList.contains('is-panel-half') && window.innerWidth < 960
+        ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-half')) || Math.round(window.innerHeight * 0.48)
+        : 0;
+      const visibleHeight = half ? Math.max(80, half - (scrollerRect.top - sidebar.getBoundingClientRect().top)) : scroller.clientHeight;
+      const firstRow = group.querySelector<HTMLElement>('.work-row, .work-group__empty');
+      const overflow = (firstRow ? firstRow.getBoundingClientRect().bottom : groupRect.bottom) - (scrollerRect.top + visibleHeight);
+      if (overflow > 0) {
+        const delta = Math.min(Math.max(0, groupRect.top - scrollerRect.top), overflow + 12);
+        if (delta > 0) scroller.scrollTo({ top: scroller.scrollTop + delta, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }
+    });
+  }
   // The first step with work in it is marked, so the eye finds what to do next. Every group starts shut,
   // so opening a kabupaten shows all its steps at once; a crew taps the one it wants.
   const firstDue = $derived(openWaiting ? -1 : groups.due.findIndex(list => list.length));
@@ -69,20 +91,20 @@
 {#each groups.due as list, stage (stage)}
   {#if list.length && (state.stageFilter === null || state.stageFilter === stage)}
     <details class="work-group" class:is-next={state.stageFilter === null && stage === firstDue} open={state.stageFilter === stage}>
-      <summary><span class="work-group__badge" aria-hidden="true">{@html workBadgeSvg(stage)}</span><span><span class="work-group__title">{NEXT_REPORT[stage].title}</span><span class="work-group__note">{NEXT_REPORT[stage].note}</span></span><span class="work-group__count">{list.length}</span></summary>
+      <summary onclick={revealSummary}><span class="work-group__badge" aria-hidden="true">{@html workBadgeSvg(stage)}</span><span><span class="work-group__title">{NEXT_REPORT[stage].title}</span><span class="work-group__note">{NEXT_REPORT[stage].note}</span></span><span class="work-group__count">{list.length}</span></summary>
       {@render rows(list, false)}
     </details>
   {/if}
 {/each}
 {#if waitingRows.length}
-  <details class="work-group" open={openWaiting || state.stageFilter !== null}>
-    <summary><span class="work-group__badge work-group__badge--wait" aria-hidden="true"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.6" fill="#fff" stroke="currentColor" stroke-width="1.4"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><span class="work-group__title">Menunggu Diperiksa</span><span class="work-group__note">Sudah dikirim, belum diterima kantor</span></span><span class="work-group__count">{waitingRows.length}</span></summary>
+  <details class="work-group" data-waiting open={openWaiting || state.stageFilter !== null}>
+    <summary onclick={revealSummary}><span class="work-group__badge work-group__badge--wait" aria-hidden="true"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.6" fill="#fff" stroke="currentColor" stroke-width="1.4"/><path d="M7 4.2V7l1.9 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><span class="work-group__title">Menunggu Diperiksa</span><span class="work-group__note">Sudah dikirim, belum diterima kantor</span></span><span class="work-group__count">{waitingRows.length}</span></summary>
     {@render rows(waitingRows, false)}
   </details>
 {/if}
 {#if state.stageFilter === null || state.stageFilter === WORK_DONE}
   <details class="work-group is-done" open={state.stageFilter === WORK_DONE}>
-    <summary><span class="work-group__badge" aria-hidden="true">{@html workBadgeSvg(WORK_DONE)}</span><span><span class="work-group__title">Terpasang</span><span class="work-group__note">Tiang berdiri, lampu menyala</span></span><span class="work-group__count">{groups.done.length}</span></summary>
+    <summary onclick={revealSummary}><span class="work-group__badge" aria-hidden="true">{@html workBadgeSvg(WORK_DONE)}</span><span><span class="work-group__title">Terpasang</span><span class="work-group__note">Tiang berdiri, lampu menyala</span></span><span class="work-group__count">{groups.done.length}</span></summary>
     {#if groups.done.length}{@render rows(groups.done, true)}{:else}<p class="work-group__empty">Belum ada titik terpasang.</p>{/if}
   </details>
 {/if}

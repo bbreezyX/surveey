@@ -71,6 +71,23 @@
   const dateLabel = $derived(latest ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(latest) : '2026');
   async function openRegion(name: string | null, filter: StatusFilter = null, waiting = false) {
     const previous = state.activeRegion; state.openRegion(name, filter); if (waiting) state.showWaitingFirst(); await tick();
+    if (waiting && scroller) {
+      // On phones (and short desktop windows) the due groups above Menunggu Diperiksa push its opened rows below
+      // the fold; scroll directly to the waiting group after the list resets to top so the reader lands on it.
+      const group = scroller.querySelector<HTMLDetailsElement>('details.work-group[data-waiting]');
+      if (group) {
+        const scrollerRect = scroller.getBoundingClientRect(), groupRect = group.getBoundingClientRect();
+        const half = state.sheetSnap === 'half' && window.innerWidth < 960
+          ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-half')) || Math.round(window.innerHeight * 0.48)
+          : 0;
+        const visibleHeight = half ? Math.max(80, half - (scrollerRect.top - sidebar.getBoundingClientRect().top)) : scroller.clientHeight;
+        const offset = groupRect.top - scrollerRect.top;
+        if (offset < 0 || offset + groupRect.height > visibleHeight) {
+          scroller.scrollTop += offset;
+          syncScroll();
+        }
+      }
+    }
     if (name !== previous) { sidebar.removeAttribute('data-enter'); void sidebar.offsetWidth; sidebar.dataset.enter = name ? 'fwd' : 'back'; clearTimeout(enterTimer); enterTimer = setTimeout(() => sidebar.removeAttribute('data-enter'), 320); }
     if (name) sidebar.querySelector<HTMLButtonElement>('.atlas-back')?.focus({ preventScroll: true });
     else [...sidebar.querySelectorAll<HTMLButtonElement>('[data-region]')].find(button => button.dataset.region === previous)?.focus({ preventScroll: true });
