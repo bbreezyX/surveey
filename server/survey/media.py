@@ -11,6 +11,7 @@ from .domain import Problem
 MAX_BYTES = 20 * 1024 * 1024
 Image.MAX_IMAGE_PIXELS = 40_000_000
 FORMATS = {'JPEG': ('image/jpeg', {'.jpg', '.jpeg'}), 'PNG': ('image/png', {'.png'}), 'WEBP': ('image/webp', {'.webp'})}
+MIME_ALIASES = {'image/jpg': 'image/jpeg'}
 
 def decode(raw, name='', mime=None):
     from pathlib import Path
@@ -24,7 +25,12 @@ def decode(raw, name='', mime=None):
                 if fmt not in FORMATS or width * height > 40_000_000 or getattr(source, 'n_frames', 1) != 1:
                     raise Problem('Foto harus JPEG, PNG, atau WebP tunggal, maksimum 40 megapiksel.')
                 detected, extensions = FORMATS[fmt]
-                if (name and Path(name).suffix.lower() not in extensions) or (mime and mime != detected):
+                supplied = MIME_ALIASES.get(mime.lower(), mime.lower()) if mime else ''
+                # Mobile pickers sometimes send application/octet-stream for valid JPEGs;
+                # still reject any explicit mismatched image/non-image MIME type.
+                if (name and Path(name).suffix.lower() not in extensions) or (
+                    supplied and supplied != 'application/octet-stream' and supplied != detected
+                ):
                     raise Problem('Nama atau tipe berkas tidak sesuai isi foto.')
                 source.verify()
             with Image.open(io.BytesIO(raw)) as source:
@@ -35,7 +41,7 @@ def decode(raw, name='', mime=None):
                 background.paste(image, mask=image.getchannel('A'))
                 output = io.BytesIO()
                 background.save(output, format='JPEG', quality=90, optimize=True)
-                return output.getvalue(), width, height
+                return output.getvalue(), background.width, background.height
     except Problem:
         raise
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombWarning, Image.DecompressionBombError):

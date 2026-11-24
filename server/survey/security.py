@@ -73,8 +73,15 @@ class AdminBoundary:
                         and relative[len('/assets/'):] in login_assets()['names'])):
                 response = JsonResponse({'error': 'Silakan masuk terlebih dahulu.'}, status=401)
             elif request.user.is_authenticated and relative.startswith('/api/'):
-                limit = 30 if relative == '/api/photos' else 180
-                if not throttle(f'api:{request.user.pk}', limit, 60):
+                # Separate buckets so browsing points/thumbnails never eats into the
+                # photo upload quota, and loading draft/evidence thumbnails doesn't 429.
+                if relative == '/api/photos' and request.method == 'POST':
+                    bucket, limit = f'api-upload:{request.user.pk}', 30
+                elif relative.startswith('/api/photos/') and request.method == 'GET':
+                    bucket, limit = f'api-media:{request.user.pk}', 600
+                else:
+                    bucket, limit = f'api:{request.user.pk}', 180
+                if not throttle(bucket, limit, 60):
                     response = JsonResponse({'error': 'Terlalu banyak permintaan. Coba sebentar lagi.'}, status=429)
         if response is None:
             response = self.get_response(request)

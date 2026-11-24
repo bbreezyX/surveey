@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pasteCoordinates } from '../admin/src/api';
+import { distance, formatDistance, pasteCoordinates } from '../admin/src/api';
 
 function paste(text: string) {
   let prevented = false;
@@ -18,5 +18,11 @@ describe('admin coordinate paste', () => {
   it('leaves a single number or other text to the browser', () => {
     expect(paste('-1.4913')).toEqual({ prevented: false, lat: 1, lon: 2 });
     expect(paste('Desa Mangun Jayo')).toEqual({ prevented: false, lat: 1, lon: 2 });
+  });
+  it('formats non-finite distances cleanly instead of NaN km', () => {
+    expect(Number.isNaN(distance({ lat: Number.NaN, lon: 103.6 }, { lat: -1.6, lon: 103.6 }))).toBe(true);
+    expect(formatDistance(Number.NaN)).toBe('—');
+    expect(formatDistance(42)).toBe('42 m');
+    expect(formatDistance(1500)).toBe('1,5 km');
   });
 });

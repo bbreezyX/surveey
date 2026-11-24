@@ -1,14 +1,17 @@
 import json
 import mimetypes
 import re
+import uuid
 from functools import wraps
 from pathlib import Path
 from django.conf import settings
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db import transaction, IntegrityError
+from django.db import connection, transaction, IntegrityError
 from django.db.models import Count, Prefetch, Q
+from django.db.models.expressions import RawSQL
+from django.db.models.functions import Lower
 from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.shortcuts import render
@@ -16,8 +19,8 @@ from django.utils import timezone
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
 from delivery import storage
-from delivery.models import ActivePublication, Publication
-from .domain import Problem, text, identifier, counts, nomor_gaps, nomor_prefix
+from delivery.models import ActivePublication, Publication, PublishedMedia
+from .domain import Problem, text, identifier, counts, nomor_gaps, nomor_prefix, parse_coordinate_query, matches_search_query
 from .models import Account, Point, Draft, Revision, Observation, ObservationEvidence, Photo, AuditEvent
 from .security import permission, establish, throttle
 from .media import store_photo, MAX_BYTES
@@ -136,18 +139,33 @@ def filtered_points(request, *, for_export=False):
                 matches |= Q(nomor__istartswith=alias + '-')
         rows = rows.filter(matches)
     if query:
-        rows = rows.filter(Q(nomor__icontains=query) | Q(state__alamat__icontains=query) |
-            Q(state__nama__icontains=query) | Q(state__keterangan__icontains=query) | Q(state__jalur__icontains=query) | Q(state__status__icontains=query))
+        parsed_coord = parse_coordinate_query(query)
+        matched_ids = [
+            p['id'] for p in point_summary(request)
+            if matches_search_query(p['nomor'], p['state'], query, parsed_coord)
+        ]
+        rows = rows.filter(pk__in=matched_ids)
+    raw_nomors = request.GET.get('nomors', '')
+    if raw_nomors and not for_export:
+        wanted_nomors = [item.strip()[:250] for item in raw_nomors.split(',') if item.strip()][:200]
+        if wanted_nomors:
+            rows = rows.filter(nomor__in=wanted_nomors)
     status = request.GET.get('status', '')
     # The official allocation: what the overview counts and what the Excel export holds.
     if for_export or status == 'resmi':
         return rows.filter(archived=False).exclude(state__status='Cadangan')
     if status == 'pasti':
         return rows.filter(archived=False, state__status='', state__duplikat=False)
+    if status == 'drafts':
+        # Include archived points that have pending activation drafts so the filter matches the Drafts queue.
+        return rows.filter(draft__status='pending').distinct()
     if status in ('Cadangan', 'Belum Ditetapkan'):
         rows = rows.filter(state__status=status)
     elif status == 'duplikat':
         rows = rows.filter(state__duplikat=True)
+    elif status == 'tanpa_foto':
+        # JSONField `isnull=True` checks missing keys rather than JSON `null`; match against the summary snapshot instead.
+        rows = rows.filter(pk__in=[p['id'] for p in point_summary(request) if not p['state'].get('photo_id')])
     elif status == 'urut':
         # Points in any desa whose active unit numbers are not 001..N, using the
         # same request-local summary that supplies the overview count and badges.
@@ -166,10 +184,18 @@ def point_list_payload(request):
     except ValueError:
         raise Problem('Nomor halaman tidak valid.')
     total = rows.count()
-    rows = rows.annotate(drafts=Count('draft', filter=Q(draft__status='pending'))).order_by('nomor')[(page-1)*50:page*50]
+    pages = max(1, (total + 49) // 50)
+    page = min(page, pages)
+    rows = rows.annotate(drafts=Count('draft', filter=Q(draft__status='pending'))).order_by(Lower('nomor'), 'nomor')[(page-1)*50:page*50]
     summary = point_summary(request)
+    pending_drafts = Draft.objects.filter(status='pending').count()
+    missing_photo = sum(
+        1 for p in summary
+        if not p['archived'] and p['state'].get('status') != 'Cadangan' and not p['state'].get('photo_id')
+    )
     return {'items': [{'id': str(p.pk), 'revision': p.revision, 'state': p.state, 'drafts': p.drafts} for p in rows],
-        'total': total, 'page': page, 'pages': max(1, (total+49)//50), 'counts': counts(p['state'] for p in summary),
+        'total': total, 'page': page, 'pages': pages, 'counts': counts(p['state'] for p in summary),
+        'pending_drafts': pending_drafts, 'missing_photo': missing_photo,
         'gaps': nomor_gaps(p['nomor'] for p in summary if not p['archived'])}
 
 
@@ -178,7 +204,8 @@ def map_items(rows):
     for pk, state in rows:
         lon, lat = state.get('lon'), state.get('lat')
         if isinstance(lon, (int, float)) and isinstance(lat, (int, float)) and abs(lon) <= 180 and abs(lat) <= 90:
-            items.append({'id': str(pk), 'lon': lon, 'lat': lat, 'status': state.get('status') or '', 'duplikat': bool(state.get('duplikat'))})
+            items.append({'id': str(pk), 'nomor': state.get('nomor') or '', 'lon': lon, 'lat': lat,
+                'status': state.get('status') or '', 'duplikat': bool(state.get('duplikat'))})
     return items
 
 
@@ -227,19 +254,29 @@ def wilayah(request):
 def point_detail(request, point_id):
     point = Point.objects.annotate(pending_drafts=Count('draft', filter=Q(draft__status='pending'))).get(pk=point_id)
     observations = []
-    rows = Observation.objects.filter(point=point).order_by('-created_at').prefetch_related(
+    photo_ids = set()
+    if point.state.get('photo_id'):
+        photo_ids.add(point.state['photo_id'])
+    rows = Observation.objects.filter(point=point).select_related('author').order_by('-created_at').prefetch_related(
         Prefetch('observationevidence_set', queryset=ObservationEvidence.objects.only('observation_id', 'photo_id')))
     for obs in rows:
+        obs_photos = [str(v.photo_id) for v in obs.observationevidence_set.all()]
+        photo_ids.update(obs_photos)
         observations.append({'id': str(obs.pk), 'date': obs.date, 'lon': float(obs.longitude), 'lat': float(obs.latitude),
-            'notes': obs.notes, 'source': obs.source, 'photos': [str(v.photo_id) for v in obs.observationevidence_set.all()]})
+            'notes': obs.notes, 'source': obs.source, 'author': obs.author.username if obs.author else None,
+            'at': obs.created_at.isoformat(), 'photos': obs_photos})
     revisions = [{'number': r.number, 'state': r.state, 'reason': r.reason,
-        'at': r.created_at.isoformat()} for r in Revision.objects.filter(point=point).order_by('-number')]
+        'actor': r.actor.username if r.actor else None,
+        'at': r.created_at.isoformat()} for r in Revision.objects.filter(point=point).select_related('actor').order_by('-number')]
+    media_rows = list(PublishedMedia.objects.filter(id__in=photo_ids).values_list('id', 'revoked')) if photo_ids else []
+    published_photos = [str(mid) for mid, revoked in media_rows if not revoked]
+    revoked_photos = [str(mid) for mid, revoked in media_rows if revoked]
     # The editor opens on the viewer's own pending draft, so a saved change is
     # still in the form the next time the point is opened.
     own = Draft.objects.filter(point=point, author=request.user, status='pending').order_by('-created_at').first()
     return response({'id': str(point.pk), 'revision': point.revision, 'state': point.state,
-        'drafts': point.pending_drafts,
-        'own_draft': {'id': str(own.id), 'proposed': own.proposed, 'reason': own.reason} if own else None,
+        'drafts': point.pending_drafts, 'published_photos': published_photos, 'revoked_photos': revoked_photos,
+        'own_draft': {'id': str(own.id), 'base_revision': own.base_revision, 'proposed': own.proposed, 'reason': own.reason} if own else None,
         'observations': observations, 'revisions': revisions})
 
 @api(['GET', 'POST'])
@@ -248,9 +285,9 @@ def drafts(request):
         data = body(request, ['point_id', 'base_revision', 'proposed', 'reason'])
         draft = services.save_draft(
             request.user, data['point_id'], data['base_revision'], data['proposed'], data['reason'])
-        return response(services.draft_preview(draft), 201)
+        return response(services.draft_preview(draft, request.user), 201)
     rows = Draft.objects.filter(status='pending').select_related('point', 'author').order_by('-created_at')
-    return response({'items': [services.draft_preview(d) for d in rows]})
+    return response({'items': [services.draft_preview(d, request.user) for d in rows]})
 
 @api(['POST'])
 def discard(request, draft_id):
@@ -264,7 +301,7 @@ def restore(request, point_id):
     if type(data['revision']) is not int or type(data['base_revision']) is not int:
         raise Problem('Nomor revisi tidak valid.')
     draft = services.restore_draft(request.user, point_id, **data)
-    return response(services.draft_preview(draft), 201)
+    return response(services.draft_preview(draft, request.user), 201)
 
 @api(['POST'])
 def publish_point(request, point_id):
@@ -281,9 +318,28 @@ def publish(request):
 
 @api(['GET'])
 def publications(request):
+    # Count features inside the database instead of transferring up to 100 full GeoJSON snapshots into Python.
+    count_sql = (
+        "COALESCE(jsonb_array_length(geojson->'features'), 0)"
+        if connection.vendor == 'postgresql'
+        else "COALESCE(json_array_length(geojson, '$.features'), 0)"
+    )
+    rows = list(
+        Publication.objects.defer('geojson', 'manifest')
+        .annotate(point_count=RawSQL(count_sql, ()))
+        .order_by('-created_at')[:100]
+    )
+    pub_ids = [str(p.id) for p in rows]
+    events = {}
+    if pub_ids:
+        for event in AuditEvent.objects.filter(action='publication.activated', target__in=pub_ids).select_related('actor'):
+            events[event.target] = event
     return response({'active_id': str(ActivePublication.objects.get(id=1).publication_id or ''),
-        'items': [{'id': str(p.id), 'at': p.created_at.isoformat(), 'checksum': p.checksum,
-            'points': len(p.geojson['features'])} for p in Publication.objects.order_by('-created_at')[:100]]})
+        'items': [{
+            'id': str(p.id), 'at': p.created_at.isoformat(), 'checksum': p.checksum, 'points': int(p.point_count),
+            'actor': events[str(p.id)].actor.username if str(p.id) in events and events[str(p.id)].actor else None,
+            'reason': events[str(p.id)].reason if str(p.id) in events else '',
+        } for p in rows]})
 
 @api(['POST'])
 def baseline(request):
@@ -296,7 +352,9 @@ def photos(request):
     if request.content_type != 'multipart/form-data':
         raise Problem('Unggah foto sebagai multipart/form-data.', 415)
     uploaded = request.FILES.get('file')
-    if not uploaded or uploaded.size > MAX_BYTES:
+    if not uploaded:
+        raise Problem('Pilih berkas foto terlebih dahulu.', 400)
+    if uploaded.size > MAX_BYTES:
         raise Problem('Foto maksimum 20 MiB.', 413)
     point = Point.objects.get(pk=identifier(request.POST.get('point_id')))
     raw = bytearray()
@@ -313,14 +371,21 @@ def photo_content(request, photo_id, kind):
     if kind not in ('display', 'original'):
         raise Problem('Data tidak ditemukan.', 404)
     photo = Photo.objects.get(pk=photo_id)
+    if photo.point_id is None:
+        permission(request.user, 'publish')
     if kind == 'display' and not photo.ready:
         raise Problem('Foto belum siap.', 404)
     key = photo.derivative_key if kind == 'display' else photo.original_key
     content_type = photo.mime if kind == 'display' else 'application/octet-stream'
     # Authentication, permission and current photo metadata are checked before
     # touching this private derivative cache. Originals remain streamed from storage.
-    stream = open_cached(getattr(settings, 'ADMIN_MEDIA_CACHE_ROOT', None), photo.derivative_checksum,
-        lambda: storage.get(key)) if kind == 'display' else storage.get(key)
+    try:
+        stream = open_cached(getattr(settings, 'ADMIN_MEDIA_CACHE_ROOT', None), photo.derivative_checksum,
+            lambda: storage.get(key)) if kind == 'display' else storage.get(key)
+    except FileNotFoundError:
+        raise Problem('Berkas foto tidak ditemukan.', 404)
+    except (TimeoutError, ConnectionError):
+        raise Problem('Penyimpanan foto sedang tidak tersedia.', 503)
     result = FileResponse(stream, content_type=content_type, as_attachment=kind == 'original', filename=f'{photo.id}.bin' if kind == 'original' else None)
     result['X-Content-Type-Options'] = 'nosniff'
     return result
@@ -328,8 +393,8 @@ def photo_content(request, photo_id, kind):
 @api(['POST'])
 def revoke(request, photo_id):
     data = body(request, ['reason'])
-    services.revoke_photo(request.user, photo_id, data['reason'])
-    return response({'ok': True})
+    detached = services.revoke_photo(request.user, photo_id, data['reason'])
+    return response({'ok': True, 'detached_points': detached})
 
 @api(['GET', 'POST'])
 @sensitive_post_parameters('password')
@@ -339,8 +404,10 @@ def accounts(request):
         return response({'items': [account_view(a) for a in Account.objects.order_by('username')]})
     data = body(request, ['username', 'name', 'role', 'password'])
     username = text(data['username'], 'Nama akun', 150, True)
-    if not __import__('re').fullmatch(r'[\w.@+-]+', username):
+    if not re.fullmatch(r'[\w.@+-]+', username):
         raise Problem('Nama akun menggunakan huruf, angka, titik, @, +, -, atau garis bawah.')
+    if Account.objects.filter(username__iexact=username).exists():
+        raise Problem('Nama akun sudah digunakan.', 409)
     if data['role'] not in ('editor', 'publisher', 'owner'):
         raise Problem('Peran tidak dikenal.')
     account = Account(username=username, first_name=text(data['name'], 'Nama', 150), role=data['role'])
@@ -371,6 +438,8 @@ def account_update(request, account_id):
         # Serialize all account changes to prevent concurrent removal of the last owner.
         ActivePublication.objects.select_for_update().get(id=1)
         account = Account.objects.select_for_update().get(pk=account_id)
+        if data['enabled'] == account.is_active and data['role'] == account.role and not data['password']:
+            raise Problem('Tidak ada perubahan pada akun ini.')
         before = account_view(account)
         if account.is_active and account.role == 'owner' and (not data['enabled'] or data['role'] != 'owner'):
             if Account.objects.filter(is_active=True, role='owner').count() <= 1:
@@ -381,6 +450,12 @@ def account_update(request, account_id):
         account.session_version += 1
         account.save()
         services.audit(request.user, 'account.changed', account.pk, before, account_view(account), reason)
+    # Keep the owner's own current browser session alive when editing themselves (while still revoking other sessions).
+    if account.pk == request.user.pk and account.is_active:
+        request.user = account
+        if data['password']:
+            update_session_auth_hash(request, account)
+        establish(request)
     return response(account_view(account))
 
 @api(['POST'])
@@ -402,12 +477,58 @@ def password(request):
     establish(request)
     return response({'ok': True})
 
+def resolve_audit_targets(rows):
+    uuids, int_ids = set(), set()
+    for row in rows:
+        raw = row.target or ''
+        if raw.isdigit():
+            int_ids.add(int(raw))
+        else:
+            try:
+                uuids.add(uuid.UUID(raw))
+            except ValueError:
+                pass
+    labels = {}
+    if int_ids:
+        for pk, username in Account.objects.filter(pk__in=int_ids).values_list('pk', 'username'):
+            labels[str(pk)] = username
+    if uuids:
+        for pk, nomor in Point.objects.filter(id__in=uuids).values_list('id', 'nomor'):
+            labels[str(pk)] = nomor
+        missing = uuids - {uuid.UUID(k) for k in labels if not k.isdigit()}
+        if missing:
+            for pk, nomor in Draft.objects.filter(id__in=missing).values_list('id', 'point__nomor'):
+                labels[str(pk)] = nomor
+        missing = uuids - {uuid.UUID(k) for k in labels if not k.isdigit()}
+        if missing:
+            for pk, nomor, legacy_name in Photo.objects.filter(id__in=missing).values_list('id', 'point__nomor', 'legacy_name'):
+                labels[str(pk)] = nomor or legacy_name or str(pk)
+    return labels
+
 @api(['GET'])
 def audit_history(request):
     permission(request.user, 'publish')
+    events = AuditEvent.objects.select_related('actor')
+    action = request.GET.get('action', '')[:60].strip()
+    if action:
+        events = events.filter(action=action)
+    query = request.GET.get('q', '')[:250].strip()
+    if query:
+        matched_targets = (
+            [str(pk) for pk in Point.objects.filter(nomor__icontains=query).values_list('id', flat=True)[:200]]
+            + [str(pk) for pk in Draft.objects.filter(point__nomor__icontains=query).values_list('id', flat=True)[:200]]
+            + [str(pk) for pk in Account.objects.filter(username__icontains=query).values_list('pk', flat=True)[:50]]
+        )
+        cond = Q(reason__icontains=query) | Q(target__icontains=query) | Q(actor__username__icontains=query)
+        if matched_targets:
+            cond |= Q(target__in=matched_targets)
+        events = events.filter(cond)
+    rows = list(events.order_by('-id')[:200])
+    labels = resolve_audit_targets(rows)
     return response({'items': [{'id': e.pk, 'actor': e.actor.username if e.actor else 'Operator/import',
-        'action': e.action, 'target': e.target, 'before': e.before, 'after': e.after,
-        'reason': e.reason, 'at': e.created_at.isoformat()} for e in AuditEvent.objects.select_related('actor').order_by('-id')[:200]]})
+        'action': e.action, 'target': e.target, 'target_label': labels.get(e.target, e.target),
+        'before': e.before, 'after': e.after,
+        'reason': e.reason, 'at': e.created_at.isoformat()} for e in rows]})
 
 @api(['GET'])
 def export(request):

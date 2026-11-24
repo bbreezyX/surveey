@@ -17,7 +17,7 @@ import { satelliteLayers } from '../../src/public/map/google-tiles';
 // It is scenery: no zoom or pan, and it always frames the whole province
 // the same way, so the login page and the dashboard line up across the
 // full-page navigation between them.
-export interface MapPoint { id: string; lon: number; lat: number; status: string; duplikat: boolean }
+export interface MapPoint { id: string; nomor?: string; lon: number; lat: number; status: string; duplikat: boolean }
 
 export function createBackdrop(target: HTMLElement, options: { onSelect?: (id: string) => void } = {}) {
   const format = new GeoJSON({ featureProjection: 'EPSG:3857' });

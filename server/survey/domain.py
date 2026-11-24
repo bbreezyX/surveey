@@ -44,6 +44,63 @@ def coordinate(value, limit):
         raise Problem('Koordinat di luar batas atau tidak valid.')
     return value
 
+COORD_QUERY = re.compile(r'^\(?\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*\)?$')
+RT_WORD = re.compile(r'^r[tw]\d+$')
+RT_NORMALIZE = re.compile(r'\b(r[tw])[\s.]*0*(\d+)')
+
+def parse_coordinate_query(value):
+    """Parse a pasted "lat, lon" (or swapped "lon, lat") search query with
+    decimal-precision tolerance matching src/shared/survey/coordinates.ts."""
+    match = COORD_QUERY.fullmatch(str(value or '').strip())
+    if not match:
+        return None
+    a, b = float(match.group(1)), float(match.group(2))
+    if not (math.isfinite(a) and math.isfinite(b)):
+        return None
+    if 20 < abs(a) <= 180 and abs(b) <= 20:
+        lat, lon, lat_raw, lon_raw = b, a, match.group(2), match.group(1)
+    elif abs(a) <= 90 and abs(b) <= 180:
+        lat, lon, lat_raw, lon_raw = a, b, match.group(1), match.group(2)
+    else:
+        return None
+    tol = lambda raw: max(0.00015, (10 ** -(len(raw.split('.')[1]) if '.' in raw else 0)) * 0.51)
+    return lat, lon, tol(lat_raw), tol(lon_raw)
+
+def search_words(value):
+    cleaned = RT_NORMALIZE.sub(r'\1\2', str(value or '').lower())
+    return [word for word in re.split(r'[^a-z0-9]+', cleaned) if word]
+
+def matches_search_query(nomor, state, query, parsed_coord=None):
+    """Match an admin search query against coordinates or all editable text fields
+    (including Lokasi Rekapan and Catatan), supporting multi-word prefix search."""
+    if parsed_coord:
+        lat, lon = state.get('lat'), state.get('lon')
+        if isinstance(lat, (int, float)) and isinstance(lon, (int, float)) and math.isfinite(lat) and math.isfinite(lon):
+            q_lat, q_lon, lat_tol, lon_tol = parsed_coord
+            if abs(lat - q_lat) <= lat_tol and abs(lon - q_lon) <= lon_tol:
+                return True
+    lower = query.lower()
+    haystack = ' '.join(str(v or '') for v in (
+        nomor, state.get('lokasi_rekapan'), state.get('alamat'), state.get('nama'),
+        state.get('keterangan'), state.get('jalur'), state.get('catatan'), state.get('status'),
+    )).lower()
+    words = search_words(lower)
+    if not any(RT_WORD.match(word) for word in words) and lower in haystack:
+        return True
+    if not words:
+        return False
+    candidates = search_words(haystack)
+    for word in words:
+        # Single-character tokens (e.g. "Tim A") and RT/RW tokens must match a whole word
+        # so "Tim A" never matches "Tim B" in "Desa Alam".
+        if len(word) == 1 or RT_WORD.match(word):
+            if not any(candidate == word for candidate in candidates):
+                return False
+        else:
+            if not any(candidate.startswith(word) for candidate in candidates):
+                return False
+    return True
+
 # Nomor reads KABUPATEN-KECAMATAN-DESA-NNN and follows the address, so the
 # lists group a point where its address says it is. Only the official form
 # written by the address picker ("Desa X, Kecamatan Y, Kabupaten Z" or

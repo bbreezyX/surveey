@@ -349,7 +349,7 @@ class PublicationCostTests(TestCase):
         from .models import Point
         from .services import save_draft, publish
         point = Point.objects.order_by('nomor').first()
-        draft = save_draft(self.user, str(point.id), point.revision, {'state': dict(point.state, catatan='Uji'), 'new_observation': None}, 'Uji')
+        draft = save_draft(self.user, str(point.id), point.revision, {'state': dict(point.state, catatan=f'Uji {point.revision + 1}'), 'new_observation': None}, 'Uji')
         with mock.patch.object(storage, 'exists', wraps=storage.exists) as exists, CaptureQueriesContext(connection) as queries:
             publish(self.user, [str(draft.id)], 'Uji')
         return exists.call_count, len(queries)
@@ -453,3 +453,221 @@ class DirectPublishAndOptionalReasonTests(TestCase):
             {'state': {**point.state, 'catatan': 'Baru'}, 'new_observation': None}, '')
         publication = publish(self.owner, [str(draft.id)], '')
         self.assertEqual(str(ActivePublication.objects.get(id=1).publication_id), str(publication.id))
+
+
+class AdminLogicImprovementTests(TestCase):
+    def setUp(self):
+        import tempfile
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        override = override_settings(STORAGE_BACKEND='filesystem', STORAGE_ROOT=self.directory.name)
+        override.enable()
+        self.addCleanup(override.disable)
+        self.owner = Account.objects.create_user(username='logic-owner', password='test-only-password-347192', role='owner')
+        self.editor = Account.objects.create_user(username='logic-editor', password='test-only-password-347193', role='editor')
+        self.client = Client(enforce_csrf_checks=True)
+
+    def login(self, username, password):
+        self.client.get('/admin/')
+        token = self.client.cookies['survey_admin_csrf'].value
+        self.client.post('/admin/login', {'username': username, 'password': password, 'csrfmiddlewaretoken': token})
+        return self.client.get('/admin/api/session').json()['csrf']
+
+    def make_point(self, nomor, **extra):
+        from .models import Point, Revision
+        state = {
+            'nomor': nomor, 'nama': '', 'jalur': '', 'alamat': 'Desa Pelempang, Kecamatan Mestong, Kabupaten Muaro Jambi',
+            'keterangan': '', 'lokasi_rekapan': '', 'catatan': '', 'status': '', 'duplikat': False, 'archived': False,
+            'lon': 103.5, 'lat': -1.78, 'date': '', 'photo_id': None, 'observation_id': None, **extra,
+        }
+        point = Point.objects.create(nomor=nomor, state=state, archived=state['archived'])
+        Revision.objects.create(point=point, number=1, state=state, actor=self.owner, reason='Awal')
+        return point
+
+    def jpeg_bytes(self, size=(200, 100), orientation=None):
+        import io
+        from PIL import Image
+        buf = io.BytesIO()
+        img = Image.new('RGB', size, 'blue')
+        if orientation:
+            exif = img.getexif()
+            exif[274] = orientation
+            img.save(buf, format='JPEG', exif=exif)
+        else:
+            img.save(buf, format='JPEG')
+        return buf.getvalue()
+
+    def test_search_matches_lokasi_rekapan_catatan_multiword_and_coordinates_and_clamps_page(self):
+        self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-001', lokasi_rekapan='Simpang Masjid Al-Falah', lat=-1.781234, lon=103.512345)
+        self.make_point('Muaro Jambi-Mestong-Pelempang-002', catatan='Tiang dekat jembatan', lat=-1.79, lon=103.52)
+        self.login(self.owner.username, 'test-only-password-347192')
+
+        by_rekapan = self.client.get('/admin/api/points', {'q': 'Masjid Al-Falah'}).json()
+        self.assertEqual([i['state']['nomor'] for i in by_rekapan['items']], ['MUARO JAMBI-MESTONG-PELEMPANG-001'])
+
+        by_catatan = self.client.get('/admin/api/points', {'q': 'jembatan'}).json()
+        self.assertEqual([i['state']['nomor'] for i in by_catatan['items']], ['Muaro Jambi-Mestong-Pelempang-002'])
+
+        by_multi = self.client.get('/admin/api/points', {'q': 'mestong 002'}).json()
+        self.assertEqual([i['state']['nomor'] for i in by_multi['items']], ['Muaro Jambi-Mestong-Pelempang-002'])
+
+        by_coord = self.client.get('/admin/api/points', {'q': '-1.78123, 103.51235'}).json()
+        self.assertEqual([i['state']['nomor'] for i in by_coord['items']], ['MUARO JAMBI-MESTONG-PELEMPANG-001'])
+
+        by_swapped = self.client.get('/admin/api/points', {'q': '103.51235, -1.78123'}).json()
+        self.assertEqual([i['state']['nomor'] for i in by_swapped['items']], ['MUARO JAMBI-MESTONG-PELEMPANG-001'])
+
+        clamped = self.client.get('/admin/api/points', {'page': 99}).json()
+        self.assertEqual((clamped['page'], clamped['pages'], len(clamped['items'])), (1, 1, 2))
+        self.assertEqual([i['state']['nomor'] for i in clamped['items']],
+            ['MUARO JAMBI-MESTONG-PELEMPANG-001', 'Muaro Jambi-Mestong-Pelempang-002'])
+
+    def test_filters_for_drafts_tanpa_foto_and_nomors(self):
+        from .services import save_draft
+        p1 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-001', archived=True)
+        p2 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-002')
+        save_draft(self.editor, str(p1.id), p1.revision, {'state': {**p1.state, 'archived': False}, 'new_observation': None}, 'Aktivasi')
+        self.login(self.owner.username, 'test-only-password-347192')
+
+        draft_list = self.client.get('/admin/api/points', {'status': 'drafts'}).json()
+        self.assertEqual([i['state']['nomor'] for i in draft_list['items']], [p1.nomor])
+        self.assertEqual(draft_list['pending_drafts'], 1)
+        self.assertEqual(draft_list['missing_photo'], 1)
+
+        no_photo = self.client.get('/admin/api/points', {'status': 'tanpa_foto'}).json()
+        self.assertEqual([i['state']['nomor'] for i in no_photo['items']], [p2.nomor])
+
+        by_nomors = self.client.get('/admin/api/points', {'nomors': p2.nomor}).json()
+        self.assertEqual([i['state']['nomor'] for i in by_nomors['items']], [p2.nomor])
+
+    def test_revoke_photo_detaches_active_point_republishes_and_blocks_reuse(self):
+        from delivery.models import ActivePublication, PublishedMedia
+        from .domain import Problem
+        from .media import store_photo
+        from .services import publish_baseline, publish_point, revoke_photo, save_draft
+        ActivePublication.objects.get_or_create(id=1)
+        p1 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-001')
+        p2 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-002')
+        photo = store_photo(self.jpeg_bytes(), 'bukti.jpg', self.owner, p1, 'image/jpeg')
+        p1.state['photo_id'] = str(photo.id)
+        p1.save(update_fields=['state'])
+        publish_baseline(self.owner, 'Baseline')
+
+        detached = revoke_photo(self.owner, str(photo.id), 'Privasi warga')
+        self.assertEqual(detached, 1)
+        p1.refresh_from_db()
+        self.assertIsNone(p1.state['photo_id'])
+        self.assertEqual(p1.revision, 2)
+        self.assertTrue(PublishedMedia.objects.get(id=photo.id).revoked)
+
+        # Active publication drops the revoked URL, and unrelated points still publish cleanly.
+        active = ActivePublication.objects.get(id=1).publication
+        p1_feature = next(f for f in active.geojson['features'] if f['properties']['Nomor'] == p1.nomor)
+        self.assertEqual(p1_feature['properties']['Foto Survey Awal'], '')
+        publish_point(self.owner, str(p2.id), p2.revision, {'state': {**p2.state, 'catatan': 'Lanjut'}, 'new_observation': None}, 'Edit p2')
+
+        # Re-attaching the revoked photo or revoking again is rejected.
+        with self.assertRaises(Problem):
+            save_draft(self.owner, str(p1.id), p1.revision, {'state': {**p1.state, 'photo_id': str(photo.id)}, 'new_observation': None}, 'Pakai lagi')
+        with self.assertRaises(Problem):
+            revoke_photo(self.owner, str(photo.id), 'Ulang')
+
+    def test_noop_guards_restore_replaces_own_draft_and_create_checks_reserved_nomors(self):
+        from .domain import Problem
+        from .models import Draft
+        from .services import create_point, publish_point, restore_draft, save_draft
+        from delivery.models import ActivePublication
+        ActivePublication.objects.get_or_create(id=1)
+        p1 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-001')
+        with self.assertRaises(Problem):
+            save_draft(self.owner, str(p1.id), p1.revision, {'state': dict(p1.state), 'new_observation': None}, 'Kosong')
+        with self.assertRaises(Problem):
+            publish_point(self.owner, str(p1.id), p1.revision, {'state': dict(p1.state), 'new_observation': None}, 'Kosong')
+        with self.assertRaises(Problem):
+            restore_draft(self.owner, str(p1.id), 1, p1.revision, 'Sudah sama')
+
+        # Create a second revision, then restore twice -> updates the single pending draft.
+        publish_point(self.owner, str(p1.id), p1.revision, {'state': {**p1.state, 'catatan': 'V2'}, 'new_observation': None}, 'Ubah')
+        p1.refresh_from_db()
+        first_restore = restore_draft(self.owner, str(p1.id), 1, p1.revision, 'Pulih 1')
+        second_restore = restore_draft(self.owner, str(p1.id), 1, p1.revision, 'Pulih 2')
+        self.assertEqual(first_restore.id, second_restore.id)
+        self.assertEqual(Draft.objects.filter(point=p1, author=self.owner, status='pending').count(), 1)
+
+        # Case-insensitive duplicate and pending-draft reserved Nomor are both rejected on create_point.
+        with self.assertRaises(Problem):
+            create_point(self.owner, {**p1.state, 'nomor': p1.nomor.lower(), 'archived': True}, 'Duplikat huruf kecil')
+        mover = self.make_point('MUARO JAMBI-MESTONG-TEMPINO-001', alamat='Kel. Tempino, Kecamatan Mestong, Kabupaten Muaro Jambi')
+        moving = save_draft(self.owner, str(mover.id), mover.revision,
+            {'state': {**mover.state, 'alamat': 'Desa Pelempang, Kecamatan Mestong, Kabupaten Muaro Jambi'}, 'new_observation': None}, 'Pindah')
+        reserved_nomor = moving.proposed['state']['nomor']
+        with self.assertRaises(Problem):
+            create_point(self.owner, {**p1.state, 'nomor': reserved_nomor, 'archived': True}, 'Tabrak draf')
+
+    def test_upload_rate_bucket_is_separate_from_browsing_and_media_decode_uses_output_dimensions(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .domain import Problem
+        from .media import decode
+        p1 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-001')
+        csrf = self.login(self.owner.username, 'test-only-password-347192')
+        for _ in range(35):
+            self.assertEqual(self.client.get('/admin/api/session').status_code, 200)
+        upload = SimpleUploadedFile('foto.jpg', self.jpeg_bytes((400, 200), orientation=6), content_type='application/octet-stream')
+        uploaded = self.client.post('/admin/api/photos', {'point_id': str(p1.id), 'file': upload}, HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(uploaded.status_code, 201, uploaded.content)
+        # Orientation 6 swaps 400x200 to 200x400 after exif_transpose.
+        self.assertEqual((uploaded.json()['width'], uploaded.json()['height']), (200, 400))
+        with self.assertRaises(Problem):
+            decode(self.jpeg_bytes(), 'foto.jpg', 'image/png')
+
+    def test_publications_audit_and_self_account_update(self):
+        from delivery.models import ActivePublication
+        from .services import publish_baseline
+        ActivePublication.objects.get_or_create(id=1)
+        p1 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-001')
+        publish_baseline(self.owner, 'Terbit awal')
+        csrf = self.login(self.owner.username, 'test-only-password-347192')
+
+        pubs = self.client.get('/admin/api/publications').json()
+        self.assertEqual(pubs['items'][0]['points'], 1)
+        self.assertEqual(pubs['items'][0]['actor'], self.owner.username)
+        self.assertEqual(pubs['items'][0]['reason'], 'Terbit awal')
+
+        # Audit filter resolves target_label to Nomor and searches by Nomor.
+        from .services import publish_point
+        publish_point(self.owner, str(p1.id), p1.revision, {'state': {**p1.state, 'duplikat': True}, 'new_observation': None}, '')
+        audit = self.client.get('/admin/api/audit', {'action': 'point.published', 'q': p1.nomor}).json()
+        self.assertEqual(len(audit['items']), 1)
+        self.assertEqual(audit['items'][0]['target_label'], p1.nomor)
+        self.assertEqual(audit['items'][0]['reason'], 'Tandai perlu verifikasi')
+
+        # Case-insensitive duplicate account creation is rejected.
+        dup = self.client.post('/admin/api/accounts',
+            {'username': 'LOGIC-OWNER', 'name': 'Dup', 'role': 'editor', 'password': 'unique-strong-password-987654'},
+            content_type='application/json', HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(dup.status_code, 409)
+
+        # No-op account PATCH is rejected; self password change keeps current owner session alive.
+        noop = self.client.patch(f'/admin/api/accounts/{self.owner.pk}',
+            {'enabled': True, 'role': 'owner', 'password': '', 'reason': 'Tidak berubah'},
+            content_type='application/json', HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(noop.status_code, 400)
+
+        self_patch = self.client.patch(f'/admin/api/accounts/{self.owner.pk}',
+            {'enabled': True, 'role': 'owner', 'password': 'new-owner-strong-password-456789', 'reason': 'Rotasi sandi'},
+            content_type='application/json', HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(self_patch.status_code, 200, self_patch.content)
+        self.assertEqual(self.client.get('/admin/api/accounts').status_code, 200)
+
+    def test_unattached_legacy_photo_requires_publish_permission_and_missing_file_returns_404(self):
+        from .media import store_photo
+        photo = store_photo(self.jpeg_bytes(), 'legacy.jpg', None, None, 'image/jpeg')
+        self.login(self.editor.username, 'test-only-password-347193')
+        self.assertEqual(self.client.get(f'/admin/api/photos/{photo.id}/display').status_code, 403)
+        self.login(self.owner.username, 'test-only-password-347192')
+        ok = self.client.get(f'/admin/api/photos/{photo.id}/display')
+        self.assertEqual(ok.status_code, 200)
+        ok.close()
+        from pathlib import Path
+        (Path(self.directory.name) / photo.derivative_key).unlink()
+        self.assertEqual(self.client.get(f'/admin/api/photos/{photo.id}/display').status_code, 404)

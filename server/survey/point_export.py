@@ -17,7 +17,9 @@ from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.worksheet.properties import PageSetupProperties
 from PIL import Image
 
+from django.conf import settings
 from delivery import storage
+from delivery.media_cache import open_cached
 from delivery.models import PublishedMedia
 from .domain import Problem
 from .media import MAX_BYTES
@@ -145,8 +147,10 @@ def row_height(values, widths, bold=False):
 
 def photo_image(photo):
     try:
-        with closing(storage.get(photo.derivative_key)) as stream:
-            raw = stream.read(MAX_BYTES + 1)
+        stream = open_cached(getattr(settings, 'ADMIN_MEDIA_CACHE_ROOT', None), photo.derivative_checksum,
+            lambda: storage.get(photo.derivative_key), MAX_BYTES)
+        with closing(stream) as handle:
+            raw = handle.read(MAX_BYTES + 1)
     except FileNotFoundError:
         return None
     except ClientError as error:

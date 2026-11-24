@@ -9,16 +9,21 @@ export interface Counts { total: number; official: number; cadangan: number; bel
 // drafts: how many drafts for this point are still waiting for review.
 export interface PointRow { id: string; revision: number; state: PointState; drafts: number }
 export interface Detail extends PointRow {
-  own_draft: { id: string; proposed: { state: PointState; new_observation: { date: string; notes: string; source: string } | null }; reason: string } | null;
-  observations: { id: string; date: string; lon: number; lat: number; notes: string; source: string; photos: string[] }[];
-  revisions: { number: number; state: PointState; reason: string; at: string }[];
+  published_photos?: string[];
+  revoked_photos?: string[];
+  own_draft: { id: string; base_revision?: number; proposed: { state: PointState; new_observation: { date: string; notes: string; source: string } | null; restore_revision?: number | null }; reason: string } | null;
+  observations: { id: string; date: string; lon: number; lat: number; notes: string; source: string; author?: string | null; at?: string; photos: string[] }[];
+  revisions: { number: number; state: PointState; reason: string; actor?: string | null; at: string }[];
 }
 export interface Draft {
   id: string; point_id: string; nomor: string; base_revision: number; current_revision: number;
   before: PointState; after: PointState; new_observation: { date: string; notes: string; source: string } | null;
+  restore_revision?: number | null; can_discard?: boolean;
   reason: string; author: string; movement_m: number; counts_before: Counts; counts_after: Counts; created_at: string;
 }
 let csrf = '';
+let activityListener: (() => void) | undefined;
+export function onApiActivity(listener: (() => void) | undefined) { activityListener = listener; }
 export class ApiError extends Error {
   constructor(message: string, public status: number, public details: unknown) { super(message); }
 }
@@ -30,6 +35,7 @@ async function request(path: string, method: string, payload?: unknown) {
     body: payload === undefined ? undefined : form ? payload : JSON.stringify(payload),
   });
   if (response.status === 401) { window.location.assign('/admin/'); throw new ApiError('Sesi berakhir. Halaman masuk ditampilkan kembali.', 401, null); }
+  activityListener?.();
   if (!response.ok) {
     const result = await response.json().catch(() => ({ error: 'Server tidak dapat menyelesaikan permintaan.' }));
     throw new ApiError(result.error || 'Permintaan gagal.', response.status, result.details);
@@ -62,11 +68,13 @@ export function pasteCoordinates(event: ClipboardEvent, target: { lat: number; l
   event.preventDefault(); target.lat = pair.lat; target.lon = pair.lon;
 }
 export function distance(a: Pick<PointState, 'lat' | 'lon'>, b: Pick<PointState, 'lat' | 'lon'>) {
+  if (![a.lat, a.lon, b.lat, b.lon].every(Number.isFinite)) return Number.NaN;
   const rad = Math.PI / 180, x = a.lat*rad, y = b.lat*rad;
   const h = Math.sin((y-x)/2)**2 + Math.cos(x)*Math.cos(y)*Math.sin((b.lon-a.lon)*rad/2)**2;
   return Math.round(6371008.8*2*Math.asin(Math.min(1, Math.sqrt(h))));
 }
 // Thousands of metres read faster as kilometres: "2,35 km", not "2.347 m".
 export function formatDistance(metres: number) {
+  if (!Number.isFinite(metres)) return '—';
   return metres < 1000 ? `${metres.toLocaleString('id-ID')} m` : `${(metres/1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} km`;
 }

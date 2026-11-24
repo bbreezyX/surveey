@@ -52,6 +52,9 @@
 .tabs button[aria-current] { color: var(--ink); border-bottom-color: var(--ink); }
 /* Tabs already have an underline; focus recolours it instead of adding a ring. */
 .tabs button:focus-visible { outline: none; color: var(--ink); background: var(--atlas-paper); border-bottom-color: var(--blue); border-radius: 6px 6px 0 0; }
+.tab-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-deep); font-size: 11.5px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.session-warning { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 8px; background: var(--orange-tint); color: var(--orange-deep); font-size: 13px; font-weight: 600; line-height: 1.4; }
+.session-warning .btn-ghost { flex: none; min-height: 32px; padding: 0 12px; font-size: 12.5px; }
 .panes { display: none; }
 .notices { padding: 12px 20px 0; }
 .notices p { margin: 0 0 6px; }
@@ -62,7 +65,12 @@
 /* ---------- Editor (centre sheet) ---------- */
 .editor { display: flex; flex-direction: column; }
 .edit-head { display: flex; align-items: flex-start; gap: 12px; padding: 16px 20px 12px; }
+.edit-head__actions { display: flex; align-items: center; gap: 6px; flex: none; }
 .edit-title { flex: 1; min-width: 0; }
+.draft-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 7px 10px; border-radius: 8px; background: var(--blue-tint); color: var(--blue-deep); font-size: 12.5px; font-weight: 600; }
+.inline-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.pin-warning p { margin: 0 0 6px; }
+.pin-warning p:last-child { margin-bottom: 0; }
 .edit-head h2 { margin: 0 0 4px; font-size: 21px; line-height: 1.22; font-weight: 750; letter-spacing: -0.01em; overflow-wrap: anywhere; text-wrap: balance; }
 /* Balanced so the unit number never sits alone on the second line. */
 .edit-id { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted-2); overflow-wrap: anywhere; text-wrap: balance; }
@@ -266,6 +274,10 @@ tbody th { width: 1%; overflow-wrap: normal; }
 /* A desa whose units are not numbered 001..N; same orange as the verification flag, square so it reads as a different issue. */
 .status-flag--urut { color: var(--orange-deep); }
 .status-flag--urut::before { border: 2px solid var(--orange); border-radius: 2px; background: #fff; }
+.status-flag--pending { color: var(--blue-deep); }
+.status-flag--pending::before { border: 2px solid var(--blue); background: var(--blue-tint); }
+.list-overview__flag.status-flag--pending[aria-pressed="true"] { background: var(--blue-tint); box-shadow: inset 0 0 0 1px rgba(0, 114, 188, 0.35); }
+.desa-tidy__warn { flex: 1 0 100%; margin: 2px 0; font-size: 12.5px; }
 .atlas-desa__flag { margin: 3px 0 0; }
 /* Text actions are the public panel's blue links ("Semua wilayah", "Lihat semua"). */
 .text-action {
@@ -427,7 +439,12 @@ tbody th { width: 1%; overflow-wrap: normal; }
 }
 .photo-slot .dropzone--over .dropzone__icon { width: 22px; height: 22px; box-shadow: none; background: none; }
 .photo-slot .dropzone--over:hover, .photo-slot .dropzone--over:focus-within { background: #fff; }
+.photo-actions { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
+.photo-actions .hint { margin: 0 0 10px; }
+.photo-actions__buttons { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.photo-actions__buttons .text-action { margin: 0 -6px; font-size: 12.5px; }
 .coordinate-map-frame { position: relative; height: 240px; margin-bottom: 10px; overflow: hidden; border-radius: 12px; background: #1d2a36; }
+.map-hover { position: absolute; left: 8px; bottom: 8px; z-index: 2; max-width: calc(100% - 16px); padding: 3px 8px; border-radius: 6px; background: rgba(20, 32, 44, 0.86); color: #fff; font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .coordinate-map { width: 100%; height: 100%; }
 .map-basemap {
   position: absolute; top: 8px; right: 8px; z-index: 2;
@@ -441,13 +458,15 @@ tbody th { width: 1%; overflow-wrap: normal; }
 .map-basemap button[aria-pressed="true"] { background: var(--ink); color: #fff; }
 .map-basemap button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
 /* Under the map: the pin legend and the recentre button share one row. */
-.map-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.map-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; margin-bottom: 8px; }
+.map-bar__actions { display: inline-flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
 .map-bar .btn-ghost { flex: none; min-height: 32px; padding: 0 12px; font-size: 13px; }
 .map-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .map-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; }
 /* The pins' own colours from CoordinateMap.svelte. */
 .map-dot--new { background: #fee50f; border: 2.5px solid #293d50; }
 .map-dot--old { margin-left: 6px; background: #66717c; border: 1.5px solid #fff; box-shadow: 0 0 0 1px #66717c; }
+.map-dot--neighbor { margin-left: 6px; background: rgba(0, 114, 188, 0.8); border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0, 114, 188, 0.5); }
 .map-legend__distance { font-weight: 500; color: var(--muted-2); font-variant-numeric: tabular-nums; }
 details { margin: 0 0 8px; padding: 10px 12px; background: var(--frost); border: 1px solid var(--divider); border-radius: 10px; }
 summary { cursor: pointer; font-size: 13px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
@@ -522,6 +541,12 @@ details .btn-ghost { margin-top: 6px; }
 .page-head h2 { margin: 0 0 4px; font-size: 21px; line-height: 1.22; font-weight: 750; letter-spacing: -0.01em; }
 .page-head p { max-width: 62ch; margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
 .page-head__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; flex: none; }
+.page-filter { padding: 0 24px 14px; }
+.page-filter__row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.page-filter__row .panel-search { flex: 1 1 240px; height: 38px; margin: 0; }
+.page-filter__row .select { flex: 0 1 220px; width: auto; }
+.draft-title-link { font-size: inherit; font-weight: inherit; text-align: left; }
+.draft-rename { color: var(--blue-deep); font-weight: 700; }
 .page-notice { margin: 0 24px 14px; }
 a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; }
 .page .atlas-section { border-top: 1px solid var(--divider); }
@@ -612,7 +637,7 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
   .edit-foot p { display: none; }
   .edit-foot__actions { flex: 1; }
   .edit-foot .btn-primary { flex: 1; }
-  .page-head, .page-row, .page-foot { padding-left: 16px; padding-right: 16px; }
+  .page-head, .page-row, .page-foot, .page-filter { padding-left: 16px; padding-right: 16px; }
   .page-head { flex-direction: column; }
   .page-head__actions { justify-content: flex-start; }
   .page-notice { margin-left: 16px; margin-right: 16px; }

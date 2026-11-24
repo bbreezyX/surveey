@@ -19,6 +19,8 @@ def checked_photo(photo_id, point):
     photo = Photo.objects.filter(id=identifier(photo_id), point=point, ready=True).first()
     if not photo:
         raise Problem('Foto tidak tersedia untuk titik ini.')
+    if PublishedMedia.objects.filter(id=photo.id, revoked=True).exists():
+        raise Problem('Foto telah dicabut karena privasi dan tidak dapat digunakan kembali.')
     return photo
 
 def assign_nomor(point, state, wanted=None):
@@ -32,9 +34,11 @@ def assign_nomor(point, state, wanted=None):
         state['nomor'] = point.nomor
         return state
     taken = taken_nomors(prefix, point)
-    if isinstance(wanted, str) and re.fullmatch(re.escape(prefix) + r'-\d{3,}', wanted) and wanted not in taken:
-        state['nomor'] = wanted
-        return state
+    if isinstance(wanted, str):
+        normalized = wanted.strip().upper()
+        if re.fullmatch(re.escape(prefix) + r'-\d{3,}', normalized) and normalized not in taken:
+            state['nomor'] = normalized
+            return state
     state['nomor'] = next_nomor(prefix, taken)
     return state
 
@@ -59,8 +63,6 @@ def validate_proposal(point, proposed):
     state = validate_state({**proposed['state'], 'nomor': point.nomor} if 'nomor' in proposed['state'] else proposed['state'], point.state)
     assign_nomor(point, state, wanted)
     photo = checked_photo(state['photo_id'], point)
-    if photo and photo.id != point.state.get('photo_id') and not photo.ready:
-        raise Problem('Foto belum siap.')
     obs = proposed['new_observation']
     if obs is not None:
         if not isinstance(obs, dict) or set(obs) != {'date', 'notes', 'source'}:
@@ -77,6 +79,9 @@ def validate_proposal(point, proposed):
             raise Problem('Koreksi tidak mengubah tanggal atau pengamatan; pilih survei baru untuk kunjungan baru.')
     return {'state': state, 'new_observation': obs}
 
+def has_proposal_changes(before, proposal):
+    return proposal['new_observation'] is not None or proposal['state'] != before
+
 def format_distance_id(metres):
     return f'{round(metres)} m' if metres < 1000 else f'{metres / 1000:.2f} km'.replace('.', ',')
 
@@ -90,13 +95,17 @@ def default_change_reason(before, after, new_observation=None):
         parts.append('Arsipkan titik' if after['archived'] else 'Aktifkan titik')
     if before['status'] != after['status']:
         parts.append(f"Ubah status ({after['status'] or 'Alokasi utama'})")
-    if before['alamat'] != after['alamat']:
+    if before['duplikat'] != after['duplikat']:
+        parts.append('Tandai perlu verifikasi' if after['duplikat'] else 'Selesai verifikasi lokasi')
+    if before['nomor'] != after['nomor']:
+        parts.append(f"Pindah desa ({after['nomor']})")
+    elif before['alamat'] != after['alamat']:
         parts.append('Ubah alamat')
     if before['photo_id'] != after['photo_id']:
         parts.append('Ganti foto survei' if after['photo_id'] else 'Hapus foto survei')
     if new_observation:
         parts.append('Kunjungan survei baru')
-    if any(before[k] != after[k] for k in ('nama', 'jalur', 'keterangan', 'lokasi_rekapan', 'catatan', 'duplikat')):
+    if any(before[k] != after[k] for k in ('nama', 'jalur', 'keterangan', 'lokasi_rekapan', 'catatan')):
         parts.append('Koreksi data titik')
     return ' · '.join(parts)[:3000] or 'Pembaruan data titik'
 
@@ -131,6 +140,8 @@ def save_draft(actor, point_id, base_revision, proposed, reason):
             {'revision': point.revision, 'state': point.state})
     before = point.state
     proposed = validate_proposal(point, proposed)
+    if not has_proposal_changes(before, proposed):
+        raise Problem('Tidak ada perubahan untuk disimpan.')
     reason = text(reason, 'Alasan perubahan', 3000) or default_change_reason(
         before, proposed['state'], proposed['new_observation'])
     # One pending draft per author and point: the editor reopens it, and saving
@@ -159,6 +170,8 @@ def publish_point(actor, point_id, base_revision, proposed, reason):
             {'revision': point.revision, 'state': point.state})
     before = point.state
     proposal = validate_proposal(point, proposed)
+    if not has_proposal_changes(before, proposal):
+        raise Problem('Tidak ada perubahan untuk diterbitkan.')
     clean_reason = text(reason, 'Alasan perubahan', 3000) or default_change_reason(
         before, proposal['state'], proposal['new_observation'])
     apply_point_proposal(actor, actor, point, proposal, clean_reason)
@@ -177,6 +190,10 @@ def create_point(actor, state, reason):
     state = validate_state(state)
     if state['photo_id'] or state['observation_id']:
         raise Problem('Titik baru harus dibuat sebelum menambahkan bukti survei.')
+    if Point.objects.filter(nomor__iexact=state['nomor']).exists():
+        raise Problem('Nomor titik sudah digunakan.', 409)
+    if Draft.objects.filter(status='pending', proposed__state__nomor__iexact=state['nomor']).exists():
+        raise Problem('Nomor titik sedang dipesan oleh draf yang menunggu penerbitan.', 409)
     state['archived'] = True
     state['date'] = ''
     reason = text(reason, 'Alasan penambahan', 3000, True)
@@ -188,13 +205,15 @@ def create_point(actor, state, reason):
     audit(actor, 'point.created', point.id, after=state, reason=reason)
     return point
 
-def draft_preview(draft):
+def draft_preview(draft, actor=None):
     point = draft.point
     before, after = point.state, draft.proposed['state']
     return {'id': str(draft.id), 'point_id': str(point.id), 'nomor': point.nomor,
         'base_revision': draft.base_revision, 'current_revision': point.revision, 'status': draft.status,
         'before': before, 'after': after, 'new_observation': draft.proposed['new_observation'],
+        'restore_revision': draft.proposed.get('restore_revision'),
         'reason': draft.reason, 'author': draft.author.username, 'created_at': draft.created_at.isoformat(),
+        'can_discard': bool(actor and (actor.pk == draft.author_id or actor.role in ('publisher', 'owner'))),
         'movement_m': movement(before, after), 'counts_before': counts([before]), 'counts_after': counts([after])}
 
 @transaction.atomic
@@ -215,12 +234,21 @@ def restore_draft(actor, point_id, revision, base_revision, reason):
     previous = Revision.objects.get(point=point, number=revision)
     state = clone(previous.state)
     # Restoring an earlier survey restores its existing observation without fabricating a visit.
-    if point.revision != base_revision:
-        raise Problem('Titik telah berubah. Muat ulang sebelum memulihkan.', 409)
+    if type(base_revision) is not int or point.revision != base_revision:
+        raise Problem('Titik telah berubah. Muat ulang sebelum memulihkan.', 409,
+            {'revision': point.revision, 'state': point.state})
+    if previous.number == point.revision or state == point.state:
+        raise Problem('Titik sudah berada pada data revisi tersebut.')
     checked_photo(state['photo_id'], point)
     reason = text(reason, 'Alasan pemulihan', 3000, True)
-    draft = Draft.objects.create(point=point, base_revision=base_revision,
-        proposed={'state': state, 'new_observation': None, 'restore_revision': previous.number}, reason=reason, author=actor)
+    proposed = {'state': state, 'new_observation': None, 'restore_revision': previous.number}
+    # Keep the same one-pending-draft-per-author invariant as save_draft.
+    draft = Draft.objects.select_for_update().filter(point=point, author=actor, status='pending').order_by('-created_at').first()
+    if draft:
+        draft.base_revision, draft.proposed, draft.reason = base_revision, proposed, reason
+        draft.save(update_fields=['base_revision', 'proposed', 'reason'])
+    else:
+        draft = Draft.objects.create(point=point, base_revision=base_revision, proposed=proposed, reason=reason, author=actor)
     audit(actor, 'draft.restore', draft.id, point.state, state, reason)
     return draft
 
@@ -307,11 +335,15 @@ def build_publication(actor, active, reason):
     points = list(Point.objects.filter(archived=False).order_by('nomor'))
     photo_ids = {p.state['photo_id'] for p in points if p.state['photo_id']}
     photos = list(Photo.objects.filter(id__in=photo_ids, ready=True))
+    ready_ids = {str(photo.id) for photo in photos}
     if len(photos) != len(photo_ids):
-        raise Problem('Terdapat foto yang belum siap. Penerbitan dibatalkan.', 409)
+        missing = [p.nomor for p in points if p.state['photo_id'] and p.state['photo_id'] not in ready_ids]
+        raise Problem(f"Terdapat foto yang belum siap ({', '.join(missing[:3])}). Penerbitan dibatalkan.", 409)
     known = {media.id: media for media in PublishedMedia.objects.filter(id__in=[photo.id for photo in photos])}
-    if any(media.revoked for media in known.values()):
-        raise Problem('Foto telah dicabut karena privasi; pilih foto lain.', 409)
+    revoked_ids = {str(mid) for mid, media in known.items() if media.revoked}
+    if revoked_ids:
+        affected = [p.nomor for p in points if p.state['photo_id'] in revoked_ids]
+        raise Problem(f"Foto telah dicabut karena privasi ({', '.join(affected[:3])}); pilih foto lain.", 409)
     # Derivatives are write-once and cleanup_uploads never deletes anything with a PublishedMedia row,
     # so only photos published for the first time need a storage round trip. Re-checking every
     # manifest photo cost one HEAD per published point on each publication.
@@ -348,9 +380,27 @@ def publish_baseline(actor, reason):
 @transaction.atomic
 def revoke_photo(actor, photo_id, reason):
     permission(actor, 'accounts')
+    clean_reason = text(reason, 'Alasan privasi', 3000, True)
     # Same publication lock prevents a concurrent publication from reapproving revoked media.
-    ActivePublication.objects.select_for_update().get(id=1)
+    active = ActivePublication.objects.select_for_update().get(id=1)
     media = PublishedMedia.objects.select_for_update().get(id=identifier(photo_id))
+    if media.revoked:
+        raise Problem('Akses publik foto ini sudah dicabut sebelumnya.', 409)
     media.revoked = True
     media.save(update_fields=['revoked'])
-    audit(actor, 'media.revoked', media.id, reason=text(reason, 'Alasan privasi', 3000, True))
+    audit(actor, 'media.revoked', media.id, reason=clean_reason)
+    # Detach the revoked photo from any point currently referencing it so public GeoJSON
+    # drops the dead URL immediately and unrelated publications are not blocked by 409.
+    affected = list(Point.objects.select_for_update().filter(state__photo_id=str(media.id)).order_by('pk'))
+    point_reason = f'Cabut akses publik foto: {clean_reason}'[:3000]
+    for point in affected:
+        before = point.state
+        after = {**before, 'photo_id': None}
+        point.revision += 1
+        point.state = after
+        point.save(update_fields=['revision', 'state', 'updated_at'])
+        Revision.objects.create(point=point, number=point.revision, state=after, actor=actor, reason=point_reason)
+        audit(actor, 'point.published', point.id, before, after, point_reason)
+    if any(not point.archived for point in affected) and active.publication_id:
+        build_publication(actor, active, point_reason)
+    return len(affected)
