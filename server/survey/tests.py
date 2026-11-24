@@ -228,6 +228,10 @@ class AdminPathTests(TestCase):
         # Each untidy desa comes with the active numbers it uses, for the list's indicator.
         self.assertEqual(self.client.get('/admin/api/points').json()['gaps'],
             {'MUARO JAMBI-MESTONG-PELEMPANG': [1, 3], 'MUARO JAMBI-MESTONG-TEMPINO': [1, 3]})
+        self.assertEqual([item['state']['nomor'] for item in self.client.get('/admin/api/points?status=urut').json()['items']],
+            ['MUARO JAMBI-MESTONG-PELEMPANG-001', 'MUARO JAMBI-MESTONG-PELEMPANG-003', 'MUARO JAMBI-MESTONG-TEMPINO-001', 'MUARO JAMBI-MESTONG-TEMPINO-003'])
+        self.assertEqual([item['state']['nomor'] for item in self.client.get('/admin/api/points?status=urut&archived=1').json()['items']],
+            ['MUARO JAMBI-MESTONG-PELEMPANG-001', 'MUARO JAMBI-MESTONG-PELEMPANG-003', 'MUARO JAMBI-MESTONG-PELEMPANG-004', 'MUARO JAMBI-MESTONG-TEMPINO-001', 'MUARO JAMBI-MESTONG-TEMPINO-003'])
         editor = Account.objects.create_user(username='renumber-editor', password='test-only-password-551210', role='editor')
         with self.assertRaises(Problem):
             renumber(editor, 'MUARO JAMBI-MESTONG-PELEMPANG', 'Rapikan')
@@ -256,6 +260,8 @@ class AdminPathTests(TestCase):
         active = ActivePublication.objects.get(id=1).publication
         self.assertIn('MUARO JAMBI-MESTONG-PELEMPANG-002', [f['properties']['Nomor'] for f in active.geojson['features']])
         self.assertEqual(self.client.get('/admin/api/points').json()['gaps'], {'MUARO JAMBI-MESTONG-TEMPINO': [1, 3]})
+        self.assertEqual([item['state']['nomor'] for item in self.client.get('/admin/api/points?status=urut').json()['items']],
+            ['MUARO JAMBI-MESTONG-TEMPINO-001', 'MUARO JAMBI-MESTONG-TEMPINO-003'])
 
     def test_archived_points_leave_a_gap_and_move_behind_the_active_ones(self):
         from delivery.models import ActivePublication

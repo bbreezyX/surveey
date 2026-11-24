@@ -230,10 +230,18 @@ tbody th { width: 1%; overflow-wrap: normal; }
 /* Overview card: the official total and the flags that need attention, set
    apart from the filters above and the list below by a soft panel. */
 .list-overview { margin: 6px 16px 12px; padding: 12px 14px 11px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--frost); }
-.list-overview__flags { display: grid; gap: 5px; margin: 10px 0 0; padding: 9px 0 0; border-top: 1px solid var(--hairline); list-style: none; }
-.list-overview__flags .status-flag { display: flex; }
-.list-overview__flags .status-flag > span { flex: 1; min-width: 0; }
-.list-overview__flags .status-flag > b { font-weight: 750; font-variant-numeric: tabular-nums; }
+.list-overview__flags { display: grid; gap: 2px; margin: 10px 0 0; padding: 7px 0 0; border-top: 1px solid var(--hairline); list-style: none; }
+.list-overview__flag {
+  display: flex; width: calc(100% + 14px); margin: 0 -7px; padding: 4px 7px;
+  border: 0; border-radius: 8px; background: none; text-align: left; cursor: pointer;
+  transition: background-color var(--dur);
+}
+.list-overview__flag > span { flex: 1; min-width: 0; }
+.list-overview__flag > b { font-weight: 750; font-variant-numeric: tabular-nums; }
+.list-overview__flag:hover { background: var(--atlas-paper); }
+.list-overview__flag[aria-pressed="true"] { background: var(--orange-tint); box-shadow: inset 0 0 0 1px rgba(232, 115, 26, 0.35); }
+.list-overview__flag.status-flag--belum[aria-pressed="true"] { background: var(--atlas-paper); box-shadow: inset 0 0 0 1px var(--atlas-edge); }
+.list-overview__flag:focus-visible { outline: 2px solid var(--blue); outline-offset: -1px; }
 /* Export and Add: real buttons sharing one row, each half the width, so
    neither reads as a stray link; a lone button (editors) takes the row. */
 .list-actions { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 8px; margin: 0 16px 12px; }

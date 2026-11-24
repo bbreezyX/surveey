@@ -70,6 +70,13 @@
   type PointFilters = Partial<{ region: string; status: string }>;
   function refresh(filters?: PointFilters) { clearTimeout(searchTimer); listPage = 1; loadPoints(filters); }
   function queueSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 300); }
+  // Clicking an overview tally filters the list to those points; clicking again clears it.
+  // Search and region reset so the filtered list matches the global count shown in the card.
+  function toggleFlagFilter(next: string) {
+    status = status === next ? '' : next;
+    if (status) { q = ''; region = ''; }
+    refresh();
+  }
   // The kecamatan head currently pinned at the top of the list turns navy,
   // as on the public map (custom.js syncStuck there).
   function stuckHeads(node: HTMLElement) {
@@ -275,7 +282,7 @@
           <Select variant="pill" label="Kabupaten/Kota" value={region} onchange={value => { region = value; refresh({ region: value }); }} options={regionOptions}/>
         </div>
         <div class="filter-row">
-          <Select variant="pill" label="Status" value={status} onchange={value => { status = value; refresh({ status: value }); }} options={[{ value: '', label: 'Semua Status' }, { value: 'resmi', label: 'Alokasi Resmi' }, { value: 'pasti', label: 'Titik Pasti' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum Ditetapkan' }, { value: 'duplikat', label: 'Perlu Verifikasi' }]}/>
+          <Select variant="pill" label="Status" value={status} onchange={value => { status = value; refresh({ status: value }); }} options={[{ value: '', label: 'Semua Status' }, { value: 'resmi', label: 'Alokasi Resmi' }, { value: 'pasti', label: 'Titik Pasti' }, { value: 'Cadangan', label: 'Cadangan' }, { value: 'Belum Ditetapkan', label: 'Belum Ditetapkan' }, { value: 'duplikat', label: 'Perlu Verifikasi' }, { value: 'urut', label: 'Nomor Belum Urut' }]}/>
           <label class="switch-row"><span class="ctl-switch"><input type="checkbox" checked={archived && !officialOnly} onchange={event => { archived = event.currentTarget.checked; refresh(); }} disabled={officialOnly}><span class="ctl-switch__track" aria-hidden="true"><span class="ctl-switch__thumb"></span></span></span>Sertakan Arsip</label>
         </div>
       </form>
@@ -284,11 +291,11 @@
       {#if counts}<div class="list-overview">
         <div class="atlas-total"><span class="atlas-total__num">{counts.official}</span><span class="atlas-total__label"><span>Alokasi Resmi</span><span>{counts.cadangan} Cadangan Tidak Dihitung</span></span></div>
         <!-- One row per flag with the number right-aligned, so the list reads as
-             a tally; inline flags wrapped unevenly in the narrow wing. -->
+             a tally; each row toggles the matching status filter. -->
         <ul class="list-overview__flags">
-          <li class="status-flag status-flag--duplikat"><span>Perlu Verifikasi</span><b>{counts.duplikat}</b></li>
-          <li class="status-flag status-flag--belum"><span>Belum Ditetapkan</span><b>{counts.belum}</b></li>
-          {#if Object.keys(gaps).length}<li class="status-flag status-flag--urut"><span>Desa Nomor Belum Urut</span><b>{Object.keys(gaps).length}</b></li>{/if}
+          <li><button type="button" class="status-flag status-flag--duplikat list-overview__flag" aria-pressed={status === 'duplikat'} onclick={() => toggleFlagFilter('duplikat')}><span>Perlu Verifikasi</span><b>{counts.duplikat}</b></button></li>
+          <li><button type="button" class="status-flag status-flag--belum list-overview__flag" aria-pressed={status === 'Belum Ditetapkan'} onclick={() => toggleFlagFilter('Belum Ditetapkan')}><span>Belum Ditetapkan</span><b>{counts.belum}</b></button></li>
+          {#if Object.keys(gaps).length}<li><button type="button" class="status-flag status-flag--urut list-overview__flag" aria-pressed={status === 'urut'} onclick={() => toggleFlagFilter('urut')}><span>Desa Nomor Belum Urut</span><b>{Object.keys(gaps).length}</b></button></li>{/if}
         </ul>
       </div>{/if}
       <div class="list-actions">

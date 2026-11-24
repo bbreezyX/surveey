@@ -148,6 +148,12 @@ def filtered_points(request, *, for_export=False):
         rows = rows.filter(state__status=status)
     elif status == 'duplikat':
         rows = rows.filter(state__duplikat=True)
+    elif status == 'urut':
+        # Points in any desa whose active unit numbers are not 001..N, using the
+        # same request-local summary that supplies the overview count and badges.
+        summary = point_summary(request)
+        gap_prefixes = set(nomor_gaps(p['nomor'] for p in summary if not p['archived']))
+        rows = rows.filter(pk__in=[p['id'] for p in summary if p['nomor'].rpartition('-')[0].upper() in gap_prefixes])
     if request.GET.get('archived') != '1':
         rows = rows.filter(archived=False)
     return rows
