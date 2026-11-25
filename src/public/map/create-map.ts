@@ -14,7 +14,7 @@ import VectorLayer from 'ol/layer/Vector';
 import Overlay from 'ol/Overlay';
 import { defaults as defaultInteractions } from 'ol/interaction/defaults';
 import { defaults as defaultControls } from 'ol/control/defaults';
-import { inAndOut } from 'ol/easing';
+import { easeOut, inAndOut } from 'ol/easing';
 import { fromLonLat } from 'ol/proj';
 import { createEmpty, extend, extendCoordinate } from 'ol/extent';
 import type { SurveyDataset, SurveyPoint } from '../../shared/survey/types';
@@ -159,7 +159,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     if (delta <= 2.5) view.animate({ center, zoom, duration, easing: inAndOut });
     else { const bridge = zoom > currentZoom ? Math.min(currentZoom + delta * .58, zoom - .4) : Math.max(currentZoom - delta * .58, zoom + .4), phaseOne = Math.round(duration * .44); view.animate({ center, zoom: bridge, duration: phaseOne, easing: inAndOut }, { center, zoom, duration: duration - phaseOne, easing: inAndOut }); }
   }
-  let positionFrame = 0;
+  let positionFrame = 0, glideFrame = 0, userAt: number[] | null = null;
   const resize = () => { if (disposed) return; map.updateSize(); if (selected) { const point = byId.get(selected); if (point) { focusPoint(point, map.getView().getZoom() ?? 17); positionPopup(point); } } };
   window.addEventListener('resize', resize);
   fitToPoints(visibleIds, { duration: 0 });
@@ -208,19 +208,32 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     },
     updateSize: resize,
     setUserLocation(fix, nearest, here = false, frame = false) {
-      userSource.clear();
-      if (!fix) { userOverlay.setPosition(undefined); return; }
+      cancelAnimationFrame(glideFrame); userSource.clear();
+      if (!fix) { userOverlay.setPosition(undefined); userAt = null; return; }
       const at = fromLonLat([fix.lon, fix.lat]), target = nearest ? fromLonLat([nearest.lonNum, nearest.latNum]) : null;
       // Web Mercator stretches distance by 1/cos(latitude); Jambi is near the equator, but the radius is kept true anyway.
       const disc = new Circle(at, fix.accuracy / Math.cos(fix.lat * Math.PI / 180));
-      userSource.addFeature(new Feature(disc)); userOverlay.setPosition(at);
-      if (target) userSource.addFeature(new Feature(here ? new Point(target) : new LineString([at, target])));
+      const lead = target && !here ? new LineString([at, target]) : null;
+      userSource.addFeature(new Feature(disc));
+      if (target) userSource.addFeature(new Feature(lead ?? new Point(target)));
+      // A walking reader gets a new fix every second or two; jumping the dot that far each time reads as
+      // a glitch, so the dot, its disc and the lead glide there instead. Ease-out because a new fix can
+      // arrive mid-glide and restart from wherever the dot is, and an ease-in start would stall it there.
+      // The first fix, the framing fix and a jump of more than 250 m (a cold GPS settling, not walking)
+      // land at once: a glide across town would draw a path the reader never took.
+      const from = userAt, place = (p: number[]) => { userAt = p; userOverlay.setPosition(p); disc.setCenter(p); lead?.setCoordinates([p, target!]); };
+      if (!from || frame || Math.hypot(at[0] - from[0], at[1] - from[1]) > 250 || matchMedia('(prefers-reduced-motion: reduce)').matches) place(at);
+      else {
+        const start = performance.now(); place(from);
+        const step = (now: number) => { if (disposed) return; const t = Math.min(1, (now - start) / 500), k = easeOut(t); place([from[0] + (at[0] - from[0]) * k, from[1] + (at[1] - from[1]) * k]); if (t < 1) glideFrame = requestAnimationFrame(step); };
+        glideFrame = requestAnimationFrame(step);
+      }
       if (!frame || disposed) return;
       // The first view holds both ends: the reader and the unit they are nearest to, however far apart.
       const extent = disc.getExtent().slice(); if (target) extend(extent, [target[0], target[1], target[0], target[1]]);
       map.getView().fit(extent, { padding: padding().map(side => side + 24), maxZoom: 18, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600 });
       if (target) feedback.pulse(target);
     },
-    dispose() { disposed = true; tiles.dispose(); setOfflineBasemap(false); cancelAnimationFrame(positionFrame); observer.disconnect(); popupObserver.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); satelliteCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
+    dispose() { disposed = true; tiles.dispose(); setOfflineBasemap(false); cancelAnimationFrame(positionFrame); cancelAnimationFrame(glideFrame); observer.disconnect(); popupObserver.disconnect(); window.removeEventListener('resize', resize); feedback.dispose(); controlCleanup(); satelliteCleanup(); unByKey([click, pointer]); overlay.setElement(undefined); map.setTarget(undefined); map.dispose(); },
   };
 }
