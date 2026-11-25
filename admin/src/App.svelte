@@ -1,17 +1,26 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { api, download, setCsrf, onApiActivity, emptyState, pasteCoordinates, type Account, type PointRow, type Detail, type PointState, type Counts } from './api';
+  import { api, ApiError, download, setCsrf, onApiActivity, emptyState, pasteCoordinates, type Account, type PointRow, type Detail, type PointState, type Counts } from './api';
   import { createBackdrop, type MapPoint } from './backdrop';
   import { PointEditor, badgeOf } from './editor.svelte';
   import { fold, foldAway, allowMotion, reducedMotion, narrow, UNFOLD_KEY } from './unfold';
   import EditorSheet from './EditorSheet.svelte';
   import EditorWing from './EditorWing.svelte';
+  import BatchArchiveSheet from './BatchArchiveSheet.svelte';
   import Drafts from './Drafts.svelte';
   import Accounts from './Accounts.svelte';
   import CoordinateMap from './CoordinateMap.svelte';
   import Select from './Select.svelte';
   import AddressPicker from './AddressPicker.svelte';
   import { listSections, type ListPoint } from './list-points';
+  import {
+    BATCH_ARCHIVE_LIMIT,
+    syncBatchSelection,
+    toggleBatchGroup,
+    toggleBatchPoint,
+    type BatchArchiveItem,
+    type BatchArchiveResult,
+  } from './batch-archive';
   import { AUDIT_ACTION_LABELS, auditActionLabel } from './labels';
   import { outsideJambi, OUTSIDE_JAMBI_WARNING } from './verification';
   import { openPendingStages, PENDING_CLOCK_SVG, PROGRESS_URL, parsePending, parseProgress, pendingLabel, pendingSummary, stageBadgeSvg, stageDone, stageSummary, type SurveyPending, type SurveyProgress } from '../../src/shared/survey/progress';
@@ -34,6 +43,12 @@
   let gaps = $state<Record<string, number[]>>({}); let tidying = $state('');
   let mapPoints = $state.raw<MapPoint[]>([]);
   let creating = $state(false); let newPoint = $state<PointState>(emptyState()); let newReason = $state('');
+  let batchMode = $state(false);
+  let batchSelected = $state.raw<Map<string, BatchArchiveItem>>(new Map());
+  let batchReason = $state('');
+  let batchError = $state('');
+  let batchLimitHit = $state(false);
+  let batchSelectedList = $derived(Array.from(batchSelected.values()));
   let publications = $state<{id: string; at: string; checksum: string; points: number; actor?: string | null; reason?: string}[]>([]);
   let active = $state(''); let baselineReason = $state('');
   let auditRows = $state<{id: number; actor: string; action: string; target: string; target_label?: string; reason: string; before: unknown; after: unknown; at: string}[]>([]);
@@ -64,6 +79,8 @@
   let backdrop: ReturnType<typeof createBackdrop> | undefined;
 
   let sections = $derived(listSections(points));
+  let visibleActivePoints = $derived(sections.flatMap(section => section.items).filter(point => !point.archived));
+  let allPageSelected = $derived(visibleActivePoints.length > 0 && visibleActivePoints.every(point => batchSelected.has(point.id)));
   // Build stage per Nomor from esdm.cloud, the same feed as the public map's chips. Optional:
   // a slow or failed esdm.cloud leaves the list as it was. Cadangan units are not built.
   let progress = $state.raw<SurveyProgress>(new Map());
@@ -132,6 +149,7 @@
     points = result.items; total = result.total; listPage = result.page; pages = result.pages;
     counts = result.counts; gaps = result.gaps;
     pendingDrafts = result.pending_drafts ?? 0; missingPhoto = result.missing_photo ?? 0;
+    if (batchSelected.size) batchSelected = syncBatchSelection(batchSelected, result.items);
   }
   async function loadPoints(filters: PointFilters = {}) {
     const requestId = ++pointsRequest;
@@ -253,7 +271,54 @@
       if (nomor && newPoint.alamat === alamat) newPoint.nomor = nomor;
     } catch(e) { failed(e); }
   }
-  function startCreate() { creating = true; detail = undefined; editor = undefined; backdrop?.setSelected(null); newPoint = emptyState(); newReason = ''; pane = 'edit'; }
+  function startCreate() { closeBatchMode(); creating = true; detail = undefined; editor = undefined; backdrop?.setSelected(null); newPoint = emptyState(); newReason = ''; pane = 'edit'; }
+  function closeBatchMode() { batchMode = false; batchSelected = new Map(); batchReason = ''; batchError = ''; batchLimitHit = false; }
+  function toggleBatchMode() {
+    if (batchMode) { closeBatchMode(); return; }
+    batchMode = true; creating = false; tidying = ''; batchError = ''; batchLimitHit = false; error = '';
+  }
+  function clearBatchSelection() { batchSelected = new Map(); batchLimitHit = false; batchError = ''; }
+  function toggleBatchSelectPoint(point: ListPoint) {
+    const result = toggleBatchPoint(batchSelected, point);
+    batchSelected = result.next; batchLimitHit = result.limited; batchError = '';
+  }
+  function toggleBatchSelectGroup(items: readonly ListPoint[]) {
+    const result = toggleBatchGroup(batchSelected, items);
+    batchSelected = result.next; batchLimitHit = result.limited; batchError = '';
+  }
+  function removeBatchItem(id: string) {
+    const next = new Map(batchSelected);
+    next.delete(id);
+    batchSelected = next; batchLimitHit = false; batchError = '';
+  }
+  async function submitBatchArchive(mode: 'publish' | 'draft') {
+    if (!batchSelected.size || submitting) return;
+    submitting = true; batchError = ''; error = '';
+    const selectedIds = new Set(batchSelected.keys());
+    const payload = {
+      items: batchSelectedList.map(item => ({ id: item.id, base_revision: item.revision })),
+      reason: batchReason,
+      mode,
+    };
+    try {
+      const result = await api<BatchArchiveResult>('points/batch-archive', 'POST', payload);
+      closeBatchMode();
+      await loadPoints();
+      if (result.mode === 'publish') refreshMap();
+      if (detail && selectedIds.has(detail.id)) void select(detail.id, { keepPane: true });
+      announce(
+        result.mode === 'publish'
+          ? `${result.archived} titik diarsipkan dan diterbitkan. Peta publik akan memperbarui titik secara otomatis.`
+          : `${result.archived} draf arsip tersimpan. Tinjau dan terbitkan di tab Draf.`,
+      );
+      if (narrow()) pane = 'list';
+    } catch (e) {
+      batchError = e instanceof Error ? e.message : 'Pengarsipan massal gagal.';
+      if (e instanceof ApiError && e.status === 409) void loadPoints();
+    } finally {
+      submitting = false;
+    }
+  }
   function leave(event: SubmitEvent) {
     if (reducedMotion() || narrow()) return;
     event.preventDefault();
@@ -262,7 +327,7 @@
     setTimeout(() => form.submit(), 620);
   }
   onMount(() => {
-    backdrop = createBackdrop(backdropEl, { onSelect: id => { if (page === 'points') select(id); } });
+    backdrop = createBackdrop(backdropEl, { onSelect: id => { if (page === 'points' && !batchMode) select(id); } });
     onApiActivity(() => { lastActivity = Date.now(); idleWarningMinutes = null; });
     const idleTimer = setInterval(() => {
       if (!account) return;
@@ -311,8 +376,8 @@
   </nav>{/if}
   {#if account && page === 'points'}<div class="panes" role="group" aria-label="Tampilan">
     <button type="button" aria-pressed={pane === 'list'} onclick={() => pane = 'list'}>Daftar</button>
-    <button type="button" aria-pressed={pane === 'edit'} onclick={() => pane = 'edit'}>Sunting</button>
-    <button type="button" aria-pressed={pane === 'photo'} onclick={() => pane = 'photo'} disabled={!editor && !creating}>Foto & Lokasi</button>
+    <button type="button" aria-pressed={pane === 'edit'} onclick={() => pane = 'edit'}>{batchMode ? (batchSelectedList.length ? `Arsipkan (${batchSelectedList.length})` : 'Arsipkan') : 'Sunting'}</button>
+    <button type="button" aria-pressed={pane === 'photo'} onclick={() => pane = 'photo'} disabled={batchMode || (!editor && !creating)}>Foto & Lokasi</button>
   </div>{/if}
   {#if idleWarningMinutes !== null}
     <div class="notices">
@@ -327,7 +392,24 @@
   {#if !account}<p class="sheet-body loading">Memuat Sesi…</p>
   {:else if page === 'points'}
     <section class="editor sheet-body">
-      {#if editor}{#key editor}<EditorSheet {editor} {canPublish} nearby={mapPoints} stage={stageOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} pending={pendingOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} onReload={() => select(editor!.detail.id, { keepPane: true })} onOpenPhotoPane={() => pane = 'photo'}/>{/key}
+      {#if batchMode}
+        <BatchArchiveSheet
+          items={batchSelectedList}
+          {counts}
+          {canPublish}
+          busy={submitting}
+          error={batchError}
+          limitHit={batchLimitHit}
+          bind:reason={batchReason}
+          {stageOf}
+          {pendingOf}
+          onRemove={removeBatchItem}
+          onClear={clearBatchSelection}
+          onClose={closeBatchMode}
+          onOpenListPane={() => pane = 'list'}
+          onSubmit={submitBatchArchive}
+        />
+      {:else if editor}{#key editor}<EditorSheet {editor} {canPublish} nearby={mapPoints} stage={stageOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} pending={pendingOf(editor.detail.state.nomor, editor.detail.state.status === 'Cadangan')} onReload={() => select(editor!.detail.id, { keepPane: true })} onOpenPhotoPane={() => pane = 'photo'}/>{/key}
       {:else if creating}<div class="edit-head"><div class="edit-title"><h2>Titik Baru</h2><p class="edit-id">Titik baru dimulai sebagai arsip. Setelah data dan bukti lengkap, aktivasi diajukan melalui draf.</p></div><button type="button" class="btn-ghost" onclick={() => { creating = false; pane = 'list'; }} disabled={submitting}>Batal</button></div>
         <form class="edit-form" onsubmit={create}><div class="edit-scroll"><fieldset disabled={submitting}><legend>Identitas & Alokasi</legend>
           <label class="field">Nomor<span class="field__req" aria-hidden="true">*</span><input bind:value={newPoint.nomor} placeholder="KABUPATEN-KECAMATAN-DESA-001" autocorrect="off" autocapitalize="characters" spellcheck="false" required maxlength="250"></label>
@@ -450,7 +532,23 @@
         {#if canPublish}<button type="button" class="btn-ghost list-actions__btn" disabled={exporting} aria-busy={exporting} onclick={exportPoints} title="Unduh alokasi resmi sesuai pencarian dan kabupaten terpilih, beserta foto survei (.xlsx)"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19h14"/></svg>{exporting ? 'Menyiapkan…' : 'Ekspor Excel'}</button>{/if}
         <button type="button" class="list-actions__btn list-actions__btn--primary" onclick={startCreate}><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah Titik</button>
       </div>
-      <div class="atlas-summary"><p><b>{total}</b> Titik Ditemukan</p></div>
+      <div class="atlas-summary">
+        <p><b>{total}</b> Titik Ditemukan</p>
+        <button type="button" class="text-action" class:text-action--danger={batchMode} aria-pressed={batchMode} onclick={toggleBatchMode}>{batchMode ? 'Selesai Pilih' : 'Arsipkan Massal'}</button>
+      </div>
+      {#if batchMode}
+        <div class="batch-bar" aria-live="polite">
+          <span class="batch-bar__count"><b>{batchSelectedList.length}</b>/{BATCH_ARCHIVE_LIMIT} dipilih</span>
+          <span class="batch-bar__actions">
+            {#if visibleActivePoints.length}
+              <button type="button" class="text-action" onclick={() => toggleBatchSelectGroup(visibleActivePoints)}>{allPageSelected ? 'Lepas Halaman' : 'Pilih Halaman'}</button>
+            {/if}
+            {#if batchSelectedList.length}
+              <button type="button" class="text-action text-action--danger" onclick={clearBatchSelection}>Kosongkan</button>
+            {/if}
+          </span>
+        </div>
+      {/if}
       <div class="sidebar-scroll" use:stuckHeads>
         {#each sections as section (section.key)}
           <div class="atlas-group">
@@ -458,9 +556,29 @@
             {#each section.groups as group (group.key)}
               {@const prefix = desaPrefix(group.items[0].nomor)}
               {@const tidyKey = section.key + '|' + group.key}
+              {@const selectableInGroup = batchMode ? group.items.filter(point => !point.archived) : []}
+              {@const allGroupSelected = batchMode && selectableInGroup.length > 0 && selectableInGroup.every(point => batchSelected.has(point.id))}
               <div class="atlas-desa">
-                <div class="atlas-desa__head"><span class="atlas-desa__title">{group.head.title}</span><span class="atlas-desa__side"><span class="atlas-desa__count">{group.items.filter(point => !point.cadangan).length} Titik</span>{#if canPublish && gaps[prefix] && tidying !== tidyKey}<button type="button" class="text-action" title="Urutkan ulang nomor unit desa ini menjadi 001, 002, … lalu terbitkan" onclick={() => tidying = tidyKey}>Rapikan Nomor</button>{/if}</span></div>
-                {#if tidying === tidyKey}<form class="desa-tidy" onsubmit={event => tidy(event, prefix, group.head.title)}><p class="desa-tidy__note">Nomor aktif menjadi 001, 002, … dan langsung terbit.</p>{#if desaHasFieldProgress(group.items)}<p class="pin-warning desa-tidy__warn">Ada unit di desa ini yang sudah punya progres di esdm.cloud. Mengubah Nomor dapat memengaruhi pencocokan laporan lapangan.</p>{/if}<button type="submit" class="btn-primary" disabled={submitting}>Rapikan</button><button type="button" class="btn-ghost" onclick={() => tidying = ''}>Batal</button></form>{/if}
+                <div class="atlas-desa__head">
+                  <span class="atlas-desa__title">{group.head.title}</span>
+                  <span class="atlas-desa__side">
+                    <span class="atlas-desa__count">{group.items.filter(point => !point.cadangan).length} Titik</span>
+                    {#if batchMode}
+                      {#if selectableInGroup.length}
+                        <button
+                          type="button"
+                          class="text-action"
+                          aria-pressed={allGroupSelected}
+                          aria-label={allGroupSelected ? `Lepas Desa ${group.head.title}` : `Pilih Desa ${group.head.title}`}
+                          onclick={() => toggleBatchSelectGroup(group.items)}
+                        >{allGroupSelected ? 'Lepas Desa' : 'Pilih Desa'}</button>
+                      {/if}
+                    {:else if canPublish && gaps[prefix] && tidying !== tidyKey}
+                      <button type="button" class="text-action" title="Urutkan ulang nomor unit desa ini menjadi 001, 002, … lalu terbitkan" onclick={() => tidying = tidyKey}>Rapikan Nomor</button>
+                    {/if}
+                  </span>
+                </div>
+                {#if !batchMode && tidying === tidyKey}<form class="desa-tidy" onsubmit={event => tidy(event, prefix, group.head.title)}><p class="desa-tidy__note">Nomor aktif menjadi 001, 002, … dan langsung terbit.</p>{#if desaHasFieldProgress(group.items)}<p class="pin-warning desa-tidy__warn">Ada unit di desa ini yang sudah punya progres di esdm.cloud. Mengubah Nomor dapat memengaruhi pencocokan laporan lapangan.</p>{/if}<button type="submit" class="btn-primary" disabled={submitting}>Rapikan</button><button type="button" class="btn-ghost" onclick={() => tidying = ''}>Batal</button></form>{/if}
                 {#if gaps[prefix]}<p class="status-flag status-flag--urut atlas-desa__flag">Nomor Belum Urut ({gaps[prefix].map(n => String(n).padStart(3, '0')).join(', ')})</p>{/if}
                 {#if group.head.line}<p class="atlas-desa__note">Rekapan: {group.head.line}</p>{/if}
                 {#if group.shared}<p class="atlas-desa__note">{group.shared}</p>{/if}
@@ -468,8 +586,20 @@
                   {#each group.items as point, index (point.id)}
                     {@const stage = stageOf(point.nomor, point.cadangan)}
                     {@const waiting = pendingOf(point.nomor, point.cadangan)}
-                    <button class="atlas-pt" type="button" aria-pressed={detail?.id === point.id} aria-label={[`Titik ${point.display.code}`, badgeOf(editorState(point)).label, point.drafts ? 'Ada Draf Menunggu' : '', point.display.primary, stage ? stageSummary(stage) : '', waiting ? pendingSummary(waiting) : ''].filter(Boolean).join('. ')} onclick={() => select(point.id)}>
-                      <span class="atlas-unit" class:is-active={detail?.id === point.id} class:is-cadangan={point.cadangan} class:is-duplikat={point.duplikat} class:is-belum={point.belum} class:is-arsip={point.archived}>{point.display.code}</span>
+                    {@const picked = batchMode && batchSelected.has(point.id)}
+                    <button
+                      class="atlas-pt"
+                      class:is-batch-selected={picked}
+                      class:is-batch-disabled={batchMode && point.archived}
+                      type="button"
+                      disabled={batchMode && point.archived}
+                      aria-pressed={batchMode ? picked : detail?.id === point.id}
+                      aria-label={[`Titik ${point.display.code}`, badgeOf(editorState(point)).label, point.drafts ? 'Ada Draf Menunggu' : '', point.display.primary, stage ? stageSummary(stage) : '', waiting ? pendingSummary(waiting) : ''].filter(Boolean).join('. ')}
+                      onclick={() => batchMode ? toggleBatchSelectPoint(point) : select(point.id)}
+                    >
+                      <span class="atlas-unit" class:is-active={!batchMode && detail?.id === point.id} class:is-batch-selected={picked} class:is-cadangan={point.cadangan} class:is-duplikat={point.duplikat} class:is-belum={point.belum} class:is-arsip={point.archived}>
+                        {#if picked}<svg class="atlas-unit__check" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>{/if}{point.display.code}
+                      </span>
                       <span class="atlas-pt__info">
                         {#if !group.shared && group.landmarks[index]}<span class="atlas-pt__note">{group.landmarks[index]}</span>{/if}
                         {#if point.archived}<span class="atlas-pt__coord atlas-pt__coord--none">Arsip</span>
@@ -491,6 +621,12 @@
           <div class="panel-empty"><p>{q || status || region || pendingOnly ? 'Tidak ada titik yang cocok dengan filter ini.' : 'Belum ada titik untuk ditampilkan.'}</p>{#if q || status || region || pendingOnly}<div class="panel-empty__actions"><button type="button" onclick={resetAllFilters}>Reset Filter</button></div>{/if}</div>
         {/each}
       </div>
+      {#if batchMode}
+        <div class="batch-mobile-bar">
+          <span><b>{batchSelectedList.length}</b> titik dipilih</span>
+          <button type="button" class="btn-primary btn-primary--danger" disabled={!batchSelectedList.length} onclick={() => pane = 'edit'}>Tinjau & Arsipkan</button>
+        </div>
+      {/if}
       <div class="list-pager">
         <button type="button" class="text-action" disabled={busy || listPage <= 1} onclick={() => { listPage--; loadPoints(); }}><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>Sebelumnya</button>
         <span class="list-pager__count" title="Halaman {listPage} dari {pages}"><b>{listPage}</b> dari {pages}</span>
@@ -499,7 +635,8 @@
     </aside>
     <aside class="wing wing-r" aria-label="Foto dan Lokasi" in:fold={{ side: 'right', delay: 460 }} out:foldAway={{ side: 'right' }}>
       <div class="wing-scroll">
-        {#if editor}{#key editor}<EditorWing {editor} canRevoke={account?.role === 'owner'} nearby={mapPoints}/>{/key}
+        {#if batchMode}<div class="wing-empty"><h3>Arsipkan Massal</h3><p>Foto survei, koordinat, dan riwayat titik tetap tersimpan aman. Titik yang diarsipkan keluar dari peta publik dan masih dapat dipulihkan lewat riwayat revisi.</p></div>
+        {:else if editor}{#key editor}<EditorWing {editor} canRevoke={account?.role === 'owner'} nearby={mapPoints}/>{/key}
         {:else if creating}<section class="wing-section"><h3>Lokasi</h3><CoordinateMap bind:lat={newPoint.lat} bind:lon={newPoint.lon} disabled={submitting} nearby={mapPoints}/></section>
         {:else}<div class="wing-empty"><h3>Foto & Lokasi</h3><p>Foto survei, peta koordinat, dan riwayat titik tampil di sini setelah titik dipilih.</p></div>{/if}
       </div>

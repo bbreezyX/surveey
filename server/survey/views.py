@@ -240,6 +240,12 @@ def renumber(request):
     renumbered, publication = services.renumber(request.user, data['prefix'], data['reason'])
     return response({'renumbered': renumbered, 'id': str(publication.id)}, 201)
 
+@api(['POST'])
+def batch_archive(request):
+    data = body(request, ['items', 'reason', 'mode'])
+    result = services.batch_archive(request.user, data['items'], data['reason'], data['mode'])
+    return response(result, 201)
+
 @api(['GET'])
 def point_map(request):
     # Every active point's position and status in one response, for the

@@ -708,3 +708,112 @@ class AdminLogicImprovementTests(TestCase):
         self.assertEqual(calls[0][2]['checksum'], pub.checksum)
         self.assertEqual(calls[0][2]['trigger'], 'surveey-publish')
         self.assertEqual(calls[0][3], 5)
+
+    def test_batch_archive_publish_draft_permissions_and_conflicts(self):
+        from unittest.mock import patch
+        from delivery.models import ActivePublication, Publication
+        from .models import AuditEvent, Draft, Revision
+        from .services import publish_baseline, save_draft
+
+        ActivePublication.objects.get_or_create(id=1)
+        p1 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-001')
+        p2 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-002', status='Cadangan')
+        p3 = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-003')
+        p_arch = self.make_point('MUARO JAMBI-MESTONG-PELEMPANG-004', archived=True)
+        publish_baseline(self.owner, 'Terbit awal')
+        pubs_before = Publication.objects.count()
+
+        # Editor cannot batch-publish, but can batch-draft.
+        editor_csrf = self.login(self.editor.username, 'test-only-password-347193')
+        forbidden = self.client.post('/admin/api/points/batch-archive', {
+            'items': [{'id': str(p1.id), 'base_revision': p1.revision}],
+            'reason': 'Coba terbit',
+            'mode': 'publish',
+        }, content_type='application/json', HTTP_X_CSRFTOKEN=editor_csrf)
+        self.assertEqual(forbidden.status_code, 403)
+
+        # Save an existing editor draft on p1 first to verify batch draft updates it in place.
+        existing = save_draft(self.editor, str(p1.id), p1.revision,
+            {'state': {**p1.state, 'catatan': 'Catatan lama'}, 'new_observation': None}, 'Edit dulu')
+        draft_res = self.client.post('/admin/api/points/batch-archive', {
+            'items': [
+                {'id': str(p1.id), 'base_revision': p1.revision},
+                {'id': str(p2.id), 'base_revision': p2.revision},
+            ],
+            'reason': 'Usulan arsip massal',
+            'mode': 'draft',
+        }, content_type='application/json', HTTP_X_CSRFTOKEN=editor_csrf)
+        self.assertEqual(draft_res.status_code, 201, draft_res.content)
+        self.assertEqual(draft_res.json()['archived'], 2)
+        self.assertEqual(draft_res.json()['mode'], 'draft')
+        self.assertEqual(Draft.objects.filter(point=p1, author=self.editor, status='pending').count(), 1)
+        existing.refresh_from_db()
+        self.assertTrue(existing.proposed['state']['archived'])
+        self.assertEqual(existing.reason, 'Usulan arsip massal')
+        # Points stay active until published.
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+        self.assertFalse(p1.archived)
+        self.assertFalse(p2.archived)
+
+        # Owner batch-publishes p1 and p2 atomically in a single publication.
+        owner_csrf = self.login(self.owner.username, 'test-only-password-347192')
+        owner_draft = save_draft(self.owner, str(p1.id), p1.revision,
+            {'state': {**p1.state, 'catatan': 'Draf pemilik'}, 'new_observation': None}, 'Draf pemilik')
+        with patch('survey.services.schedule_esdm_sync') as scheduled:
+            with self.captureOnCommitCallbacks(execute=True):
+                pub_res = self.client.post('/admin/api/points/batch-archive', {
+                    'items': [
+                        {'id': str(p1.id), 'base_revision': p1.revision},
+                        {'id': str(p2.id), 'base_revision': p2.revision},
+                    ],
+                    'reason': 'Pengalihan lokasi 2 titik',
+                    'mode': 'publish',
+                }, content_type='application/json', HTTP_X_CSRFTOKEN=owner_csrf)
+        self.assertEqual(pub_res.status_code, 201, pub_res.content)
+        body = pub_res.json()
+        self.assertEqual((body['archived'], body['mode']), (2, 'publish'))
+        self.assertEqual(Publication.objects.count(), pubs_before + 1)
+        scheduled.assert_called_once()
+
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+        owner_draft.refresh_from_db()
+        self.assertTrue(p1.archived and p1.state['archived'] and p1.revision == 2)
+        self.assertTrue(p2.archived and p2.state['archived'] and p2.revision == 2)
+        self.assertEqual(owner_draft.status, 'published')
+        self.assertEqual(Revision.objects.filter(point=p1, number=2).get().reason, 'Pengalihan lokasi 2 titik')
+        self.assertTrue(AuditEvent.objects.filter(action='point.published', target=str(p2.id)).exists())
+        active_pub = ActivePublication.objects.get(id=1).publication
+        published_nomors = [f['properties']['Nomor'] for f in active_pub.geojson['features']]
+        self.assertEqual(published_nomors, [p3.nomor])
+
+        # Stale revision or already-archived point fails atomically with 409 and leaves p3 untouched.
+        stale = self.client.post('/admin/api/points/batch-archive', {
+            'items': [
+                {'id': str(p3.id), 'base_revision': p3.revision},
+                {'id': str(p1.id), 'base_revision': 1},
+            ],
+            'reason': '',
+            'mode': 'publish',
+        }, content_type='application/json', HTTP_X_CSRFTOKEN=owner_csrf)
+        self.assertEqual(stale.status_code, 409)
+        p3.refresh_from_db()
+        self.assertFalse(p3.archived)
+
+        already_arch = self.client.post('/admin/api/points/batch-archive', {
+            'items': [{'id': str(p_arch.id), 'base_revision': p_arch.revision}],
+            'reason': '',
+            'mode': 'publish',
+        }, content_type='application/json', HTTP_X_CSRFTOKEN=owner_csrf)
+        self.assertEqual(already_arch.status_code, 409)
+
+        # Empty list, duplicates, and invalid mode return 400.
+        for payload in (
+            {'items': [], 'reason': '', 'mode': 'publish'},
+            {'items': [{'id': str(p3.id), 'base_revision': p3.revision}, {'id': str(p3.id), 'base_revision': p3.revision}], 'reason': '', 'mode': 'publish'},
+            {'items': [{'id': str(p3.id), 'base_revision': p3.revision}], 'reason': '', 'mode': 'invalid'},
+        ):
+            bad = self.client.post('/admin/api/points/batch-archive', payload,
+                content_type='application/json', HTTP_X_CSRFTOKEN=owner_csrf)
+            self.assertEqual(bad.status_code, 400, payload)

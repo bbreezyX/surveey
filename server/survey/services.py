@@ -387,6 +387,96 @@ def renumber(actor, prefix, reason):
         audit(actor, 'point.renumbered', point.id, before, point.state, reason)
     return len(changes), build_publication(actor, active, reason)
 
+
+@transaction.atomic
+def batch_archive(actor, items, reason, mode='publish'):
+    """Archive up to 100 active points atomically as drafts or one publication.
+
+    Follows the same lock order as publish() and publish_point()
+    (ActivePublication -> Draft -> Point) so concurrent publishers cannot
+    deadlock. Only the archived flag changes; Nomor and evidence stay intact.
+    """
+    if mode not in ('publish', 'draft'):
+        raise Problem('Mode pengarsipan tidak dikenal.')
+    permission(actor, 'publish' if mode == 'publish' else 'edit')
+    clean_reason = text(reason, 'Alasan pengarsipan', 3000)
+    if not isinstance(items, list) or not 1 <= len(items) <= 100:
+        raise Problem('Pilih 1–100 titik yang berbeda untuk diarsipkan.')
+    parsed = {}
+    for entry in items:
+        if not isinstance(entry, dict) or set(entry) != {'id', 'base_revision'}:
+            raise Problem('Daftar titik pengarsipan tidak valid.')
+        point_id = identifier(entry['id'])
+        base_revision = entry['base_revision']
+        if type(base_revision) is not int or base_revision < 1:
+            raise Problem('Nomor revisi titik tidak valid.')
+        if point_id in parsed:
+            raise Problem('Pilih 1–100 titik yang berbeda untuk diarsipkan.')
+        parsed[point_id] = base_revision
+    ordered_ids = sorted(parsed)
+    active = ActivePublication.objects.select_for_update().get(id=1) if mode == 'publish' else None
+    own_drafts_by_point = {}
+    for draft in Draft.objects.select_for_update().filter(
+        point_id__in=ordered_ids, author=actor, status='pending'
+    ).order_by('point_id', '-created_at'):
+        own_drafts_by_point.setdefault(str(draft.point_id), []).append(draft)
+    points_map = {
+        str(p.pk): p
+        for p in Point.objects.select_for_update().filter(id__in=ordered_ids).order_by('pk')
+    }
+    if len(points_map) != len(ordered_ids):
+        raise Problem('Sebagian titik tidak ditemukan.', 404)
+    points_list = sorted(points_map.values(), key=lambda p: (p.nomor.lower(), p.nomor))
+    for point in points_list:
+        point_id = str(point.pk)
+        if point.revision != parsed[point_id]:
+            raise Problem(
+                f'{point.nomor} telah berubah. Muat ulang dan tinjau kembali sebelum mengarsipkan.',
+                409,
+                {'point_id': point_id, 'revision': point.revision},
+            )
+        if point.archived or point.state.get('archived'):
+            raise Problem(f'{point.nomor} sudah berstatus arsip.', 409, {'point_id': point_id})
+    point_reason = clean_reason or 'Arsipkan titik'
+    if mode == 'draft':
+        draft_ids = []
+        for point in points_list:
+            point_id = str(point.pk)
+            before = point.state
+            proposed = {'state': {**clone(before), 'archived': True}, 'new_observation': None}
+            own_drafts = own_drafts_by_point.get(point_id, [])
+            if own_drafts:
+                draft = own_drafts[0]
+                draft.base_revision, draft.proposed, draft.reason = parsed[point_id], proposed, point_reason
+                draft.save(update_fields=['base_revision', 'proposed', 'reason'])
+                audit(actor, 'draft.updated', draft.id, before, proposed, point_reason)
+            else:
+                draft = Draft.objects.create(
+                    point=point, base_revision=parsed[point_id], proposed=proposed, reason=point_reason, author=actor
+                )
+                audit(actor, 'draft.created', draft.id, before, proposed, point_reason)
+            draft_ids.append(str(draft.id))
+        return {'archived': len(points_list), 'mode': 'draft', 'draft_ids': draft_ids}
+    for point in points_list:
+        point_id = str(point.pk)
+        proposal = {'state': {**clone(point.state), 'archived': True}, 'new_observation': None}
+        apply_point_proposal(actor, actor, point, proposal, point_reason)
+        own_drafts = own_drafts_by_point.get(point_id, [])
+        if own_drafts:
+            latest = own_drafts[0]
+            latest.base_revision, latest.proposed, latest.reason, latest.status = (
+                parsed[point_id], proposal, point_reason, 'published'
+            )
+            latest.save(update_fields=['base_revision', 'proposed', 'reason', 'status'])
+            for extra in own_drafts[1:]:
+                extra.status = 'discarded'
+                extra.save(update_fields=['status'])
+    pub_reason = clean_reason or (
+        f'Arsipkan {len(points_list)} titik' if len(points_list) > 1 else f'Arsipkan titik {points_list[0].nomor}'
+    )
+    publication = build_publication(actor, active, pub_reason)
+    return {'archived': len(points_list), 'mode': 'publish', 'publication_id': str(publication.id)}
+
 def build_publication(actor, active, reason):
     points = list(Point.objects.filter(archived=False).order_by('nomor'))
     photo_ids = {p.state['photo_id'] for p in points if p.state['photo_id']}
