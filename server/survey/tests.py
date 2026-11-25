@@ -671,3 +671,40 @@ class AdminLogicImprovementTests(TestCase):
         from pathlib import Path
         (Path(self.directory.name) / photo.derivative_key).unlink()
         self.assertEqual(self.client.get(f'/admin/api/photos/{photo.id}/display').status_code, 404)
+
+    def test_esdm_sync_webhook_notifies_on_commit_and_retries(self):
+        import json
+        from unittest.mock import MagicMock, patch
+        from django.test import override_settings
+        from delivery.models import ActivePublication
+        from .services import notify_esdm_sync, renumber
+
+        ActivePublication.objects.get_or_create(id=1)
+        self.make_point('TJT-KJ-MAJELIS-002')
+        with patch('survey.services.schedule_esdm_sync') as scheduled:
+            with self.captureOnCommitCallbacks(execute=True):
+                count, pub = renumber(self.owner, 'TJT-KJ-MAJELIS', 'Rapikan')
+            self.assertEqual(count, 1)
+            scheduled.assert_called_once_with(str(pub.id), pub.checksum, 'Rapikan')
+
+        resp = MagicMock()
+        resp.status = 200
+        resp.__enter__.return_value = resp
+        calls = []
+        def fake_urlopen(req, timeout=None):
+            calls.append((req.full_url, req.get_header('Authorization'), json.loads(req.data.decode()), timeout))
+            if len(calls) == 1:
+                raise OSError('transient error')
+            return resp
+
+        with override_settings(ESDM_SYNC_URL='https://www.esdm.cloud/api/cron/survey-sync', ESDM_SYNC_TOKEN='secret-token', ESDM_SYNC_TIMEOUT=5):
+            with patch('survey.services.urllib.request.urlopen', side_effect=fake_urlopen):
+                ok = notify_esdm_sync(pub.id, pub.checksum, 'Rapikan', retries=2, sleep=lambda _s: None)
+        self.assertTrue(ok)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0][0], 'https://www.esdm.cloud/api/cron/survey-sync')
+        self.assertEqual(calls[0][1], 'Bearer secret-token')
+        self.assertEqual(calls[0][2]['publication'], str(pub.id))
+        self.assertEqual(calls[0][2]['checksum'], pub.checksum)
+        self.assertEqual(calls[0][2]['trigger'], 'surveey-publish')
+        self.assertEqual(calls[0][3], 5)

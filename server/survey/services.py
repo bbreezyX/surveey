@@ -1,7 +1,12 @@
 import hashlib
 import json
+import logging
 import re
+import threading
+import time
+import urllib.request
 from datetime import timedelta
+from django.conf import settings
 from django.db import transaction, IntegrityError
 from django.utils import timezone
 from delivery.models import Publication, ActivePublication, PublishedMedia, MediaGrant
@@ -9,6 +14,57 @@ from delivery import storage
 from .models import Point, Draft, Photo, Observation, ObservationEvidence, Revision, AuditEvent
 from .domain import Problem, validate_state, nomor_prefix, nomor_gaps, same_place, text, date, coordinate, identifier, clone, public_feature, counts, movement
 from .security import permission
+
+logger = logging.getLogger(__name__)
+
+
+def notify_esdm_sync(publication_id, checksum, reason='', *, retries=2, sleep=time.sleep):
+    """Best-effort POST to esdm.cloud after a publication commits.
+
+    Runs on a background thread so a slow or restarting ESDM server never
+    blocks or fails Surveey publishing. Retries briefly for transient blips.
+    """
+    url = getattr(settings, 'ESDM_SYNC_URL', '')
+    token = getattr(settings, 'ESDM_SYNC_TOKEN', '')
+    if not url or not token:
+        return False
+    timeout = getattr(settings, 'ESDM_SYNC_TIMEOUT', 10)
+    payload = json.dumps({
+        'trigger': 'surveey-publish',
+        'publication': str(publication_id),
+        'checksum': checksum,
+        'reason': reason,
+    }).encode()
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'User-Agent': 'surveey-publish-sync/1',
+    }
+    for attempt in range(retries + 1):
+        try:
+            req = urllib.request.Request(url, data=payload, headers=headers, method='POST')
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                if 200 <= resp.status < 300:
+                    return True
+                logger.warning('ESDM sync returned HTTP %s (attempt %s)', resp.status, attempt + 1)
+        except Exception as exc:
+            logger.warning('ESDM sync failed (attempt %s): %s', attempt + 1, exc)
+        if attempt < retries:
+            sleep(2 * (attempt + 1))
+    return False
+
+
+def schedule_esdm_sync(publication_id, checksum, reason=''):
+    url = getattr(settings, 'ESDM_SYNC_URL', '')
+    token = getattr(settings, 'ESDM_SYNC_TOKEN', '')
+    if not url or not token or getattr(settings, 'TESTING', False):
+        return
+    threading.Thread(
+        target=notify_esdm_sync,
+        args=(publication_id, checksum, reason),
+        name='esdm-sync',
+        daemon=True,
+    ).start()
 
 def audit(actor, action, target, before=None, after=None, reason=''):
     return AuditEvent.objects.create(actor=actor, action=action, target=str(target), before=before, after=after, reason=reason)
@@ -367,6 +423,10 @@ def build_publication(actor, active, reason):
     active.save(update_fields=['publication'])
     audit(actor, 'publication.activated', publication.id, {'publication': previous},
         {'publication': str(publication.id), 'checksum': checksum, 'counts': counts([p.state for p in points])}, reason)
+    transaction.on_commit(
+        lambda pub_id=str(publication.id), pub_checksum=checksum, pub_reason=reason:
+            schedule_esdm_sync(pub_id, pub_checksum, pub_reason)
+    )
     return publication
 
 @transaction.atomic

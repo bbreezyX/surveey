@@ -16,6 +16,9 @@ S3_SECRET_KEY=<secret>
 S3_REGION=<provider region>
 ORIGIN_TLS_CERT=<mounted origin certificate path>
 ORIGIN_TLS_KEY=<mounted origin private key path>
+# Optional: trigger automatic sync on esdm.cloud right after publishing or renumbering.
+# ESDM_SYNC_URL=https://www.esdm.cloud/api/cron/survey-sync
+# ESDM_SYNC_TOKEN=<shared secret matching SURVEY_SYNC_SECRET or CRON_SECRET on esdm.cloud>
 
 # Public-data service: separate environment, secret, SELECT-only PostgreSQL login,
 # and GetObject-only display/* storage key. Do not supply admin credentials here.

@@ -95,6 +95,11 @@ if LOCAL and not TESTING and os.environ.get('SURVEY_LOCAL_MEDIA') == 'ssh':
     SSH_MEDIA_HOST = required('SSH_MEDIA_HOST')
 MEDIA_BROKER_TOKEN = os.environ.get('MEDIA_BROKER_TOKEN', '')
 MEDIA_BROKER_URL = os.environ.get('MEDIA_BROKER_URL', '')
+# Optional webhook to notify esdm.cloud after a publication commits so renumbers
+# and address moves sync automatically instead of waiting for a manual sync.
+ESDM_SYNC_URL = os.environ.get('ESDM_SYNC_URL', '').strip()
+ESDM_SYNC_TOKEN = os.environ.get('ESDM_SYNC_TOKEN', '').strip()
+ESDM_SYNC_TIMEOUT = float(os.environ.get('ESDM_SYNC_TIMEOUT', '10'))
 # Content-addressed copies of published derivatives; None disables the cache.
 MEDIA_CACHE_ROOT = None
 broker_client = (RAILWAY or VPS) and public_service
