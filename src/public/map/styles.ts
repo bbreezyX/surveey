@@ -65,8 +65,20 @@ export function completedRegions(points: readonly Pick<SurveyPoint, 'nomor' | 'k
 // stays bright with its plain white border. Fills and badges fade out as the reader zooms in (same
 // resolution curve as kabupaten labels) so houses, roads and poles stay clear. Separate zIndex bands
 // keep fills (0) below every stroke (1..3) so a finished border always wins over an adjacent unfinished one.
-const DONE_REGION_CHECK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1f7a5a"/><stop offset="100%" stop-color="#13543e"/></linearGradient></defs><circle cx="20" cy="21.4" r="15.4" fill="rgba(4,16,13,0.45)"/><circle cx="20" cy="20" r="14.8" fill="url(#g)" stroke="#7ee0b8" stroke-opacity="0.9" stroke-width="1.5"/><circle cx="20" cy="20" r="13.2" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="0.9"/><path d="M13.8 20.4 18 24.5 26.5 16" fill="none" stroke="#effdf6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const doneRegionCheckSrc = `data:image/svg+xml,${encodeURIComponent(DONE_REGION_CHECK_SVG)}`;
+// Open-ring stamp with a tapered checkmark breaking through the upper-right arc, matching the
+// approved mark while keeping the polygon interior unobstructed. Separate online/offline SVGs keep
+// contrast sharp over dark satellite terrain and the pale offline basemap.
+function doneRegionCheckSvg(offline: boolean): string {
+  const arc = 'M37.2 20.4A16.5 16.5 0 1 1 29.25 10.9';
+  const check = 'M12.2 24.4C13.6 22.8 15.6 22.8 16.7 24.5L19.3 28.8C23.6 22.2 31.2 12.4 38.6 6.2C40.3 4.8 42.4 4.7 43.3 5.5C44.1 6.2 43.4 7.6 41.9 9.2C34.4 16.8 25.8 27.6 20.6 35.1C19.7 36.4 18.4 36.9 16.8 36.6C15.4 36.3 14.6 35.4 13.9 33.8L11.4 27.4C10.8 25.9 11.1 25.4 12.2 24.4Z';
+  const halo = offline ? 'rgba(255,255,255,0.86)' : 'rgba(5,18,14,0.74)';
+  const fg = offline ? '#196e52' : 'url(#j)';
+  const defs = offline ? '' : '<defs><linearGradient id="j" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8ef0c6"/><stop offset="100%" stop-color="#4cc492"/></linearGradient></defs>';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 48 48">${defs}<path d="${arc}" fill="none" stroke="${halo}" stroke-width="5.6" stroke-linecap="round"/><path d="${check}" fill="${halo}" stroke="${halo}" stroke-width="3.2" stroke-linejoin="round"/><path d="${arc}" fill="none" stroke="${fg}" stroke-width="2.9" stroke-linecap="round"/><path d="${check}" fill="${fg}"/></svg>`;
+}
+const doneRegionCheckSrc = (offline: boolean) => `data:image/svg+xml,${encodeURIComponent(doneRegionCheckSvg(offline))}`;
+const doneCheckOnlineSrc = doneRegionCheckSrc(false);
+const doneCheckOfflineSrc = doneRegionCheckSrc(true);
 const boundaryShapes = new Map<string, Style[]>();
 function boundaryShapeStyles(done: boolean, alpha: number, offline: boolean): Style[] {
   const key = `${done}|${alpha}|${offline}`;
@@ -180,7 +192,7 @@ export function boundaryBadgeStyle(feature: FeatureLike, resolution: number, com
   // Fit the 40px badge inside the polygon's inscribed circle; cap slightly smaller on phone-overview zooms (>600 m/px).
   const maxScale = resolution > 600 ? .84 : 1;
   const scale = Math.round(Math.max(.55, Math.min(maxScale, (clearPx * .78) / 18.5)) * 20) / 20;
-  const labelDrop = Math.round(17 * scale) + 7;
+  const labelDrop = Math.round(18 * scale) + 8;
   const compact = resolution > 600 || scale < .75;
   const name = toDisplayCase(rawName);
   const key = `${name}|${scale}|${compact}|${alpha}|${offlineBasemap}`;
@@ -190,7 +202,7 @@ export function boundaryBadgeStyle(feature: FeatureLike, resolution: number, com
     const font = compact ? '600 11.5px Manrope, "Source Sans 3", system-ui, sans-serif' : '600 12.5px Manrope, "Source Sans 3", system-ui, sans-serif';
     styles = [
       new Style({ geometry: point, zIndex: 1, text: new Text({ text: name, offsetY: labelDrop, font, fill: new Fill({ color: offlineBasemap ? `rgba(25,110,82,${alpha})` : `rgba(236,250,244,${alpha * .96})` }), stroke: new Stroke({ color: offlineBasemap ? `rgba(255,255,255,${alpha * .9})` : `rgba(6,22,18,${alpha * .88})`, width: 2.8 }) }) }),
-      new Style({ geometry: point, zIndex: 2, image: new Icon({ src: doneRegionCheckSrc, scale, opacity: alpha }) }),
+      new Style({ geometry: point, zIndex: 2, image: new Icon({ src: offlineBasemap ? doneCheckOfflineSrc : doneCheckOnlineSrc, anchor: [21.5 / 48, 25.5 / 48], scale, opacity: alpha }) }),
     ];
     cached.set(key, styles);
   }
