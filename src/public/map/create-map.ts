@@ -23,7 +23,7 @@ import { attachPointFeedback } from './feedback';
 import { attachControlLayout } from './controls';
 import { unByKey } from 'ol/Observable';
 import type { SurveyProgress } from '../../shared/survey/progress';
-import { pointStyle, boundaryStyle, maskStyle, setOfflineBasemap } from './styles';
+import { pointStyle, boundaryStyle, boundaryBadgeStyle, maskStyle, setOfflineBasemap, completedRegions } from './styles';
 import { watchTiles } from './imagery-status';
 import { projectRegions } from '../data/regions';
 import { satelliteLayers } from './google-tiles';
@@ -59,6 +59,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   let visibleIds: ReadonlySet<string> = new Set(points.map(point => point.nomor));
   let selected: string | null = null, disposed = false;
   let progress: SurveyProgress = new Map();
+  let doneRegions: ReadonlySet<string> = new Set();
   const flags = { sk: true, cadangan: false, belum: true };
   const format = new GeoJSON();
   const projection = { featureProjection: 'EPSG:3857' };
@@ -68,7 +69,11 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   const satellite = satelliteLayers(options.onBasemapFallback), { google, esri } = satellite;
   const mask = new VectorLayer({ source: new VectorSource({ features: dissolvedFeatures }), style: maskStyle(dissolvedFeatures), declutter: false });
   const area = new VectorLayer({ visible: false, source: new VectorSource({ features: dissolvedFeatures }), style: { 'stroke-color': 'rgba(245,158,11,.6)', 'stroke-width': 1.5, 'stroke-line-dash': [6, 4], 'fill-color': 'rgba(245,158,11,.1)' }, declutter: false });
-  const regionLayer = new VectorLayer({ source: new VectorSource({ features: regions, attributions: 'Batas &copy; <a href="https://geoservices.big.go.id/rbi/rest/services/BATASWILAYAH/BATAS_KABKOTA_AR/MapServer" target="_blank" rel="noopener">BIG</a> &middot; Juni 2026' }), style: boundaryStyle, declutter: false });
+  const regionSource = new VectorSource({ features: regions, attributions: 'Batas &copy; <a href="https://geoservices.big.go.id/rbi/rest/services/BATASWILAYAH/BATAS_KABKOTA_AR/MapServer" target="_blank" rel="noopener">BIG</a> &middot; Juni 2026' });
+  const regionLayer = new VectorLayer({ source: regionSource, style: (feature, resolution) => boundaryStyle(feature, resolution, doneRegions), declutter: false });
+  // Sits above pointLayer so finished-kabupaten checkmarks remain immediately legible over dense mobile pin clusters;
+  // click and hover hit-testing stay restricted to pointLayer, so pins underneath stay fully interactive.
+  const regionBadgeLayer = new VectorLayer({ source: regionSource, style: (feature, resolution) => boundaryBadgeStyle(feature, resolution, doneRegions), declutter: false });
   const pointLayer = new VectorLayer({ source, declutter: false, style: (feature, resolution) => {
     const id = String(feature.getId()); const point = byId.get(id);
     if (!point || !visibleIds.has(id) || !shown(point) && id !== selected) return undefined;
@@ -91,7 +96,7 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
   // A 390×844 phone at DPR 3 allocated a 1170×2532 canvas. Capping only the
   // map backing store at 2× removes 56% of those pixels while retaining HiDPI
   // pins and leaving the surrounding DOM text/photos at native resolution.
-  const map = new OlMap({ target: options.target, pixelRatio: Math.min(window.devicePixelRatio || 1, 2), layers: [esri, google, mask, area, regionLayer, userLayer, pointLayer], overlays: [userOverlay, overlay], view: new View({ maxZoom: 28, minZoom: 1 }), interactions: defaultInteractions({ doubleClickZoom: false }), controls: defaultControls({ attributionOptions: { collapsible: false, className: 'bottom-attribution' }, zoomOptions: { zoomInTipLabel: 'Perbesar', zoomOutTipLabel: 'Perkecil' } }) });
+  const map = new OlMap({ target: options.target, pixelRatio: Math.min(window.devicePixelRatio || 1, 2), layers: [esri, google, mask, area, regionLayer, userLayer, pointLayer, regionBadgeLayer], overlays: [userOverlay, overlay], view: new View({ maxZoom: 28, minZoom: 1 }), interactions: defaultInteractions({ doubleClickZoom: false }), controls: defaultControls({ attributionOptions: { collapsible: false, className: 'bottom-attribution' }, zoomOptions: { zoomInTipLabel: 'Perbesar', zoomOutTipLabel: 'Perkecil' } }) });
   const controlCleanup = attachControlLayout(map);
   const satelliteCleanup = satellite.attach(map);
   const tiles = watchTiles(map, [google, esri], { suspect: () => options.onTileTrouble?.(), slow: value => options.onTilesSlow?.(value) });
@@ -186,17 +191,17 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
       if (Math.hypot(pixel[0] - x, pixel[1] - y) < 2) return;
       view.cancelAnimations(); view.animate({ center: [center[0] + (pixel[0] - x) * resolution, center[1] - (pixel[1] - y) * resolution], duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 760, easing: inAndOut });
     },
-    setProgress(next) { progress = next; feedback.refresh(); pointLayer.changed(); },
+    setProgress(next) { progress = next; doneRegions = completedRegions(points, progress); feedback.refresh(); pointLayer.changed(); regionLayer.changed(); regionBadgeLayer.changed(); },
     setVisiblePoints(ids) { visibleIds = ids; feedback.refresh(); pointLayer.changed(); },
     setImageryOffline(offline) {
       if (disposed || offline === imageryOffline) return;
-      imageryOffline = offline; options.target.classList.toggle('is-imagery-offline', offline); setOfflineBasemap(offline); regionLayer.changed();
+      imageryOffline = offline; options.target.classList.toggle('is-imagery-offline', offline); setOfflineBasemap(offline); regionLayer.changed(); regionBadgeLayer.changed();
       if (!offline) tiles.reload();
     },
     setPoints(next) {
       if (disposed || next === points) return;
-      points = next; index(); source.clear(true); source.addFeatures(pointFeatures());
-      feedback.dispose(); feedback = attachFeedback(); pointLayer.changed();
+      points = next; index(); doneRegions = completedRegions(points, progress); source.clear(true); source.addFeatures(pointFeatures());
+      feedback.dispose(); feedback = attachFeedback(); pointLayer.changed(); regionLayer.changed(); regionBadgeLayer.changed();
       // A moved pin takes its open popup with it, without re-running the fly-to.
       const point = selected ? byId.get(selected) : undefined; if (point) positionPopup(point);
     },
@@ -204,7 +209,8 @@ export function createSurveyMap(options: { target: HTMLElement; popup: HTMLEleme
     setLayerVisibility(key, visible) {
       if (key === 'sk' || key === 'cadangan' || key === 'belum') { flags[key] = visible; feedback.refresh(); pointLayer.changed(); }
       else if (key === 'google' || key === 'esri') { if (key === 'google') google.setVisible(visible); else esri.setVisible(visible); }
-      else ({ boundaries: regionLayer, mask, area })[key].setVisible(visible);
+      else if (key === 'boundaries') { regionLayer.setVisible(visible); regionBadgeLayer.setVisible(visible); }
+      else ({ mask, area })[key].setVisible(visible);
     },
     updateSize: resize,
     setUserLocation(fix, nearest, here = false, frame = false) {
